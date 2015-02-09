@@ -31,7 +31,6 @@
  * image = filter(accum)
  */
 
-
 /* allow this many iterations for settling into attractor */
 #define FUSE_27 15
 #define FUSE_28 100
@@ -902,7 +901,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
 
          /* Wait for them to return */
          for (thi=0; thi < spec->nthreads; thi++)
-            pthread_join(myThreads[thi], (void **)&thread_status);
+            pthread_join(myThreads[thi], NULL);
 
          #if defined(USE_LOCKS)
          pthread_mutex_destroy(&fic.bucket_mutex);
@@ -1033,7 +1032,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
 
          /* Wait for them to return */
          for (thi=0; thi < spec->nthreads; thi++)
-            pthread_join(myThreads[thi], (void **)&thread_status);
+            pthread_join(myThreads[thi], NULL);
          
          free(myThreads);            
 #else         
