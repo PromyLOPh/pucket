@@ -872,7 +872,7 @@ main(argc, argv)
                int mutmeth;
 
                parent0 = string_to_cp(mutate, &parent0_n);
-               flam3_copy(&selp0, &(parent0[((unsigned)irand(&f.rc))%parent0_n]));
+               flam3_copy(&selp0, &(parent0[(xorshift_step(&f.rc))%parent0_n]));
                flam3_copy(&cp_orig, &selp0);
                aselp0 = &selp0;
                aselp1 = NULL;
@@ -917,8 +917,8 @@ main(argc, argv)
                parent0 = string_to_cp(cross0, &parent0_n);
                parent1 = string_to_cp(cross1, &parent1_n);
 
-               i0 = ((unsigned)irand(&f.rc))%parent0_n;
-               i1 = ((unsigned)irand(&f.rc))%parent1_n;
+               i0 = (xorshift_step(&f.rc))%parent0_n;
+               i1 = (xorshift_step(&f.rc))%parent1_n;
 
                flam3_copy(&selp0, &(parent0[i0]));
                flam3_copy(&selp1, &(parent1[i1]));

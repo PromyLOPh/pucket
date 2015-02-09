@@ -19,7 +19,6 @@
 
 #include "private.h"
 #include "img.h"
-#include "isaacs.h"
 
 int main(int argc, char **argv) {
   char *ai, *fname;

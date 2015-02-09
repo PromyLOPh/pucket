@@ -28,6 +28,7 @@
 #include "parser.h"
 #include "filters.h"
 #include "palettes.h"
+#include "xorshift.h"
 #include <limits.h>
 #include <locale.h>
 #include <math.h>
@@ -250,9 +251,9 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned 
    
 //         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (((unsigned)irand(rc)) % CHOOSE_XFORM_GRAIN)];
       if (cp->chaos_enable)
-         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (((unsigned)irand(rc)) & CHOOSE_XFORM_GRAIN_M1)];
+         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (xorshift_step(rc) & CHOOSE_XFORM_GRAIN_M1)];
       else
-         fn = xform_distrib[ ((unsigned)irand(rc)) & CHOOSE_XFORM_GRAIN_M1 ];
+         fn = xform_distrib[ xorshift_step(rc) & CHOOSE_XFORM_GRAIN_M1 ];
       
       if (apply_xform(cp, fn, p, q, rc)>0) {
          consec ++;
@@ -2474,36 +2475,16 @@ double flam3_random11() {
 
 /* This function must be called prior to rendering a frame */
 void flam3_init_frame(flam3_frame *f) {
-
-   char *ai;
-   char *isaac_seed = args("isaac_seed",NULL);
-   long int default_isaac_seed = (long int)time(0);  
-
-   /* Clear out the isaac state */
-   memset(f->rc.randrsl, 0, RANDSIZ*sizeof(ub4));
-
-   /* Set the isaac seed */
-   if (NULL == isaac_seed) {
-      int lp;
-      /* No isaac seed specified.  Use the system time to initialize. */
-      for (lp = 0; lp < RANDSIZ; lp++)
-         f->rc.randrsl[lp] = default_isaac_seed;
-   } else {
-      /* Use the specified string */
-      strncpy((char *)&f->rc.randrsl,(const char *)isaac_seed, RANDSIZ*sizeof(ub4));
-   }
-
-   /* Initialize the random number generator */
-   irandinit(&f->rc,1);
+	xorshift_seed (&f->rc);
 }
 
 /* returns uniform variable from ISAAC rng */
 double flam3_random_isaac_01(randctx *ct) {
-   return ((int)irand(ct) & 0xfffffff) / (double) 0xfffffff;
+   return ((uint32_t) xorshift_step (ct) & 0xfffffff) / (double) 0xfffffff;
 }
 
 double flam3_random_isaac_11(randctx *ct) {
-   return (((int)irand(ct) & 0xfffffff) - 0x7ffffff) / (double) 0x7ffffff;
+   return (((uint32_t) xorshift_step(ct) & 0xfffffff) - 0x7ffffff) / (double) 0x7ffffff;
 }
 
 int flam3_random_bit() {
@@ -2521,8 +2502,7 @@ int flam3_random_bit() {
 }
 
 int flam3_random_isaac_bit(randctx *ct) {
-   int tmp = irand(ct);
-   return tmp & 1;
+   return xorshift_step(ct) & 1;
 }
 
 static double round6(double x) {
@@ -2882,7 +2862,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       flam3_random(&mutation, ivars, ivars_n, sym, 2);
       
       /* Which xform do we mutate? */
-      modxf = ((unsigned)irand(rc)) % cp->num_xforms;
+      modxf = (xorshift_step(rc)) % cp->num_xforms;
       
       add_to_action(action,"mutate xform ");
       sprintf(ministr,"%d coefs",modxf);
@@ -2905,8 +2885,8 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       
    } else if (mutate_mode == MUTATE_POST_XFORMS) {
    
-      int b = 1 + ((unsigned)irand(rc))%6;
-      int same = ((unsigned)irand(rc))&3; /* 25% chance of using the same post for all of them */
+      int b = 1 + (xorshift_step(rc))%6;
+      int same = (xorshift_step(rc))&3; /* 25% chance of using the same post for all of them */
       
       sprintf(ministr,"(%d%s)",b,(same>0) ? " same" : "");
       add_to_action(action,"mutate post xforms ");
@@ -3014,7 +2994,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       }
    } else if (mutate_mode == MUTATE_DELETE_XFORM) {
    
-      int nx = ((unsigned)irand(rc))%cp->num_xforms;
+      int nx = (xorshift_step(rc))%cp->num_xforms;
       sprintf(ministr,"%d",nx);
       add_to_action(action,"mutate delete xform ");
       add_to_action(action,ministr);
@@ -3936,16 +3916,11 @@ double flam3_dimension(flam3_genome *cp, int ntries, int clip_to_camera) {
   double bmax[2];
   double d2max;
   int lp;
-  long int default_isaac_seed = (long int)time(0);
   randctx rc;
   int SBS = 10000;
   int i, n1=0, n2=0, got, nclipped;
 
-  /* Set up the isaac rng */
-  for (lp = 0; lp < RANDSIZ; lp++)
-     rc.randrsl[lp] = default_isaac_seed;
-
-  irandinit(&rc,1);
+  xorshift_seed (&rc);
 
   if (ntries < 2) ntries = 3000*1000;
 
@@ -4057,15 +4032,9 @@ double flam3_lyapunov(flam3_genome *cp, int ntries) {
   unsigned short *xform_distrib;
 
   int lp;
-  long int default_isaac_seed = (long int)time(0);
   randctx rc;
 
-  /* Set up the isaac rng */
-  for (lp = 0; lp < RANDSIZ; lp++)
-     rc.randrsl[lp] = default_isaac_seed;
-
-  irandinit(&rc,1);
-
+  xorshift_seed (&rc);
 
   if (ntries < 1) ntries = 10000;
 

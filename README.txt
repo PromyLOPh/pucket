@@ -70,7 +70,6 @@ ss              1               size scale, multiply size (in pixels) of all fra
 jpeg            NA              jpeg quality for compression, default is native jpeg default
 format          png             "jpg" or "ppm" or "png"
 pixel_aspect    1.0             aspect ratio of pixels (width over height), eg 0.90909 for NTSC
-isaac_seed      random          string to be used in generating random seed.  defaults to time(0)
 seed            random          integer seed for random numbers, defaults to time+pid.  deprecated.
 nthreads        auto            number of threads to use (render and animate)
 verbose         0               if non-zero then print progress meter on stderr

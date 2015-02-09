@@ -22,7 +22,7 @@
 
 #include <stdio.h>
 #include <libxml/parser.h>
-#include "isaac.h"
+#include "xorshift.h"
 
 #if defined(_MSC_VER) /* VC++ */
 #include <windows.h>

@@ -30,7 +30,6 @@
 
 #include "private.h"
 #include "img.h"
-#include "isaacs.h"
 
 
 int calc_nstrips(flam3_frame *spec) {

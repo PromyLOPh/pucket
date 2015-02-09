@@ -859,10 +859,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
 
             int rk;
             /* Create a new isaac state for this thread */
-            for (rk = 0; rk < RANDSIZ; rk++)
-               fth[thi].rc.randrsl[rk] = irand(&spec->rc);
-
-            irandinit(&(fth[thi].rc),1);
+			xorshift_seed (&(fth[thi].rc));
 
             if (0==thi) {
 
