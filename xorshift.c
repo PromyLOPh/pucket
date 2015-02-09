@@ -19,7 +19,7 @@ uint64_t xorshift_step (randctx * const st) {
 }
 
 static uint64_t rand64 () {
-	uint64_t rand;
+	unsigned long long rand;
 	while (!__builtin_ia32_rdrand64_step (&rand));
 	return rand;
 }
