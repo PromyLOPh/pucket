@@ -139,7 +139,7 @@ char *flam3_variation_names[1+flam3_nvariations] = {
  * VARIATION FUNCTIONS
  * must be of the form void (void *, double)
  */
-void var0_linear (flam3_iter_helper *f, double weight) {
+static void var0_linear (flam3_iter_helper *f, double weight) {
    /* linear */
    /* nx = tx;
       ny = ty;
@@ -150,7 +150,7 @@ void var0_linear (flam3_iter_helper *f, double weight) {
    f->p1 += weight * f->ty;
 }
 
-void var1_sinusoidal (flam3_iter_helper *f, double weight) {
+static void var1_sinusoidal (flam3_iter_helper *f, double weight) {
    /* sinusoidal */
    /* nx = sin(tx);
       ny = sin(ty);
@@ -161,7 +161,7 @@ void var1_sinusoidal (flam3_iter_helper *f, double weight) {
    f->p1 += weight * sin(f->ty);
 }
 
-void var2_spherical (flam3_iter_helper *f, double weight) {
+static void var2_spherical (flam3_iter_helper *f, double weight) {
    /* spherical */
    /* double r2 = tx * tx + ty * ty + 1e-6;
       nx = tx / r2;
@@ -175,7 +175,7 @@ void var2_spherical (flam3_iter_helper *f, double weight) {
    f->p1 += r2 * f->ty;
 }
 
-void var3_swirl (flam3_iter_helper *f, double weight) {
+static void var3_swirl (flam3_iter_helper *f, double weight) {
    /* swirl */
    /* double r2 = tx * tx + ty * ty;    /k here is fun
       double c1 = sin(r2);
@@ -199,7 +199,7 @@ void var3_swirl (flam3_iter_helper *f, double weight) {
    f->p1 += weight * ny;
 }
 
-void var4_horseshoe (flam3_iter_helper *f, double weight) {
+static void var4_horseshoe (flam3_iter_helper *f, double weight) {
    /* horseshoe */
    /* a = atan2(tx, ty);
       c1 = sin(a);
@@ -215,7 +215,7 @@ void var4_horseshoe (flam3_iter_helper *f, double weight) {
    f->p1 += 2.0 * f->tx * f->ty * r;
 }
 
-void var5_polar (flam3_iter_helper *f, double weight) {
+static void var5_polar (flam3_iter_helper *f, double weight) {
    /* polar */
    /* nx = atan2(tx, ty) / M_PI;
       ny = sqrt(tx * tx + ty * ty) - 1.0;
@@ -229,7 +229,7 @@ void var5_polar (flam3_iter_helper *f, double weight) {
    f->p1 += weight * ny;
 }
 
-void var6_handkerchief (flam3_iter_helper *f, double weight) {
+static void var6_handkerchief (flam3_iter_helper *f, double weight) {
    /* folded handkerchief */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -243,7 +243,7 @@ void var6_handkerchief (flam3_iter_helper *f, double weight) {
    f->p1 += weight * r * cos(a-r);
 }
 
-void var7_heart (flam3_iter_helper *f, double weight) {
+static void var7_heart (flam3_iter_helper *f, double weight) {
    /* heart */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -261,7 +261,7 @@ void var7_heart (flam3_iter_helper *f, double weight) {
    f->p1 += (-r) * ca;
 }
 
-void var8_disc (flam3_iter_helper *f, double weight) {
+static void var8_disc (flam3_iter_helper *f, double weight) {
    /* disc */
    /* nx = tx * M_PI;
       ny = ty * M_PI;
@@ -279,7 +279,7 @@ void var8_disc (flam3_iter_helper *f, double weight) {
    f->p1 += weight * cr * a;
 }
 
-void var9_spiral (flam3_iter_helper *f, double weight) {
+static void var9_spiral (flam3_iter_helper *f, double weight) {
    /* spiral */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty) + 1e-6;
@@ -295,7 +295,7 @@ void var9_spiral (flam3_iter_helper *f, double weight) {
    f->p1 += r1 * (f->precalc_sina - cr);
 }
 
-void var10_hyperbolic (flam3_iter_helper *f, double weight) {
+static void var10_hyperbolic (flam3_iter_helper *f, double weight) {
    /* hyperbolic */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty) + 1e-6;
@@ -308,7 +308,7 @@ void var10_hyperbolic (flam3_iter_helper *f, double weight) {
    f->p1 += weight * f->precalc_cosa * r;
 }
 
-void var11_diamond (flam3_iter_helper *f, double weight) {
+static void var11_diamond (flam3_iter_helper *f, double weight) {
    /* diamond */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -323,7 +323,7 @@ void var11_diamond (flam3_iter_helper *f, double weight) {
    f->p1 += weight * f->precalc_cosa * sr;
 }
 
-void var12_ex (flam3_iter_helper *f, double weight) {
+static void var12_ex (flam3_iter_helper *f, double weight) {
    /* ex */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -347,7 +347,7 @@ void var12_ex (flam3_iter_helper *f, double weight) {
    f->p1 += weight * (m0 - m1);
 }
 
-void var13_julia (flam3_iter_helper *f, double weight) {
+static void var13_julia (flam3_iter_helper *f, double weight) {
    /* julia */
    /* a = atan2(tx, ty)/2.0;
       if (flam3_random_bit()) a += M_PI;
@@ -372,7 +372,7 @@ void var13_julia (flam3_iter_helper *f, double weight) {
    f->p1 += r * sa;
 }
 
-void var14_bent (flam3_iter_helper *f, double weight) {
+static void var14_bent (flam3_iter_helper *f, double weight) {
    /* bent */
    /* nx = tx;
       ny = ty;
@@ -393,7 +393,7 @@ void var14_bent (flam3_iter_helper *f, double weight) {
    f->p1 += weight * ny;
 }
 
-void var15_waves (flam3_iter_helper *f, double weight) {
+static void var15_waves (flam3_iter_helper *f, double weight) {
    /* waves */
    /* dx = coef[2][0];
       dy = coef[2][1];
@@ -412,7 +412,7 @@ void var15_waves (flam3_iter_helper *f, double weight) {
    f->p1 += weight * ny;
 }
 
-void var16_fisheye (flam3_iter_helper *f, double weight) {
+static void var16_fisheye (flam3_iter_helper *f, double weight) {
    /* fisheye */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -430,7 +430,7 @@ void var16_fisheye (flam3_iter_helper *f, double weight) {
    f->p1 += r * f->tx;
 }
 
-void var17_popcorn (flam3_iter_helper *f, double weight) {
+static void var17_popcorn (flam3_iter_helper *f, double weight) {
    /* popcorn */
    /* dx = tan(3*ty);
       dy = tan(3*tx);
@@ -449,7 +449,7 @@ void var17_popcorn (flam3_iter_helper *f, double weight) {
    f->p1 += weight * ny;
 }
 
-void var18_exponential (flam3_iter_helper *f, double weight) {
+static void var18_exponential (flam3_iter_helper *f, double weight) {
    /* exponential */
    /* dx = exp(tx-1.0);
       dy = M_PI * ty;
@@ -469,7 +469,7 @@ void var18_exponential (flam3_iter_helper *f, double weight) {
    f->p1 += dx * sdy;
 }
 
-void var19_power (flam3_iter_helper *f, double weight) {
+static void var19_power (flam3_iter_helper *f, double weight) {
    /* power */
    /* a = atan2(tx, ty);
       sa = sin(a);
@@ -486,7 +486,7 @@ void var19_power (flam3_iter_helper *f, double weight) {
    f->p1 += r * f->precalc_sina;
 }
 
-void var20_cosine (flam3_iter_helper *f, double weight) {
+static void var20_cosine (flam3_iter_helper *f, double weight) {
    /* cosine */
    /* nx = cos(tx * M_PI) * cosh(ty);
       ny = -sin(tx * M_PI) * sinh(ty);
@@ -505,7 +505,7 @@ void var20_cosine (flam3_iter_helper *f, double weight) {
    f->p1 += weight * ny;
 }
 
-void var21_rings (flam3_iter_helper *f, double weight) {
+static void var21_rings (flam3_iter_helper *f, double weight) {
    /* rings */
    /* dx = coef[2][0];
       dx = dx * dx + EPS;
@@ -525,7 +525,7 @@ void var21_rings (flam3_iter_helper *f, double weight) {
    f->p1 += r * f->precalc_sina;
 }
 
-void var22_fan (flam3_iter_helper *f, double weight) {
+static void var22_fan (flam3_iter_helper *f, double weight) {
    /* fan */
    /* dx = coef[2][0];
       dy = coef[2][1];
@@ -554,7 +554,7 @@ void var22_fan (flam3_iter_helper *f, double weight) {
    f->p1 += r * sa;
 }
 
-void var23_blob (flam3_iter_helper *f, double weight) {
+static void var23_blob (flam3_iter_helper *f, double weight) {
    /* blob */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -576,7 +576,7 @@ void var23_blob (flam3_iter_helper *f, double weight) {
    f->p1 += weight * f->precalc_cosa * r;
 }
 
-void var24_pdj (flam3_iter_helper *f, double weight) {
+static void var24_pdj (flam3_iter_helper *f, double weight) {
    /* pdj */
    /* nx1 = cos(pdjb * tx);
       nx2 = sin(pdjc * tx);
@@ -595,7 +595,7 @@ void var24_pdj (flam3_iter_helper *f, double weight) {
    f->p1 += weight * (nx2 - ny2);
 }
 
-void var25_fan2 (flam3_iter_helper *f, double weight) {
+static void var25_fan2 (flam3_iter_helper *f, double weight) {
    /* fan2 */
    /* a = precalc_atan;
       r = precalc_sqrt;
@@ -637,7 +637,7 @@ void var25_fan2 (flam3_iter_helper *f, double weight) {
    f->p1 += r * ca;
 }
 
-void var26_rings2 (flam3_iter_helper *f, double weight) {
+static void var26_rings2 (flam3_iter_helper *f, double weight) {
    /* rings2 */
    /* r = precalc_sqrt;
       dx = rings2val * rings2val + EPS;
@@ -656,7 +656,7 @@ void var26_rings2 (flam3_iter_helper *f, double weight) {
    f->p1 += weight * f->precalc_cosa * r;
 }
 
-void var27_eyefish (flam3_iter_helper *f, double weight) {
+static void var27_eyefish (flam3_iter_helper *f, double weight) {
    /* eyefish */
    /* r = 2.0 * v / (precalc_sqrt + 1.0);
       p[0] += r*tx;
@@ -668,7 +668,7 @@ void var27_eyefish (flam3_iter_helper *f, double weight) {
    f->p1 += r * f->ty;
 }
 
-void var28_bubble (flam3_iter_helper *f, double weight) {
+static void var28_bubble (flam3_iter_helper *f, double weight) {
    /* bubble */
 
    double r = weight / (0.25 * (f->precalc_sumsq) + 1);
@@ -677,14 +677,14 @@ void var28_bubble (flam3_iter_helper *f, double weight) {
   f->p1 += r * f->ty;
 }
 
-void var29_cylinder (flam3_iter_helper *f, double weight) {
+static void var29_cylinder (flam3_iter_helper *f, double weight) {
    /* cylinder (01/06) */
 
    f->p0 += weight * sin(f->tx);
    f->p1 += weight * f->ty;
 }
 
-void var30_perspective (flam3_iter_helper *f, double weight) {
+static void var30_perspective (flam3_iter_helper *f, double weight) {
    /* perspective (01/06) */
 
    double t = 1.0 / (f->xform->perspective_dist - f->ty * f->xform->persp_vsin);
@@ -693,7 +693,7 @@ void var30_perspective (flam3_iter_helper *f, double weight) {
    f->p1 += weight * f->xform->persp_vfcos * f->ty * t;
 }
 
-void var31_noise (flam3_iter_helper *f, double weight) {
+static void var31_noise (flam3_iter_helper *f, double weight) {
    /* noise (03/06) */
 
    double tmpr, sinr, cosr, r;
@@ -707,7 +707,7 @@ void var31_noise (flam3_iter_helper *f, double weight) {
    f->p1 += f->ty * r * sinr;
 }
 
-void var32_juliaN_generic (flam3_iter_helper *f, double weight) {
+static void var32_juliaN_generic (flam3_iter_helper *f, double weight) {
    /* juliaN (03/06) */
 
    int t_rnd = trunc((f->xform->julian_rN)*flam3_random_isaac_01(f->rc));
@@ -722,7 +722,7 @@ void var32_juliaN_generic (flam3_iter_helper *f, double weight) {
    f->p1 += r * sina;
 }
 
-void var33_juliaScope_generic (flam3_iter_helper *f, double weight) {
+static void var33_juliaScope_generic (flam3_iter_helper *f, double weight) {
    /* juliaScope (03/06) */
 
    int t_rnd = trunc((f->xform->juliascope_rN) * flam3_random_isaac_01(f->rc));
@@ -743,7 +743,7 @@ void var33_juliaScope_generic (flam3_iter_helper *f, double weight) {
    f->p1 += r * sina;
 }
 
-void var34_blur (flam3_iter_helper *f, double weight) {
+static void var34_blur (flam3_iter_helper *f, double weight) {
    /* blur (03/06) */
 
    double tmpr, sinr, cosr, r;
@@ -757,7 +757,7 @@ void var34_blur (flam3_iter_helper *f, double weight) {
    f->p1 += r * sinr;
 }
 
-void var35_gaussian (flam3_iter_helper *f, double weight) {
+static void var35_gaussian (flam3_iter_helper *f, double weight) {
    /* gaussian (09/06) */
 
    double ang, r, sina, cosa;
@@ -772,7 +772,7 @@ void var35_gaussian (flam3_iter_helper *f, double weight) {
    f->p1 += r * sina;
 }
 
-void var36_radial_blur (flam3_iter_helper *f, double weight) {
+static void var36_radial_blur (flam3_iter_helper *f, double weight) {
    /* radial blur (09/06) */
    /* removed random storage 6/07 */
 
@@ -792,7 +792,7 @@ void var36_radial_blur (flam3_iter_helper *f, double weight) {
    f->p1 += ra * sa + rz * f->ty;
 }
 
-void var37_pie(flam3_iter_helper *f, double weight) {
+static void var37_pie(flam3_iter_helper *f, double weight) {
    /* pie by Joel Faber (June 2006) */
 
    double a, r, sa, ca;
@@ -808,7 +808,7 @@ void var37_pie(flam3_iter_helper *f, double weight) {
    f->p1 += r * sa;
 }
 
-void var38_ngon(flam3_iter_helper *f, double weight) {
+static void var38_ngon(flam3_iter_helper *f, double weight) {
    /* ngon by Joel Faber (09/06) */
 
    double r_factor,theta,phi,b, amp;
@@ -829,7 +829,7 @@ void var38_ngon(flam3_iter_helper *f, double weight) {
    f->p1 += weight * f->ty * amp;
 }
 
-void var39_curl(flam3_iter_helper *f, double weight)
+static void var39_curl(flam3_iter_helper *f, double weight)
 {
     double re = 1.0 + f->xform->curl_c1 * f->tx + f->xform->curl_c2 * (f->tx * f->tx - f->ty * f->ty);
     double im = f->xform->curl_c1 * f->ty + 2.0 * f->xform->curl_c2 * f->tx * f->ty;
@@ -840,7 +840,7 @@ void var39_curl(flam3_iter_helper *f, double weight)
     f->p1 += (f->ty * re - f->tx * im) * r;
 }
 
-void var40_rectangles(flam3_iter_helper *f, double weight)
+static void var40_rectangles(flam3_iter_helper *f, double weight)
 {
     if (f->xform->rectangles_x==0)
        f->p0 += weight * f->tx;
@@ -854,7 +854,7 @@ void var40_rectangles(flam3_iter_helper *f, double weight)
 
 }
 
-void var41_arch(flam3_iter_helper *f, double weight)
+static void var41_arch(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Arch;
@@ -882,7 +882,7 @@ void var41_arch(flam3_iter_helper *f, double weight)
 
 }
 
-void var42_tangent(flam3_iter_helper *f, double weight)
+static void var42_tangent(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Tangent;
@@ -897,7 +897,7 @@ void var42_tangent(flam3_iter_helper *f, double weight)
 
 }
 
-void var43_square(flam3_iter_helper *f, double weight)
+static void var43_square(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.SquareBlur;
@@ -912,7 +912,7 @@ void var43_square(flam3_iter_helper *f, double weight)
 
 }
 
-void var44_rays(flam3_iter_helper *f, double weight)
+static void var44_rays(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Rays;
@@ -943,7 +943,7 @@ void var44_rays(flam3_iter_helper *f, double weight)
 
 }
 
-void var45_blade(flam3_iter_helper *f, double weight)
+static void var45_blade(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Blade;
@@ -973,7 +973,7 @@ void var45_blade(flam3_iter_helper *f, double weight)
 
 }
 
-void var46_secant2(flam3_iter_helper *f, double weight)
+static void var46_secant2(flam3_iter_helper *f, double weight)
 {
    /* Intended as a 'fixed' version of secant */
 
@@ -995,7 +995,7 @@ void var46_secant2(flam3_iter_helper *f, double weight)
       f->p1 += weight*(icr - 1);
 }
 
-void var47_twintrian(flam3_iter_helper *f, double weight)
+static void var47_twintrian(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.TwinTrian;
@@ -1030,7 +1030,7 @@ void var47_twintrian(flam3_iter_helper *f, double weight)
 
 }
 
-void var48_cross(flam3_iter_helper *f, double weight)
+static void var48_cross(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Cross;
@@ -1051,7 +1051,7 @@ void var48_cross(flam3_iter_helper *f, double weight)
 
 }
 
-void var49_disc2(flam3_iter_helper *f, double weight)
+static void var49_disc2(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    c := vvar/PI;
@@ -1089,7 +1089,7 @@ void var49_disc2(flam3_iter_helper *f, double weight)
 
 }
 
-void var50_supershape(flam3_iter_helper *f, double weight) {
+static void var50_supershape(flam3_iter_helper *f, double weight) {
 
    double theta;
    double t1,t2,r;
@@ -1115,7 +1115,7 @@ void var50_supershape(flam3_iter_helper *f, double weight) {
    f->p1 += r * f->ty;
 }
 
-void var51_flower(flam3_iter_helper *f, double weight) {
+static void var51_flower(flam3_iter_helper *f, double weight) {
     /* cyberxaos, 4/2007 */
     /*   theta := arctan2(FTy^, FTx^);
          r := (random-holes)*cos(petals*theta);
@@ -1130,7 +1130,7 @@ void var51_flower(flam3_iter_helper *f, double weight) {
     f->p1 += r * f->ty;
 }
     
-void var52_conic(flam3_iter_helper *f, double weight) {
+static void var52_conic(flam3_iter_helper *f, double weight) {
     /* cyberxaos, 4/2007 */
     /*   theta := arctan2(FTy^, FTx^);
          r :=  (random - holes)*((eccentricity)/(1+eccentricity*cos(theta)));
@@ -1145,7 +1145,7 @@ void var52_conic(flam3_iter_helper *f, double weight) {
     f->p1 += r * f->ty;
 }
 
-void var53_parabola(flam3_iter_helper *f, double weight) {
+static void var53_parabola(flam3_iter_helper *f, double weight) {
     /* cyberxaos, 4/2007 */
     /*   r := sqrt(sqr(FTx^) + sqr(FTy^));
          FPx^ := FPx^ + parabola_height*vvar*sin(r)*sin(r)*random;  
@@ -1161,7 +1161,7 @@ void var53_parabola(flam3_iter_helper *f, double weight) {
     
 }      
 
-void var54_bent2 (flam3_iter_helper *f, double weight) {
+static void var54_bent2 (flam3_iter_helper *f, double weight) {
 
    /* Bent2 in the Apophysis Plugin Pack */   
    
@@ -1177,7 +1177,7 @@ void var54_bent2 (flam3_iter_helper *f, double weight) {
    f->p1 += weight * ny;
 }
 
-void var55_bipolar (flam3_iter_helper *f, double weight) {
+static void var55_bipolar (flam3_iter_helper *f, double weight) {
 
    /* Bipolar in the Apophysis Plugin Pack */   
    
@@ -1196,7 +1196,7 @@ void var55_bipolar (flam3_iter_helper *f, double weight) {
    f->p1 += weight * M_2_PI * y;
 }
 
-void var56_boarders (flam3_iter_helper *f, double weight) {
+static void var56_boarders (flam3_iter_helper *f, double weight) {
 
    /* Boarders in the Apophysis Plugin Pack */   
    
@@ -1235,7 +1235,7 @@ void var56_boarders (flam3_iter_helper *f, double weight) {
    }
 }
 
-void var57_butterfly (flam3_iter_helper *f, double weight) {
+static void var57_butterfly (flam3_iter_helper *f, double weight) {
 
    /* Butterfly in the Apophysis Plugin Pack */   
    
@@ -1250,7 +1250,7 @@ void var57_butterfly (flam3_iter_helper *f, double weight) {
    
 }
 
-void var58_cell (flam3_iter_helper *f, double weight) {
+static void var58_cell (flam3_iter_helper *f, double weight) {
 
    /* Cell in the Apophysis Plugin Pack */   
 
@@ -1288,7 +1288,7 @@ void var58_cell (flam3_iter_helper *f, double weight) {
    
 }
 
-void var59_cpow (flam3_iter_helper *f, double weight) {
+static void var59_cpow (flam3_iter_helper *f, double weight) {
 
    /* Cpow in the Apophysis Plugin Pack */   
 
@@ -1309,7 +1309,7 @@ void var59_cpow (flam3_iter_helper *f, double weight) {
    
 }
 
-void var60_curve (flam3_iter_helper *f, double weight) {
+static void var60_curve (flam3_iter_helper *f, double weight) {
 
    /* Curve in the Apophysis Plugin Pack */   
    
@@ -1325,7 +1325,7 @@ void var60_curve (flam3_iter_helper *f, double weight) {
       
 }
 
-void var61_edisc (flam3_iter_helper *f, double weight) {
+static void var61_edisc (flam3_iter_helper *f, double weight) {
 
    /* Edisc in the Apophysis Plugin Pack */   
    
@@ -1351,7 +1351,7 @@ void var61_edisc (flam3_iter_helper *f, double weight) {
    
 }
 
-void var62_elliptic (flam3_iter_helper *f, double weight) {
+static void var62_elliptic (flam3_iter_helper *f, double weight) {
 
    /* Elliptic in the Apophysis Plugin Pack */
 
@@ -1382,7 +1382,7 @@ void var62_elliptic (flam3_iter_helper *f, double weight) {
       
 }
 
-void var63_escher (flam3_iter_helper *f, double weight) {
+static void var63_escher (flam3_iter_helper *f, double weight) {
 
    /* Escher in the Apophysis Plugin Pack */
    
@@ -1409,7 +1409,7 @@ void var63_escher (flam3_iter_helper *f, double weight) {
       
 }
 
-void var64_foci (flam3_iter_helper *f, double weight) {
+static void var64_foci (flam3_iter_helper *f, double weight) {
 
    /* Foci in the Apophysis Plugin Pack */
 
@@ -1425,7 +1425,7 @@ void var64_foci (flam3_iter_helper *f, double weight) {
       
 }
 
-void var65_lazysusan (flam3_iter_helper *f, double weight) {
+static void var65_lazysusan (flam3_iter_helper *f, double weight) {
 
    /* Lazysusan in the Apophysis Plugin Pack */
    
@@ -1453,7 +1453,7 @@ void var65_lazysusan (flam3_iter_helper *f, double weight) {
       
 }
 
-void var66_loonie (flam3_iter_helper *f, double weight) {
+static void var66_loonie (flam3_iter_helper *f, double weight) {
 
    /* Loonie in the Apophysis Plugin Pack */
 
@@ -1477,7 +1477,7 @@ void var66_loonie (flam3_iter_helper *f, double weight) {
          
 }
 
-void var67_pre_blur (flam3_iter_helper *f, double weight) {
+static void var67_pre_blur (flam3_iter_helper *f, double weight) {
 
    /* pre-xform: PreBlur (Apo 2.08) */
    
@@ -1495,7 +1495,7 @@ void var67_pre_blur (flam3_iter_helper *f, double weight) {
          
 }
 
-void var68_modulus (flam3_iter_helper *f, double weight) {
+static void var68_modulus (flam3_iter_helper *f, double weight) {
 
    /* Modulus in the Apophysis Plugin Pack */
    
@@ -1518,7 +1518,7 @@ void var68_modulus (flam3_iter_helper *f, double weight) {
          
 }
 
-void var69_oscope (flam3_iter_helper *f, double weight) {
+static void var69_oscope (flam3_iter_helper *f, double weight) {
 
    /* oscilloscope from the apophysis plugin pack */
    
@@ -1541,7 +1541,7 @@ void var69_oscope (flam3_iter_helper *f, double weight) {
    } 
 }
 
-void var70_polar2 (flam3_iter_helper *f, double weight) {
+static void var70_polar2 (flam3_iter_helper *f, double weight) {
 
    /* polar2 from the apophysis plugin pack */
    
@@ -1551,7 +1551,7 @@ void var70_polar2 (flam3_iter_helper *f, double weight) {
    f->p1 += p2v/2.0 * log(f->precalc_sumsq);
 }
 
-void var71_popcorn2 (flam3_iter_helper *f, double weight) {
+static void var71_popcorn2 (flam3_iter_helper *f, double weight) {
 
    /* popcorn2 from the apophysis plugin pack */
    
@@ -1560,7 +1560,7 @@ void var71_popcorn2 (flam3_iter_helper *f, double weight) {
 
 }
 
-void var72_scry (flam3_iter_helper *f, double weight) {
+static void var72_scry (flam3_iter_helper *f, double weight) {
 
    /* scry from the apophysis plugin pack */
    /* note that scry does not multiply by weight, but as the */
@@ -1581,7 +1581,7 @@ void var72_scry (flam3_iter_helper *f, double weight) {
 
 }
 
-void var73_separation (flam3_iter_helper *f, double weight) {
+static void var73_separation (flam3_iter_helper *f, double weight) {
 
    /* separation from the apophysis plugin pack */
 
@@ -1600,7 +1600,7 @@ void var73_separation (flam3_iter_helper *f, double weight) {
    
 }
 
-void var74_split (flam3_iter_helper *f, double weight) {
+static void var74_split (flam3_iter_helper *f, double weight) {
    
    /* Split from apo plugins pack */
 
@@ -1616,7 +1616,7 @@ void var74_split (flam3_iter_helper *f, double weight) {
 
 }
 
-void var75_splits (flam3_iter_helper *f, double weight) {
+static void var75_splits (flam3_iter_helper *f, double weight) {
    
    /* Splits from apo plugins pack */
 
@@ -1632,7 +1632,7 @@ void var75_splits (flam3_iter_helper *f, double weight) {
 
 }
 
-void var76_stripes (flam3_iter_helper *f, double weight) {
+static void var76_stripes (flam3_iter_helper *f, double weight) {
    
    /* Stripes from apo plugins pack */
 
@@ -1646,7 +1646,7 @@ void var76_stripes (flam3_iter_helper *f, double weight) {
 
 }
 
-void var77_wedge (flam3_iter_helper *f, double weight) {
+static void var77_wedge (flam3_iter_helper *f, double weight) {
    
    /* Wedge from apo plugins pack */
 
@@ -1668,7 +1668,7 @@ void var77_wedge (flam3_iter_helper *f, double weight) {
 
 }
 
-void var78_wedge_julia (flam3_iter_helper *f, double weight) {
+static void var78_wedge_julia (flam3_iter_helper *f, double weight) {
 
    /* wedge_julia from apo plugin pack */
 
@@ -1686,7 +1686,7 @@ void var78_wedge_julia (flam3_iter_helper *f, double weight) {
    f->p1 += r * sa;
 }
 
-void var79_wedge_sph (flam3_iter_helper *f, double weight) {
+static void var79_wedge_sph (flam3_iter_helper *f, double weight) {
    
    /* Wedge_sph from apo plugins pack */
 
@@ -1707,7 +1707,7 @@ void var79_wedge_sph (flam3_iter_helper *f, double weight) {
 
 }
 
-void var80_whorl (flam3_iter_helper *f, double weight) {
+static void var80_whorl (flam3_iter_helper *f, double weight) {
    
    /* whorl from apo plugins pack */
    
@@ -1732,7 +1732,7 @@ void var80_whorl (flam3_iter_helper *f, double weight) {
 
 }
 
-void var81_waves2 (flam3_iter_helper *f, double weight) {
+static void var81_waves2 (flam3_iter_helper *f, double weight) {
    
    /* waves2 from Joel F */
    
@@ -1744,7 +1744,7 @@ void var81_waves2 (flam3_iter_helper *f, double weight) {
 /* complex vars by cothe */
 /* exp log sin cos tan sec csc cot sinh cosh tanh sech csch coth */
 
-void var82_exp (flam3_iter_helper *f, double weight) {
+static void var82_exp (flam3_iter_helper *f, double weight) {
    //Exponential EXP
    double expe = exp(f->tx);
    double expcos,expsin;
@@ -1753,14 +1753,14 @@ void var82_exp (flam3_iter_helper *f, double weight) {
    f->p1 += weight * expe * expsin;
 }
         
-void var83_log (flam3_iter_helper *f, double weight) {
+static void var83_log (flam3_iter_helper *f, double weight) {
    //Natural Logarithm LOG
    // needs precalc_atanyx and precalc_sumsq
    f->p0 += weight * 0.5 * log(f->precalc_sumsq);
    f->p1 += weight * f->precalc_atanyx;
 }
 
-void var84_sin (flam3_iter_helper *f, double weight) {
+static void var84_sin (flam3_iter_helper *f, double weight) {
    //Sine SIN
    double sinsin,sinacos,sinsinh,sincosh;
    sincos(f->tx,&sinsin,&sinacos);
@@ -1770,7 +1770,7 @@ void var84_sin (flam3_iter_helper *f, double weight) {
    f->p1 += weight * sinacos * sinsinh;
 }
 
-void var85_cos (flam3_iter_helper *f, double weight) {
+static void var85_cos (flam3_iter_helper *f, double weight) {
    //Cosine COS
    double cossin,coscos,cossinh,coscosh;
    sincos(f->tx,&cossin,&coscos);
@@ -1780,7 +1780,7 @@ void var85_cos (flam3_iter_helper *f, double weight) {
    f->p1 -= weight * cossin * cossinh;
 }
 
-void var86_tan (flam3_iter_helper *f, double weight) {
+static void var86_tan (flam3_iter_helper *f, double weight) {
    //Tangent TAN
    double tansin,tancos,tansinh,tancosh;
    double tanden;
@@ -1792,7 +1792,7 @@ void var86_tan (flam3_iter_helper *f, double weight) {
    f->p1 += weight * tanden * tansinh;
 }
 
-void var87_sec (flam3_iter_helper *f, double weight) {
+static void var87_sec (flam3_iter_helper *f, double weight) {
    //Secant SEC
    double secsin,seccos,secsinh,seccosh;
    double secden;
@@ -1804,7 +1804,7 @@ void var87_sec (flam3_iter_helper *f, double weight) {
    f->p1 += weight * secden * secsin * secsinh;
 }
 
-void var88_csc (flam3_iter_helper *f, double weight) {
+static void var88_csc (flam3_iter_helper *f, double weight) {
    //Cosecant CSC
    double cscsin,csccos,cscsinh,csccosh;
    double cscden;
@@ -1816,7 +1816,7 @@ void var88_csc (flam3_iter_helper *f, double weight) {
    f->p1 -= weight * cscden * csccos * cscsinh;
 }
 
-void var89_cot (flam3_iter_helper *f, double weight) {
+static void var89_cot (flam3_iter_helper *f, double weight) {
    //Cotangent COT
    double cotsin,cotcos,cotsinh,cotcosh;
    double cotden;
@@ -1828,7 +1828,7 @@ void var89_cot (flam3_iter_helper *f, double weight) {
    f->p1 += weight * cotden * -1 * cotsinh;
 }
 
-void var90_sinh (flam3_iter_helper *f, double weight) {
+static void var90_sinh (flam3_iter_helper *f, double weight) {
    //Hyperbolic Sine SINH
    double sinhsin,sinhcos,sinhsinh,sinhcosh;
    sincos(f->ty,&sinhsin,&sinhcos);
@@ -1838,7 +1838,7 @@ void var90_sinh (flam3_iter_helper *f, double weight) {
    f->p1 += weight * sinhcosh * sinhsin;
 }
 
-void var91_cosh (flam3_iter_helper *f, double weight) {
+static void var91_cosh (flam3_iter_helper *f, double weight) {
    //Hyperbolic Cosine COSH
    double coshsin,coshcos,coshsinh,coshcosh;
    sincos(f->ty,&coshsin,&coshcos);
@@ -1848,7 +1848,7 @@ void var91_cosh (flam3_iter_helper *f, double weight) {
    f->p1 += weight * coshsinh * coshsin;
 }
 
-void var92_tanh (flam3_iter_helper *f, double weight) {
+static void var92_tanh (flam3_iter_helper *f, double weight) {
    //Hyperbolic Tangent TANH
    double tanhsin,tanhcos,tanhsinh,tanhcosh;
    double tanhden;
@@ -1860,7 +1860,7 @@ void var92_tanh (flam3_iter_helper *f, double weight) {
    f->p1 += weight * tanhden * tanhsin;
 }
 
-void var93_sech (flam3_iter_helper *f, double weight) {
+static void var93_sech (flam3_iter_helper *f, double weight) {
    //Hyperbolic Secant SECH
    double sechsin,sechcos,sechsinh,sechcosh;
    double sechden;
@@ -1872,7 +1872,7 @@ void var93_sech (flam3_iter_helper *f, double weight) {
    f->p1 -= weight * sechden * sechsin * sechsinh;
 }
 
-void var94_csch (flam3_iter_helper *f, double weight) {
+static void var94_csch (flam3_iter_helper *f, double weight) {
    //Hyperbolic Cosecant CSCH
    double cschsin,cschcos,cschsinh,cschcosh;
    double cschden;
@@ -1884,7 +1884,7 @@ void var94_csch (flam3_iter_helper *f, double weight) {
    f->p1 -= weight * cschden * cschcosh * cschsin;
 }
 
-void var95_coth (flam3_iter_helper *f, double weight) {
+static void var95_coth (flam3_iter_helper *f, double weight) {
    //Hyperbolic Cotangent COTH
    double cothsin,cothcos,cothsinh,cothcosh;
    double cothden;
@@ -1896,7 +1896,7 @@ void var95_coth (flam3_iter_helper *f, double weight) {
    f->p1 += weight * cothden * cothsin;
 }
 
-void var96_auger (flam3_iter_helper *f, double weight) {
+static void var96_auger (flam3_iter_helper *f, double weight) {
 
     // Auger, by Xyrus01
     double s = sin(f->xform->auger_freq * f->tx);
@@ -1908,7 +1908,7 @@ void var96_auger (flam3_iter_helper *f, double weight) {
     f->p1 += weight * dy;
 }
 
-void var97_flux (flam3_iter_helper *f, double weight) {
+static void var97_flux (flam3_iter_helper *f, double weight) {
 
     // Flux, by meckie
     double xpw = f->tx + weight;
@@ -1923,7 +1923,7 @@ void var97_flux (flam3_iter_helper *f, double weight) {
     f->p1 += avgr * sin(avga);
 }
 
-void var98_mobius (flam3_iter_helper *f, double weight) {
+static void var98_mobius (flam3_iter_helper *f, double weight) {
 
     // Mobius, by eralex
     double re_u, im_u, re_v, im_v, rad_v;
@@ -1942,34 +1942,34 @@ void var98_mobius (flam3_iter_helper *f, double weight) {
 
 /* Precalc functions */
 
-void perspective_precalc(flam3_xform *xf) {
+static void perspective_precalc(flam3_xform *xf) {
    double ang = xf->perspective_angle * M_PI / 2.0;
    xf->persp_vsin = sin(ang);
    xf->persp_vfcos = xf->perspective_dist * cos(ang);
 }
 
-void juliaN_precalc(flam3_xform *xf) {
+static void juliaN_precalc(flam3_xform *xf) {
    xf->julian_rN = fabs(xf->julian_power);
    xf->julian_cn = xf->julian_dist / (double)xf->julian_power / 2.0;
 }
 
-void wedgeJulia_precalc(flam3_xform *xf) {
+static void wedgeJulia_precalc(flam3_xform *xf) {
    xf->wedgeJulia_cf = 1.0 - xf->wedge_julia_angle * xf->wedge_julia_count * M_1_PI * 0.5;
    xf->wedgeJulia_rN = fabs(xf->wedge_julia_power);
    xf->wedgeJulia_cn = xf->wedge_julia_dist / xf->wedge_julia_power / 2.0;
 }
 
-void juliaScope_precalc(flam3_xform *xf) {
+static void juliaScope_precalc(flam3_xform *xf) {
    xf->juliascope_rN = fabs(xf->juliascope_power);
    xf->juliascope_cn = xf->juliascope_dist / (double)xf->juliascope_power / 2.0;
 }
 
-void radial_blur_precalc(flam3_xform *xf) {
+static void radial_blur_precalc(flam3_xform *xf) {
    sincos(xf->radial_blur_angle * M_PI / 2.0,
              &xf->radialBlur_spinvar, &xf->radialBlur_zoomvar);
 }
 
-void waves_precalc(flam3_xform *xf) {
+static void waves_precalc(flam3_xform *xf) {
    double dx = xf->c[2][0];
    double dy = xf->c[2][1];
 
@@ -1977,7 +1977,7 @@ void waves_precalc(flam3_xform *xf) {
    xf->waves_dy2 = 1.0/(dy * dy + EPS);
 }
 
-void disc2_precalc(flam3_xform *xf) {
+static void disc2_precalc(flam3_xform *xf) {
    double add = xf->disc2_twist;
    double k;
 
@@ -1999,7 +1999,7 @@ void disc2_precalc(flam3_xform *xf) {
    }
 }
 
-void supershape_precalc(flam3_xform *xf) {
+static void supershape_precalc(flam3_xform *xf) {
    xf->super_shape_pm_4 = xf->super_shape_m / 4.0;
    xf->super_shape_pneg1_n1 = -1.0 / xf->super_shape_n1;
 }
