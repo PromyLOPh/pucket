@@ -99,9 +99,10 @@ typedef struct {
    
 } flam3_iter_constants;
 
-typedef struct {
+typedef double double2 __attribute__ ((vector_size (sizeof (double)*2)));
 
-   double tx,ty; /* Starting coordinates */
+typedef struct {
+   double2 t;
 
    double precalc_atan, precalc_sina;  /* Precalculated, if needed */
    double precalc_cosa, precalc_sqrt;
@@ -110,8 +111,7 @@ typedef struct {
    flam3_xform *xform; /* For the important values */
 
    /* Output Coords */
-
-   double p0, p1;
+   double2 p;
 
    /* Pointer to the isaac RNG state */
    randctx *rc;

@@ -144,29 +144,27 @@ char *flam3_variation_names[1+flam3_nvariations] = {
  * VARIATION FUNCTIONS
  * must be of the form void (void *, double)
  */
-static void var0_linear (flam3_iter_helper *f, double weight) {
+static double2 var0_linear (flam3_iter_helper *f, double weight) {
    /* linear */
    /* nx = tx;
       ny = ty;
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   f->p0 += weight * f->tx;
-   f->p1 += weight * f->ty;
+   return weight * f->t;
 }
 
-static void var1_sinusoidal (flam3_iter_helper *f, double weight) {
+static double2 var1_sinusoidal (flam3_iter_helper *f, double weight) {
    /* sinusoidal */
    /* nx = sin(tx);
       ny = sin(ty);
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   f->p0 += weight * sin(f->tx);
-   f->p1 += weight * sin(f->ty);
+   return weight * (double2) {sin(f->t[0]), sin(f->t[1])};
 }
 
-static void var2_spherical (flam3_iter_helper *f, double weight) {
+static double2 var2_spherical (flam3_iter_helper *f, double weight) {
    /* spherical */
    /* double r2 = tx * tx + ty * ty + 1e-6;
       nx = tx / r2;
@@ -174,13 +172,12 @@ static void var2_spherical (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double r2 = weight / ( f->precalc_sumsq + EPS);
+   const double r2 = weight / ( f->precalc_sumsq + EPS);
 
-   f->p0 += r2 * f->tx;
-   f->p1 += r2 * f->ty;
+   return r2 * f->t;
 }
 
-static void var3_swirl (flam3_iter_helper *f, double weight) {
+static double2 var3_swirl (flam3_iter_helper *f, double weight) {
    /* swirl */
    /* double r2 = tx * tx + ty * ty;    /k here is fun
       double c1 = sin(r2);
@@ -192,19 +189,19 @@ static void var3_swirl (flam3_iter_helper *f, double weight) {
 
    double r2 = f->precalc_sumsq;
    double c1,c2;
-   double nx,ny;
    
    sincos(r2,&c1,&c2);
 //   double c1 = sin(r2);
 //   double c2 = cos(r2);
-   nx = c1 * f->tx - c2 * f->ty;
-   ny = c2 * f->tx + c1 * f->ty;
+   const double2 n = (double2) {
+                     c1 * f->t[0] - c2 * f->t[1],
+                     c2 * f->t[0] + c1 * f->t[1],
+					 };
 
-   f->p0 += weight * nx;
-   f->p1 += weight * ny;
+   return weight * n;
 }
 
-static void var4_horseshoe (flam3_iter_helper *f, double weight) {
+static double2 var4_horseshoe (flam3_iter_helper *f, double weight) {
    /* horseshoe */
    /* a = atan2(tx, ty);
       c1 = sin(a);
@@ -214,41 +211,43 @@ static void var4_horseshoe (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny;  */
 
-   double r = weight / (f->precalc_sqrt + EPS);
+   const double r = weight / (f->precalc_sqrt + EPS);
 
-   f->p0 += (f->tx - f->ty) * (f->tx + f->ty) * r;
-   f->p1 += 2.0 * f->tx * f->ty * r;
+   return r * (double2) {
+          (f->t[0] - f->t[1]) * (f->t[0] + f->t[1]),
+          2.0 * f->t[0] * f->t[1],
+		  };
 }
 
-static void var5_polar (flam3_iter_helper *f, double weight) {
+static double2 var5_polar (flam3_iter_helper *f, double weight) {
    /* polar */
    /* nx = atan2(tx, ty) / M_PI;
       ny = sqrt(tx * tx + ty * ty) - 1.0;
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double nx = f->precalc_atan * M_1_PI;
-   double ny = f->precalc_sqrt - 1.0;
+   const double2 n = (double2) {
+                     f->precalc_atan * M_1_PI,
+                     f->precalc_sqrt - 1.0,
+					 };
 
-   f->p0 += weight * nx;
-   f->p1 += weight * ny;
+   return weight * n;
 }
 
-static void var6_handkerchief (flam3_iter_helper *f, double weight) {
+static double2 var6_handkerchief (flam3_iter_helper *f, double weight) {
    /* folded handkerchief */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
       p[0] += v * sin(a+r) * r;
       p[1] += v * cos(a-r) * r; */
 
-   double a = f->precalc_atan;
-   double r = f->precalc_sqrt;
+   const double a = f->precalc_atan;
+   const double r = f->precalc_sqrt;
 
-   f->p0 += weight * r * sin(a+r);
-   f->p1 += weight * r * cos(a-r);
+   return weight * r * (double2) { sin(a+r), cos(a-r) };
 }
 
-static void var7_heart (flam3_iter_helper *f, double weight) {
+static double2 var7_heart (flam3_iter_helper *f, double weight) {
    /* heart */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -256,17 +255,16 @@ static void var7_heart (flam3_iter_helper *f, double weight) {
       p[0] += v * sin(a) * r;
       p[1] += v * cos(a) * -r; */
 
-   double a = f->precalc_sqrt * f->precalc_atan;
+   const double a = f->precalc_sqrt * f->precalc_atan;
    double ca,sa;
-   double r = weight * f->precalc_sqrt;
+   const double r = weight * f->precalc_sqrt;
    
    sincos(a,&sa,&ca);
 
-   f->p0 += r * sa;
-   f->p1 += (-r) * ca;
+   return (double2) { r * sa, (-r) * ca };
 }
 
-static void var8_disc (flam3_iter_helper *f, double weight) {
+static double2 var8_disc (flam3_iter_helper *f, double weight) {
    /* disc */
    /* nx = tx * M_PI;
       ny = ty * M_PI;
@@ -275,60 +273,56 @@ static void var8_disc (flam3_iter_helper *f, double weight) {
       p[0] += v * sin(r) * a / M_PI;
       p[1] += v * cos(r) * a / M_PI; */
 
-   double a = f->precalc_atan * M_1_PI;
-   double r = M_PI * f->precalc_sqrt;
+   const double a = f->precalc_atan * M_1_PI;
+   const double r = M_PI * f->precalc_sqrt;
    double sr,cr;
    sincos(r,&sr,&cr);
 
-   f->p0 += weight * sr * a;
-   f->p1 += weight * cr * a;
+   return weight * (double2) { sr, cr } * a;
 }
 
-static void var9_spiral (flam3_iter_helper *f, double weight) {
+static double2 var9_spiral (flam3_iter_helper *f, double weight) {
    /* spiral */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty) + 1e-6;
       p[0] += v * (cos(a) + sin(r)) / r;
       p[1] += v * (sin(a) - cos(r)) / r; */
 
-   double r = f->precalc_sqrt + EPS;
-   double r1 = weight/r;
+   const double r = f->precalc_sqrt + EPS;
+   const double r1 = weight/r;
    double sr,cr;
    sincos(r,&sr,&cr);
 
-   f->p0 += r1 * (f->precalc_cosa + sr);
-   f->p1 += r1 * (f->precalc_sina - cr);
+   return r1 * (double2) { f->precalc_cosa + sr, f->precalc_sina - cr };
 }
 
-static void var10_hyperbolic (flam3_iter_helper *f, double weight) {
+static double2 var10_hyperbolic (flam3_iter_helper *f, double weight) {
    /* hyperbolic */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty) + 1e-6;
       p[0] += v * sin(a) / r;
       p[1] += v * cos(a) * r; */
 
-   double r = f->precalc_sqrt + EPS;
+   const double r = f->precalc_sqrt + EPS;
 
-   f->p0 += weight * f->precalc_sina / r;
-   f->p1 += weight * f->precalc_cosa * r;
+   return weight * (double2) { f->precalc_sina / r, f->precalc_cosa * r};
 }
 
-static void var11_diamond (flam3_iter_helper *f, double weight) {
+static double2 var11_diamond (flam3_iter_helper *f, double weight) {
    /* diamond */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
       p[0] += v * sin(a) * cos(r);
       p[1] += v * cos(a) * sin(r); */
 
-   double r = f->precalc_sqrt;
+   const double r = f->precalc_sqrt;
    double sr,cr;
    sincos(r,&sr,&cr);
 
-   f->p0 += weight * f->precalc_sina * cr;
-   f->p1 += weight * f->precalc_cosa * sr;
+   return weight * (double2) { f->precalc_sina * cr, f->precalc_cosa * sr };
 }
 
-static void var12_ex (flam3_iter_helper *f, double weight) {
+static double2 var12_ex (flam3_iter_helper *f, double weight) {
    /* ex */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -339,20 +333,17 @@ static void var12_ex (flam3_iter_helper *f, double weight) {
       p[0] += v * (m0 + m1);
       p[1] += v * (m0 - m1); */
 
-   double a = f->precalc_atan;
-   double r = f->precalc_sqrt;
+   const double a = f->precalc_atan;
+   const double r = f->precalc_sqrt;
 
-   double n0 = sin(a+r);
-   double n1 = cos(a-r);
+   const double2 n = (double2) { sin(a+r), cos(a-r) };
 
-   double m0 = n0 * n0 * n0 * r;
-   double m1 = n1 * n1 * n1 * r;
+   const double2 m = n * n * n * r;
 
-   f->p0 += weight * (m0 + m1);
-   f->p1 += weight * (m0 - m1);
+   return weight * (double2) { m[0] + m[1], m[0] - m[1] };
 }
 
-static void var13_julia (flam3_iter_helper *f, double weight) {
+static double2 var13_julia (flam3_iter_helper *f, double weight) {
    /* julia */
    /* a = atan2(tx, ty)/2.0;
       if (flam3_random_bit()) a += M_PI;
@@ -373,11 +364,10 @@ static void var13_julia (flam3_iter_helper *f, double weight) {
    
    sincos(a,&sa,&ca);
 
-   f->p0 += r * ca;
-   f->p1 += r * sa;
+   return r * (double2) { ca, sa };
 }
 
-static void var14_bent (flam3_iter_helper *f, double weight) {
+static double2 var14_bent (flam3_iter_helper *f, double weight) {
    /* bent */
    /* nx = tx;
       ny = ty;
@@ -386,19 +376,13 @@ static void var14_bent (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double nx = f->tx;
-   double ny = f->ty;
-
-   if (nx < 0.0)
-      nx = nx * 2.0;
-   if (ny < 0.0)
-      ny = ny / 2.0;
-
-   f->p0 += weight * nx;
-   f->p1 += weight * ny;
+   return weight * f->t * (double2) {
+                          f->t[0] < 0.0 ? 2.0 : 1.0,
+						  f->t[1] < 0.0 ? 0.5 : 1.0,
+						  };
 }
 
-static void var15_waves (flam3_iter_helper *f, double weight) {
+static double2 var15_waves (flam3_iter_helper *f, double weight) {
    /* waves */
    /* dx = coef[2][0];
       dy = coef[2][1];
@@ -407,17 +391,17 @@ static void var15_waves (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double c10 = f->xform->c[1][0];
-   double c11 = f->xform->c[1][1];
+   const double2 c1 = (double2) {f->xform->c[1][0], f->xform->c[1][1] };
 
-   double nx = f->tx + c10 * sin( f->ty * f->xform->waves_dx2 );
-   double ny = f->ty + c11 * sin( f->tx * f->xform->waves_dy2 );
+   const double2 n = f->t + c1 * (double2) {
+                                 sin( f->t[1] * f->xform->waves_dx2 ),
+                                 sin( f->t[0] * f->xform->waves_dy2 ),
+								 };
 
-   f->p0 += weight * nx;
-   f->p1 += weight * ny;
+   return weight * n;
 }
 
-static void var16_fisheye (flam3_iter_helper *f, double weight) {
+static double2 var16_fisheye (flam3_iter_helper *f, double weight) {
    /* fisheye */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -429,13 +413,15 @@ static void var16_fisheye (flam3_iter_helper *f, double weight) {
 
    double r = f->precalc_sqrt;
 
-   r = 2 * weight / (r+1);
+   r = 2.0 * weight / (r+1.0);
 
-   f->p0 += r * f->ty;
-   f->p1 += r * f->tx;
+   /* XXX this seems to be wrong */
+   const double2 tswap = (double2) { f->t[1], f->t[0] };
+
+   return r * tswap;
 }
 
-static void var17_popcorn (flam3_iter_helper *f, double weight) {
+static double2 var17_popcorn (flam3_iter_helper *f, double weight) {
    /* popcorn */
    /* dx = tan(3*ty);
       dy = tan(3*tx);
@@ -444,17 +430,18 @@ static void var17_popcorn (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double dx = tan(3*f->ty);
-   double dy = tan(3*f->tx);
+   const double dx = tan(3.0*f->t[1]);
+   const double dy = tan(3.0*f->t[0]);
 
-   double nx = f->tx + f->xform->c[2][0] * sin(dx);
-   double ny = f->ty + f->xform->c[2][1] * sin(dy);
+   const double2 n = f->t + (double2) {
+                            f->xform->c[2][0] * sin(dx),
+							f->xform->c[2][1] * sin(dy)
+                            };
 
-   f->p0 += weight * nx;
-   f->p1 += weight * ny;
+   return weight * n;
 }
 
-static void var18_exponential (flam3_iter_helper *f, double weight) {
+static double2 var18_exponential (flam3_iter_helper *f, double weight) {
    /* exponential */
    /* dx = exp(tx-1.0);
       dy = M_PI * ty;
@@ -463,18 +450,16 @@ static void var18_exponential (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double dx = weight * exp(f->tx - 1.0);
-   double dy = M_PI * f->ty;
+   double dx = weight * exp(f->t[0] - 1.0);
+   double dy = M_PI * f->t[1];
    double sdy,cdy;
    
    sincos(dy,&sdy,&cdy);
    
-
-   f->p0 += dx * cdy;
-   f->p1 += dx * sdy;
+   return dx * (double2) { cdy, sdy };
 }
 
-static void var19_power (flam3_iter_helper *f, double weight) {
+static double2 var19_power (flam3_iter_helper *f, double weight) {
    /* power */
    /* a = atan2(tx, ty);
       sa = sin(a);
@@ -485,32 +470,29 @@ static void var19_power (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double r = weight * pow(f->precalc_sqrt, f->precalc_sina);
+   const double r = weight * pow(f->precalc_sqrt, f->precalc_sina);
 
-   f->p0 += r * f->precalc_cosa;
-   f->p1 += r * f->precalc_sina;
+   return r * (double2) { f->precalc_cosa, f->precalc_sina };
 }
 
-static void var20_cosine (flam3_iter_helper *f, double weight) {
+static double2 var20_cosine (flam3_iter_helper *f, double weight) {
    /* cosine */
    /* nx = cos(tx * M_PI) * cosh(ty);
       ny = -sin(tx * M_PI) * sinh(ty);
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double a = f->tx * M_PI;
+   const double a = f->t[0] * M_PI;
    double sa,ca;
-   double nx,ny;
    
    sincos(a,&sa,&ca);
-   nx =  ca * cosh(f->ty);
-   ny = -sa * sinh(f->ty);
 
-   f->p0 += weight * nx;
-   f->p1 += weight * ny;
+   const double2 n = (double2) { ca * cosh(f->t[1]), -sa * sinh(f->t[1]) };
+
+   return weight * n;
 }
 
-static void var21_rings (flam3_iter_helper *f, double weight) {
+static double2 var21_rings (flam3_iter_helper *f, double weight) {
    /* rings */
    /* dx = coef[2][0];
       dx = dx * dx + EPS;
@@ -522,15 +504,14 @@ static void var21_rings (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double dx = f->xform->c[2][0] * f->xform->c[2][0] + EPS;
+   const double dx = f->xform->c[2][0] * f->xform->c[2][0] + EPS;
    double r = f->precalc_sqrt;
    r = weight * (fmod(r+dx, 2*dx) - dx + r * (1 - dx));
 
-   f->p0 += r * f->precalc_cosa;
-   f->p1 += r * f->precalc_sina;
+   return r * (double2) { f->precalc_cosa,  f->precalc_sina };
 }
 
-static void var22_fan (flam3_iter_helper *f, double weight) {
+static double2 var22_fan (flam3_iter_helper *f, double weight) {
    /* fan */
    /* dx = coef[2][0];
       dy = coef[2][1];
@@ -544,22 +525,21 @@ static void var22_fan (flam3_iter_helper *f, double weight) {
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   double dx = M_PI * (f->xform->c[2][0] * f->xform->c[2][0] + EPS);
-   double dy = f->xform->c[2][1];
-   double dx2 = 0.5 * dx;
+   const double dx = M_PI * (f->xform->c[2][0] * f->xform->c[2][0] + EPS);
+   const double dy = f->xform->c[2][1];
+   const double dx2 = 0.5 * dx;
 
    double a = f->precalc_atan;
-   double r = weight * f->precalc_sqrt;
+   const double r = weight * f->precalc_sqrt;
    double sa,ca;
 
    a += (fmod(a+dy,dx) > dx2) ? -dx2 : dx2;
    sincos(a,&sa,&ca);
 
-   f->p0 += r * ca;
-   f->p1 += r * sa;
+   return r * (double2) { ca, sa };
 }
 
-static void var23_blob (flam3_iter_helper *f, double weight) {
+static double2 var23_blob (flam3_iter_helper *f, double weight) {
    /* blob */
    /* a = atan2(tx, ty);
       r = sqrt(tx*tx + ty*ty);
@@ -571,17 +551,16 @@ static void var23_blob (flam3_iter_helper *f, double weight) {
       p[1] += v * ny; */
 
    double r = f->precalc_sqrt;
-   double a = f->precalc_atan;
-   double bdiff = f->xform->blob_high - f->xform->blob_low;
+   const double a = f->precalc_atan;
+   const double bdiff = f->xform->blob_high - f->xform->blob_low;
 
    r = r * (f->xform->blob_low +
             bdiff * (0.5 + 0.5 * sin(f->xform->blob_waves * a)));
 
-   f->p0 += weight * f->precalc_sina * r;
-   f->p1 += weight * f->precalc_cosa * r;
+   return weight * (double2) { f->precalc_sina, f->precalc_cosa } * r;
 }
 
-static void var24_pdj (flam3_iter_helper *f, double weight) {
+static double2 var24_pdj (flam3_iter_helper *f, double weight) {
    /* pdj */
    /* nx1 = cos(pdjb * tx);
       nx2 = sin(pdjc * tx);
@@ -591,16 +570,17 @@ static void var24_pdj (flam3_iter_helper *f, double weight) {
       p[0] += v * (ny1 - nx1);
       p[1] += v * (nx2 - ny2); */
 
-   double nx1 = cos(f->xform->pdj_b * f->tx);
-   double nx2 = sin(f->xform->pdj_c * f->tx);
-   double ny1 = sin(f->xform->pdj_a * f->ty);
-   double ny2 = cos(f->xform->pdj_d * f->ty);
+   const double2 a = (double2) {
+                     sin(f->xform->pdj_a * f->t[1]),
+					 sin(f->xform->pdj_c * f->t[0]) };
+   const double2 b = (double2) {
+                     cos(f->xform->pdj_b * f->t[0]),
+					 cos(f->xform->pdj_d * f->t[1]) };
 
-   f->p0 += weight * (ny1 - nx1);
-   f->p1 += weight * (nx2 - ny2);
+   return weight * (a - b);
 }
 
-static void var25_fan2 (flam3_iter_helper *f, double weight) {
+static double2 var25_fan2 (flam3_iter_helper *f, double weight) {
    /* fan2 */
    /* a = precalc_atan;
       r = precalc_sqrt;
@@ -638,11 +618,10 @@ static void var25_fan2 (flam3_iter_helper *f, double weight) {
       
    sincos(a,&sa,&ca);
 
-   f->p0 += r * sa;
-   f->p1 += r * ca;
+   return r * (double2) { sa, ca };
 }
 
-static void var26_rings2 (flam3_iter_helper *f, double weight) {
+static double2 var26_rings2 (flam3_iter_helper *f, double weight) {
    /* rings2 */
    /* r = precalc_sqrt;
       dx = rings2val * rings2val + EPS;
@@ -657,48 +636,43 @@ static void var26_rings2 (flam3_iter_helper *f, double weight) {
 
    r += -2.0*dx*(int)((r+dx)/(2.0*dx)) + r * (1.0-dx);
 
-   f->p0 += weight * f->precalc_sina * r;
-   f->p1 += weight * f->precalc_cosa * r;
+   return weight * (double2) { f->precalc_sina, f->precalc_cosa } * r;
 }
 
-static void var27_eyefish (flam3_iter_helper *f, double weight) {
+static double2 var27_eyefish (flam3_iter_helper *f, double weight) {
    /* eyefish */
    /* r = 2.0 * v / (precalc_sqrt + 1.0);
       p[0] += r*tx;
       p[1] += r*ty; */
 
-   double r = (weight * 2.0) / (f->precalc_sqrt + 1.0);
+   const double r = (weight * 2.0) / (f->precalc_sqrt + 1.0);
 
-   f->p0 += r * f->tx;
-   f->p1 += r * f->ty;
+   return r * f->t;
 }
 
-static void var28_bubble (flam3_iter_helper *f, double weight) {
+static double2 var28_bubble (flam3_iter_helper *f, double weight) {
    /* bubble */
 
-   double r = weight / (0.25 * (f->precalc_sumsq) + 1);
+   const double r = weight / (0.25 * (f->precalc_sumsq) + 1);
 
-  f->p0 += r * f->tx;
-  f->p1 += r * f->ty;
+   return r * f->t;
 }
 
-static void var29_cylinder (flam3_iter_helper *f, double weight) {
+static double2 var29_cylinder (flam3_iter_helper *f, double weight) {
    /* cylinder (01/06) */
 
-   f->p0 += weight * sin(f->tx);
-   f->p1 += weight * f->ty;
+   return weight * (double2) { sin(f->t[0]), f->t[1] };
 }
 
-static void var30_perspective (flam3_iter_helper *f, double weight) {
+static double2 var30_perspective (flam3_iter_helper *f, double weight) {
    /* perspective (01/06) */
 
-   double t = 1.0 / (f->xform->perspective_dist - f->ty * f->xform->persp_vsin);
+   const double t = 1.0 / (f->xform->perspective_dist - f->t[1] * f->xform->persp_vsin);
 
-   f->p0 += weight * f->xform->perspective_dist * f->tx * t;
-   f->p1 += weight * f->xform->persp_vfcos * f->ty * t;
+   return weight * (double2) { f->xform->perspective_dist, f->xform->persp_vfcos } * f->t * t;
 }
 
-static void var31_noise (flam3_iter_helper *f, double weight) {
+static double2 var31_noise (flam3_iter_helper *f, double weight) {
    /* noise (03/06) */
 
    double tmpr, sinr, cosr, r;
@@ -708,11 +682,10 @@ static void var31_noise (flam3_iter_helper *f, double weight) {
 
    r = weight * flam3_random_isaac_01(f->rc);
 
-   f->p0 += f->tx * r * cosr;
-   f->p1 += f->ty * r * sinr;
+   return f->t * r * (double2) { cosr, sinr };
 }
 
-static void var32_juliaN_generic (flam3_iter_helper *f, double weight) {
+static double2 var32_juliaN_generic (flam3_iter_helper *f, double weight) {
    /* juliaN (03/06) */
 
    int t_rnd = trunc((f->xform->julian_rN)*flam3_random_isaac_01(f->rc));
@@ -723,11 +696,10 @@ static void var32_juliaN_generic (flam3_iter_helper *f, double weight) {
    double sina, cosa;
    sincos(tmpr,&sina,&cosa);
 
-   f->p0 += r * cosa;
-   f->p1 += r * sina;
+   return r * (double2) { cosa, sina };
 }
 
-static void var33_juliaScope_generic (flam3_iter_helper *f, double weight) {
+static double2 var33_juliaScope_generic (flam3_iter_helper *f, double weight) {
    /* juliaScope (03/06) */
 
    int t_rnd = trunc((f->xform->juliascope_rN) * flam3_random_isaac_01(f->rc));
@@ -744,11 +716,10 @@ static void var33_juliaScope_generic (flam3_iter_helper *f, double weight) {
 
    r = weight * pow(f->precalc_sumsq, f->xform->juliascope_cn);
 
-   f->p0 += r * cosa;
-   f->p1 += r * sina;
+   return r * (double2) { cosa, sina };
 }
 
-static void var34_blur (flam3_iter_helper *f, double weight) {
+static double2 var34_blur (flam3_iter_helper *f, double weight) {
    /* blur (03/06) */
 
    double tmpr, sinr, cosr, r;
@@ -758,11 +729,10 @@ static void var34_blur (flam3_iter_helper *f, double weight) {
 
    r = weight * flam3_random_isaac_01(f->rc);
 
-   f->p0 += r * cosr;
-   f->p1 += r * sinr;
+   return r * (double2) { cosr, sinr };
 }
 
-static void var35_gaussian (flam3_iter_helper *f, double weight) {
+static double2 var35_gaussian (flam3_iter_helper *f, double weight) {
    /* gaussian (09/06) */
 
    double ang, r, sina, cosa;
@@ -773,11 +743,10 @@ static void var35_gaussian (flam3_iter_helper *f, double weight) {
    r = weight * ( flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc)
                    + flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc) - 2.0 );
 
-   f->p0 += r * cosa;
-   f->p1 += r * sina;
+   return r * (double2) { cosa, sina };
 }
 
-static void var36_radial_blur (flam3_iter_helper *f, double weight) {
+static double2 var36_radial_blur (flam3_iter_helper *f, double weight) {
    /* radial blur (09/06) */
    /* removed random storage 6/07 */
 
@@ -793,11 +762,10 @@ static void var36_radial_blur (flam3_iter_helper *f, double weight) {
    sincos(tmpa,&sa,&ca);
    rz = f->xform->radialBlur_zoomvar * rndG - 1;
 
-   f->p0 += ra * ca + rz * f->tx;
-   f->p1 += ra * sa + rz * f->ty;
+   return ra * (double2) { ca, sa } + rz * f->t;
 }
 
-static void var37_pie(flam3_iter_helper *f, double weight) {
+static double2 var37_pie(flam3_iter_helper *f, double weight) {
    /* pie by Joel Faber (June 2006) */
 
    double a, r, sa, ca;
@@ -809,11 +777,10 @@ static void var37_pie(flam3_iter_helper *f, double weight) {
    r = weight * flam3_random_isaac_01(f->rc);
    sincos(a,&sa,&ca);
 
-   f->p0 += r * ca;
-   f->p1 += r * sa;
+   return r * (double2) { ca, sa };
 }
 
-static void var38_ngon(flam3_iter_helper *f, double weight) {
+static double2 var38_ngon(flam3_iter_helper *f, double weight) {
    /* ngon by Joel Faber (09/06) */
 
    double r_factor,theta,phi,b, amp;
@@ -830,36 +797,30 @@ static void var38_ngon(flam3_iter_helper *f, double weight) {
    amp = f->xform->ngon_corners * (1.0 / (cos(phi) + EPS) - 1.0) + f->xform->ngon_circle;
    amp /= (r_factor + EPS);
 
-   f->p0 += weight * f->tx * amp;
-   f->p1 += weight * f->ty * amp;
+   return weight * f->t * amp;
 }
 
-static void var39_curl(flam3_iter_helper *f, double weight)
+static double2 var39_curl(flam3_iter_helper *f, double weight)
 {
-    double re = 1.0 + f->xform->curl_c1 * f->tx + f->xform->curl_c2 * (f->tx * f->tx - f->ty * f->ty);
-    double im = f->xform->curl_c1 * f->ty + 2.0 * f->xform->curl_c2 * f->tx * f->ty;
+    double re = 1.0 + f->xform->curl_c1 * f->t[0] + f->xform->curl_c2 * (f->t[0] * f->t[0] - f->t[1] * f->t[1]);
+    double im = f->xform->curl_c1 * f->t[1] + 2.0 * f->xform->curl_c2 * f->t[0] * f->t[1];
 
     double r = weight / (re*re + im*im);
 
-    f->p0 += (f->tx * re + f->ty * im) * r;
-    f->p1 += (f->ty * re - f->tx * im) * r;
+    double2 tswap = (double2) { f->t[1], -f->t[0] };
+
+    return (f->t * re + tswap * im) * r;
 }
 
-static void var40_rectangles(flam3_iter_helper *f, double weight)
+static double2 var40_rectangles(flam3_iter_helper *f, double weight)
 {
-    if (f->xform->rectangles_x==0)
-       f->p0 += weight * f->tx;
-    else
-       f->p0 += weight * ((2 * floor(f->tx / f->xform->rectangles_x) + 1) * f->xform->rectangles_x - f->tx);
-
-    if (f->xform->rectangles_y==0)
-       f->p1 += weight * f->ty;
-    else
-       f->p1 += weight * ((2 * floor(f->ty / f->xform->rectangles_y) + 1) * f->xform->rectangles_y - f->ty);
-
+    return weight * (double2) {
+	                f->xform->rectangles_x==0 ? f->t[0] : ((2 * floor(f->t[0] / f->xform->rectangles_x) + 1) * f->xform->rectangles_x - f->t[0]),
+                    f->xform->rectangles_y==0 ? f->t[1] : ((2 * floor(f->t[1] / f->xform->rectangles_y) + 1) * f->xform->rectangles_y - f->t[1]),
+					};
 }
 
-static void var41_arch(flam3_iter_helper *f, double weight)
+static double2 var41_arch(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Arch;
@@ -882,12 +843,11 @@ static void var41_arch(flam3_iter_helper *f, double weight)
    double sinr,cosr;
    sincos(ang,&sinr,&cosr);
 
-   f->p0 += weight * sinr;
-   f->p1 += weight * (sinr*sinr)/cosr;
+   return weight * (double2) { sinr, (sinr*sinr)/cosr };
 
 }
 
-static void var42_tangent(flam3_iter_helper *f, double weight)
+static double2 var42_tangent(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Tangent;
@@ -897,12 +857,11 @@ static void var42_tangent(flam3_iter_helper *f, double weight)
    end;
    */
 
-   f->p0 += weight * sin(f->tx)/cos(f->ty);
-   f->p1 += weight * tan(f->ty);
+   return weight * (double2) { sin(f->t[0])/cos(f->t[1]), tan(f->t[1]) };
 
 }
 
-static void var43_square(flam3_iter_helper *f, double weight)
+static double2 var43_square(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.SquareBlur;
@@ -912,12 +871,14 @@ static void var43_square(flam3_iter_helper *f, double weight)
    end;
    */
 
-   f->p0 += weight * (flam3_random_isaac_01(f->rc) - 0.5);
-   f->p1 += weight * (flam3_random_isaac_01(f->rc) - 0.5);
+   return weight * ((double2) {
+                   flam3_random_isaac_01(f->rc),
+                   flam3_random_isaac_01(f->rc),
+				   } - 0.5);
 
 }
 
-static void var44_rays(flam3_iter_helper *f, double weight)
+static double2 var44_rays(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Rays;
@@ -943,12 +904,11 @@ static void var44_rays(flam3_iter_helper *f, double weight)
    double tanr = weight * tan(ang) * r;
 
 
-   f->p0 += tanr * cos(f->tx);
-   f->p1 += tanr * sin(f->ty);
+   return tanr * (double2) { cos(f->t[0]), sin(f->t[1]) };
 
 }
 
-static void var45_blade(flam3_iter_helper *f, double weight)
+static double2 var45_blade(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Blade;
@@ -973,12 +933,11 @@ static void var45_blade(flam3_iter_helper *f, double weight)
    
    sincos(r,&sinr,&cosr);
 
-   f->p0 += weight * f->tx * (cosr + sinr);
-   f->p1 += weight * f->tx * (cosr - sinr);
+   return weight * f->t[0] * (cosr + (double2) { sinr, -sinr });
 
 }
 
-static void var46_secant2(flam3_iter_helper *f, double weight)
+static double2 var46_secant2(flam3_iter_helper *f, double weight)
 {
    /* Intended as a 'fixed' version of secant */
 
@@ -992,15 +951,10 @@ static void var46_secant2(flam3_iter_helper *f, double weight)
    double cr = cos(r);
    double icr = 1.0/cr;
 
-   f->p0 += weight * f->tx;
-   
-   if (cr<0)
-      f->p1 += weight*(icr + 1);
-   else
-      f->p1 += weight*(icr - 1);
+   return weight * (double2) { f->t[0], cr<0 ? (icr + 1) : (icr - 1) };
 }
 
-static void var47_twintrian(flam3_iter_helper *f, double weight)
+static double2 var47_twintrian(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.TwinTrian;
@@ -1030,12 +984,12 @@ static void var47_twintrian(flam3_iter_helper *f, double weight)
    if (badvalue(diff))
       diff = -30.0;      
 
-   f->p0 += weight * f->tx * diff;
-   f->p1 += weight * f->tx * (diff - sinr*M_PI);
+   
+   return weight * f->t[0] * (diff - (double2) { 0.0, sinr*M_PI });
 
 }
 
-static void var48_cross(flam3_iter_helper *f, double weight)
+static double2 var48_cross(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    procedure TXForm.Cross;
@@ -1048,15 +1002,13 @@ static void var48_cross(flam3_iter_helper *f, double weight)
    end;
    */
 
-   double s = f->tx*f->tx - f->ty*f->ty;
+   double s = f->t[0]*f->t[0] - f->t[1]*f->t[1];
    double r = weight * sqrt(1.0 / (s*s+EPS));
 
-   f->p0 += f->tx * r;
-   f->p1 += f->ty * r;
-
+   return r * f->t;
 }
 
-static void var49_disc2(flam3_iter_helper *f, double weight)
+static double2 var49_disc2(flam3_iter_helper *f, double weight)
 {
    /* Z+ variation Jan 07
    c := vvar/PI;
@@ -1085,16 +1037,18 @@ static void var49_disc2(flam3_iter_helper *f, double weight)
 
    double r,t,sinr, cosr;
 
-   t = f->xform->disc2_timespi * (f->tx + f->ty);
+   t = f->xform->disc2_timespi * (f->t[0] + f->t[1]);
    sincos(t,&sinr,&cosr);
    r = weight * f->precalc_atan / M_PI;
 
-   f->p0 += (sinr + f->xform->disc2_cosadd) * r;
-   f->p1 += (cosr + f->xform->disc2_sinadd) * r;
+   return r * (double2) {
+              sinr + f->xform->disc2_cosadd,
+			  cosr + f->xform->disc2_sinadd,
+			  };
 
 }
 
-static void var50_supershape(flam3_iter_helper *f, double weight) {
+static double2 var50_supershape(flam3_iter_helper *f, double weight) {
 
    double theta;
    double t1,t2,r;
@@ -1116,11 +1070,10 @@ static void var50_supershape(flam3_iter_helper *f, double weight) {
    r = weight * ( (myrnd*flam3_random_isaac_01(f->rc) + (1.0-myrnd)*f->precalc_sqrt) - f->xform->super_shape_holes) 
       * pow(t1+t2,f->xform->super_shape_pneg1_n1) / f->precalc_sqrt;
 
-   f->p0 += r * f->tx;
-   f->p1 += r * f->ty;
+   return r * f->t;
 }
 
-static void var51_flower(flam3_iter_helper *f, double weight) {
+static double2 var51_flower(flam3_iter_helper *f, double weight) {
     /* cyberxaos, 4/2007 */
     /*   theta := arctan2(FTy^, FTx^);
          r := (random-holes)*cos(petals*theta);
@@ -1131,26 +1084,24 @@ static void var51_flower(flam3_iter_helper *f, double weight) {
     double r = weight * (flam3_random_isaac_01(f->rc) - f->xform->flower_holes) * 
                     cos(f->xform->flower_petals*theta) / f->precalc_sqrt;
 
-    f->p0 += r * f->tx;
-    f->p1 += r * f->ty;
+	return r * f->t;
 }
     
-static void var52_conic(flam3_iter_helper *f, double weight) {
+static double2 var52_conic(flam3_iter_helper *f, double weight) {
     /* cyberxaos, 4/2007 */
     /*   theta := arctan2(FTy^, FTx^);
          r :=  (random - holes)*((eccentricity)/(1+eccentricity*cos(theta)));
          FPx^ := FPx^ + vvar*r*cos(theta);
          FPy^ := FPy^ + vvar*r*sin(theta); */
  
-    double ct = f->tx / f->precalc_sqrt;
+    double ct = f->t[0] / f->precalc_sqrt;
     double r = weight * (flam3_random_isaac_01(f->rc) - f->xform->conic_holes) * 
                     f->xform->conic_eccentricity / (1 + f->xform->conic_eccentricity*ct) / f->precalc_sqrt;
 
-    f->p0 += r * f->tx;
-    f->p1 += r * f->ty;
+	return r * f->t;
 }
 
-static void var53_parabola(flam3_iter_helper *f, double weight) {
+static double2 var53_parabola(flam3_iter_helper *f, double weight) {
     /* cyberxaos, 4/2007 */
     /*   r := sqrt(sqr(FTx^) + sqr(FTy^));
          FPx^ := FPx^ + parabola_height*vvar*sin(r)*sin(r)*random;  
@@ -1161,139 +1112,121 @@ static void var53_parabola(flam3_iter_helper *f, double weight) {
     
     sincos(r,&sr,&cr);
     
-    f->p0 += f->xform->parabola_height * weight * sr*sr * flam3_random_isaac_01(f->rc);
-    f->p1 += f->xform->parabola_width * weight * cr * flam3_random_isaac_01(f->rc);
+	return weight * (double2) {
+                    f->xform->parabola_height * sr*sr * flam3_random_isaac_01(f->rc),
+                    f->xform->parabola_width * cr * flam3_random_isaac_01(f->rc),
+					};
     
 }      
 
-static void var54_bent2 (flam3_iter_helper *f, double weight) {
+static double2 var54_bent2 (flam3_iter_helper *f, double weight) {
 
    /* Bent2 in the Apophysis Plugin Pack */   
    
-   double nx = f->tx;
-   double ny = f->ty;
-
-   if (nx < 0.0)
-      nx = nx * f->xform->bent2_x;
-   if (ny < 0.0)
-      ny = ny * f->xform->bent2_y;
-
-   f->p0 += weight * nx;
-   f->p1 += weight * ny;
+   return weight * f->t * (double2) {
+                          f->t[0] < 0.0 ? f->xform->bent2_x : 1.0,
+						  f->t[1] < 0.0 ? f->xform->bent2_y : 1.0,
+						  };
 }
 
-static void var55_bipolar (flam3_iter_helper *f, double weight) {
+static double2 var55_bipolar (flam3_iter_helper *f, double weight) {
 
    /* Bipolar in the Apophysis Plugin Pack */   
    
    double x2y2 = f->precalc_sumsq;
    double t = x2y2+1;
-   double x2 = 2*f->tx;
+   double x2 = 2*f->t[0];
    double ps = -M_PI_2 * f->xform->bipolar_shift;
-   double y = 0.5 * atan2(2.0 * f->ty, x2y2 - 1.0) + ps;
+   double y = 0.5 * atan2(2.0 * f->t[1], x2y2 - 1.0) + ps;
    
    if (y > M_PI_2)
        y = -M_PI_2 + fmod(y + M_PI_2, M_PI);
    else if (y < -M_PI_2)
        y = M_PI_2 - fmod(M_PI_2 - y, M_PI);
 
-   f->p0 += weight * 0.25 * M_2_PI * log ( (t+x2) / (t-x2) );
-   f->p1 += weight * M_2_PI * y;
+   return weight * M_2_PI * (double2) {
+                   0.25 * log ( (t+x2) / (t-x2) ),
+                   y,
+				   };
 }
 
-static void var56_boarders (flam3_iter_helper *f, double weight) {
+static double2 var56_boarders (flam3_iter_helper *f, double weight) {
 
    /* Boarders in the Apophysis Plugin Pack */   
    
-   double roundX, roundY, offsetX, offsetY;
-    
-   roundX = rint(f->tx);
-   roundY = rint(f->ty);
-   offsetX = f->tx - roundX;
-   offsetY = f->ty - roundY;
+   double2 round = (double2) { rint(f->t[0]), rint(f->t[1]) };
+   double2 offset = f->t - round;
     
    if (flam3_random_isaac_01(f->rc) >= 0.75) {
-      f->p0 += weight*(offsetX*0.5 + roundX);
-      f->p1 += weight*(offsetY*0.5 + roundY);
+	  return weight*(offset*0.5 + round);
    } else {
       
-      if (fabs(offsetX) >= fabs(offsetY)) {
+      if (fabs(offset[0]) >= fabs(offset[1])) {
          
-         if (offsetX >= 0.0) {
-            f->p0 += weight*(offsetX*0.5 + roundX + 0.25);
-            f->p1 += weight*(offsetY*0.5 + roundY + 0.25 * offsetY / offsetX);
+         if (offset[0] >= 0.0) {
+			return weight*(offset*0.5 + round + 0.25 * (double2) { 1.0, offset[1] / offset[0] });
          } else {
-            f->p0 += weight*(offsetX*0.5 + roundX - 0.25);
-            f->p1 += weight*(offsetY*0.5 + roundY - 0.25 * offsetY / offsetX);  
+		    return weight*(offset*0.5 + round - 0.25 * (double2) { 1.0, offset[1] / offset[0] });
          }
          
       } else {
-         
-         if (offsetY >= 0.0) {
-            f->p1 += weight*(offsetY*0.5 + roundY + 0.25);
-            f->p0 += weight*(offsetX*0.5 + roundX + offsetX/offsetY*0.25);
+         if (offset[1] >= 0.0) {
+            return weight*(offset*0.5 + round + (double2) { offset[0]/offset[1]*0.25, 0.25 });
          } else {
-            f->p1 += weight*(offsetY*0.5 + roundY - 0.25);
-            f->p0 += weight*(offsetX*0.5 + roundX - offsetX/offsetY*0.25);
+		    return weight*(offset*0.5 + round - (double2) { offset[0]/offset[1]*0.25, 0.25 });
          }
       }
    }
 }
 
-static void var57_butterfly (flam3_iter_helper *f, double weight) {
+static double2 var57_butterfly (flam3_iter_helper *f, double weight) {
 
    /* Butterfly in the Apophysis Plugin Pack */   
    
    /* wx is weight*4/sqrt(3*pi) */
    double wx = weight*1.3029400317411197908970256609023;
    
-   double y2 = f->ty*2.0;
-   double r = wx*sqrt(fabs(f->ty * f->tx)/(EPS + f->tx*f->tx + y2*y2));
+   double y2 = f->t[1]*2.0;
+   double r = wx*sqrt(fabs(f->t[1] * f->t[0])/(EPS + f->t[0]*f->t[0] + y2*y2));
    
-   f->p0 += r * f->tx;
-   f->p1 += r * y2;
+   return r * (double2) { f->t[0], y2 };
    
 }
 
-static void var58_cell (flam3_iter_helper *f, double weight) {
+static double2 var58_cell (flam3_iter_helper *f, double weight) {
 
    /* Cell in the Apophysis Plugin Pack */   
 
    double inv_cell_size = 1.0/f->xform->cell_size;
     
    /* calculate input cell */
-   int x = floor(f->tx*inv_cell_size);
-   int y = floor(f->ty*inv_cell_size);
+   double2 b = (double2) {
+               floor(f->t[0]*inv_cell_size),
+               floor(f->t[1]*inv_cell_size),
+			   };
 
    /* Offset from cell origin */
-   double dx = f->tx - x*f->xform->cell_size;
-   double dy = f->ty - y*f->xform->cell_size;
+   double2 a = f->t - b*f->xform->cell_size;
    
    /* interleave cells */
-   if (y >= 0) {
-      if (x >= 0) {
-         y *= 2;
-         x *= 2;
+   if (b[1] >= 0.0) {
+      if (b[0] >= 0.0) {
+		 b *= 2.0;
       } else {
-         y *= 2;
-         x = -(2*x+1);
+		 b = (double2) { -1.0, 1.0 } * (b*2.0 + (double2) { 1.0, 0.0 });
       }
    } else {
-      if (x >= 0) {
-         y = -(2*y+1);
-         x *= 2;
+      if (b[0] >= 0.0) {
+	     b = (double2) { 1.0, -1.0 } * (b*2.0 + (double2) { 0.0, 1.0 });
       } else {
-         y = -(2*y+1);
-         x = -(2*x+1);
+	     b = -(2.0*b+1.0);
       }
    }
    
-   f->p0 += weight * (dx + x*f->xform->cell_size);
-   f->p1 -= weight * (dy + y*f->xform->cell_size);
-   
+   return weight * (a + b*f->xform->cell_size);
 }
 
-static void var59_cpow (flam3_iter_helper *f, double weight) {
+static double2 var59_cpow (flam3_iter_helper *f, double weight) {
 
    /* Cpow in the Apophysis Plugin Pack */   
 
@@ -1309,12 +1242,11 @@ static void var59_cpow (flam3_iter_helper *f, double weight) {
    
    sincos(ang,&sa,&ca);
    
-   f->p0 += m * ca;
-   f->p1 += m * sa;
+   return m * (double2) { ca, sa };
    
 }
 
-static void var60_curve (flam3_iter_helper *f, double weight) {
+static double2 var60_curve (flam3_iter_helper *f, double weight) {
 
    /* Curve in the Apophysis Plugin Pack */   
    
@@ -1325,22 +1257,24 @@ static void var60_curve (flam3_iter_helper *f, double weight) {
    
    if (pc_ylen<1E-20) pc_ylen = 1E-20;
 
-   f->p0 += weight * (f->tx + f->xform->curve_xamp * exp(-f->ty*f->ty/pc_xlen));
-   f->p1 += weight * (f->ty + f->xform->curve_yamp * exp(-f->tx*f->tx/pc_ylen));
+   return weight * f->t + (double2) {
+                   f->xform->curve_xamp * exp(-f->t[1]*f->t[1]/pc_xlen),
+                   f->xform->curve_yamp * exp(-f->t[0]*f->t[0]/pc_ylen),
+				   };
       
 }
 
-static void var61_edisc (flam3_iter_helper *f, double weight) {
+static double2 var61_edisc (flam3_iter_helper *f, double weight) {
 
    /* Edisc in the Apophysis Plugin Pack */   
    
    double tmp = f->precalc_sumsq + 1.0;
-   double tmp2 = 2.0 * f->tx;
+   double tmp2 = 2.0 * f->t[0];
    double r1 = sqrt(tmp+tmp2);
    double r2 = sqrt(tmp-tmp2);
    double xmax = (r1+r2) * 0.5;
    double a1 = log(xmax + sqrt(xmax - 1.0));
-   double a2 = -acos(f->tx/xmax);
+   double a2 = -acos(f->t[0]/xmax);
    double w = weight / 11.57034632;
    double snv,csv,snhu,cshu;
    
@@ -1349,21 +1283,20 @@ static void var61_edisc (flam3_iter_helper *f, double weight) {
    snhu = sinh(a2);
    cshu = cosh(a2);
    
-   if (f->ty > 0.0) snv = -snv;
+   if (f->t[1] > 0.0) snv = -snv;
    
-   f->p0 += w * cshu * csv;
-   f->p1 += w * snhu * snv;
+   return w * (double2) { cshu * csv, snhu * snv };
    
 }
 
-static void var62_elliptic (flam3_iter_helper *f, double weight) {
+static double2 var62_elliptic (flam3_iter_helper *f, double weight) {
 
    /* Elliptic in the Apophysis Plugin Pack */
 
    double tmp = f->precalc_sumsq + 1.0;
-   double x2 = 2.0 * f->tx;
+   double x2 = 2.0 * f->t[0];
    double xmax = 0.5 * (sqrt(tmp+x2) + sqrt(tmp-x2));
-   double a = f->tx / xmax;
+   double a = f->t[0] / xmax;
    double b = 1.0 - a*a;
    double ssx = xmax - 1.0;
    double w = weight / M_PI_2;
@@ -1378,16 +1311,14 @@ static void var62_elliptic (flam3_iter_helper *f, double weight) {
    else
       ssx = sqrt(ssx);
       
-   f->p0 += w * atan2(a,b);
+   return w * (double2) {
+              atan2(a,b),
+			  (f->t[1] > 0.0 ? 1.0 : -1.0) * log(xmax + ssx),
+			  };
    
-   if (f->ty > 0)
-      f->p1 += w * log(xmax + ssx);
-   else
-      f->p1 -= w * log(xmax + ssx);
-      
 }
 
-static void var63_escher (flam3_iter_helper *f, double weight) {
+static double2 var63_escher (flam3_iter_helper *f, double weight) {
 
    /* Escher in the Apophysis Plugin Pack */
    
@@ -1409,56 +1340,57 @@ static void var63_escher (flam3_iter_helper *f, double weight) {
    
    sincos(n,&sn,&cn);
    
-   f->p0 += m * cn;
-   f->p1 += m * sn;
-      
+   return m * (double2) { cn, sn };
+
 }
 
-static void var64_foci (flam3_iter_helper *f, double weight) {
+static double2 var64_foci (flam3_iter_helper *f, double weight) {
 
    /* Foci in the Apophysis Plugin Pack */
 
-   double expx = exp(f->tx) * 0.5;
+   double expx = exp(f->t[0]) * 0.5;
    double expnx = 0.25 / expx;
    double sn,cn,tmp;
    
-   sincos(f->ty,&sn,&cn);
+   sincos(f->t[1],&sn,&cn);
    tmp = weight/(expx + expnx - cn);
    
-   f->p0 += tmp * (expx - expnx);
-   f->p1 += tmp * sn;
+   return tmp * (double2) { expx - expnx, sn };
       
 }
 
-static void var65_lazysusan (flam3_iter_helper *f, double weight) {
+static double2 var65_lazysusan (flam3_iter_helper *f, double weight) {
 
    /* Lazysusan in the Apophysis Plugin Pack */
    
-   double x = f->tx - f->xform->lazysusan_x;
-   double y = f->ty + f->xform->lazysusan_y;
-   double r = sqrt(x*x + y*y);
+   double2 b = f->t + (double2) { -f->xform->lazysusan_x, f->xform->lazysusan_y };
+   double r = sqrt(b[0]*b[0] + b[1]*b[1]);
    double sina, cosa;
    
    if (r<weight) {
-      double a = atan2(y,x) + f->xform->lazysusan_spin +
+      double a = atan2(b[1],b[0]) + f->xform->lazysusan_spin +
                  f->xform->lazysusan_twist*(weight-r);
       sincos(a,&sina,&cosa);
       r = weight * r;
       
-      f->p0 += r*cosa + f->xform->lazysusan_x;
-      f->p1 += r*sina - f->xform->lazysusan_y;
+	  return r * (double2) { cosa, sina } + (double2) {
+	                                        f->xform->lazysusan_x,
+											-f->xform->lazysusan_y,
+											};
    } else {
       
       r = weight * (1.0 + f->xform->lazysusan_space / r);
       
-      f->p0 += r*x + f->xform->lazysusan_x;
-      f->p1 += r*y - f->xform->lazysusan_y;
+	  return r * b + (double2) {
+                     f->xform->lazysusan_x,
+					 -f->xform->lazysusan_y,
+					 };
    
    }
       
 }
 
-static void var66_loonie (flam3_iter_helper *f, double weight) {
+static double2 var66_loonie (flam3_iter_helper *f, double weight) {
 
    /* Loonie in the Apophysis Plugin Pack */
 
@@ -1473,16 +1405,14 @@ static void var66_loonie (flam3_iter_helper *f, double weight) {
    
    if (r2 < w2) {
       double r = weight * sqrt(w2/r2 - 1.0);
-      f->p0 += r * f->tx;
-      f->p1 += r * f->ty;
+	  return r * f->t;
    } else {
-      f->p0 += weight * f->tx;
-      f->p1 += weight * f->ty;
+	  return weight * f->t;
    }
          
 }
 
-static void var67_pre_blur (flam3_iter_helper *f, double weight) {
+static double2 var67_pre_blur (flam3_iter_helper *f, double weight) {
 
    /* pre-xform: PreBlur (Apo 2.08) */
    
@@ -1495,35 +1425,36 @@ static void var67_pre_blur (flam3_iter_helper *f, double weight) {
    sincos(rndA,&sinA,&cosA);
    
    /* Note: original coordinate changed */
-   f->tx += rndG * cosA;
-   f->ty += rndG * sinA;
-         
+   return rndG * (double2) { cosA, sinA };
+
 }
 
-static void var68_modulus (flam3_iter_helper *f, double weight) {
+static double2 var68_modulus (flam3_iter_helper *f, double weight) {
 
    /* Modulus in the Apophysis Plugin Pack */
    
    double xr = 2*f->xform->modulus_x;
    double yr = 2*f->xform->modulus_y;
+   double a, b;
    
-   if (f->tx > f->xform->modulus_x)
-      f->p0 += weight * (-f->xform->modulus_x + fmod(f->tx + f->xform->modulus_x, xr));
-   else if (f->tx < -f->xform->modulus_x)
-      f->p0 += weight * ( f->xform->modulus_x - fmod(f->xform->modulus_x - f->tx, xr));
+   if (f->t[0] > f->xform->modulus_x)
+      a = (-f->xform->modulus_x + fmod(f->t[0] + f->xform->modulus_x, xr));
+   else if (f->t[0] < -f->xform->modulus_x)
+      a = ( f->xform->modulus_x - fmod(f->xform->modulus_x - f->t[0], xr));
    else
-      f->p0 += weight * f->tx;
+      a = f->t[0];
       
-   if (f->ty > f->xform->modulus_y)
-      f->p1 += weight * (-f->xform->modulus_y + fmod(f->ty + f->xform->modulus_y, yr));
-   else if (f->ty < -f->xform->modulus_y)
-      f->p1 += weight * ( f->xform->modulus_y - fmod(f->xform->modulus_y - f->ty, yr));
+   if (f->t[1] > f->xform->modulus_y)
+      b = (-f->xform->modulus_y + fmod(f->t[1] + f->xform->modulus_y, yr));
+   else if (f->t[1] < -f->xform->modulus_y)
+      b = ( f->xform->modulus_y - fmod(f->xform->modulus_y - f->t[1], yr));
    else
-      f->p1 += weight * f->ty;
+      b = f->t[1];
          
+   return weight * (double2) { a, b };
 }
 
-static void var69_oscope (flam3_iter_helper *f, double weight) {
+static double2 var69_oscope (flam3_iter_helper *f, double weight) {
 
    /* oscilloscope from the apophysis plugin pack */
    
@@ -1531,41 +1462,36 @@ static void var69_oscope (flam3_iter_helper *f, double weight) {
    double t;
    
    if (f->xform->oscope_damping == 0.0)
-      t = f->xform->oscope_amplitude * cos(tpf*f->tx) + f->xform->oscope_separation;
+      t = f->xform->oscope_amplitude * cos(tpf*f->t[0]) + f->xform->oscope_separation;
    else {
-      t = f->xform->oscope_amplitude * exp(-fabs(f->tx)*f->xform->oscope_damping)
-          * cos(tpf*f->tx) + f->xform->oscope_separation;
+      t = f->xform->oscope_amplitude * exp(-fabs(f->t[0])*f->xform->oscope_damping)
+          * cos(tpf*f->t[0]) + f->xform->oscope_separation;
    }
    
-   if (fabs(f->ty) <= t) {
-      f->p0 += weight*f->tx;
-      f->p1 -= weight*f->ty;
-   } else {
-      f->p0 += weight*f->tx;
-      f->p1 += weight*f->ty;
-   } 
+   return (double2) { 1.0, fabs(f->t[1]) <= t ? -1.0 : 1.0 } * weight * f->t;
 }
 
-static void var70_polar2 (flam3_iter_helper *f, double weight) {
+static double2 var70_polar2 (flam3_iter_helper *f, double weight) {
 
    /* polar2 from the apophysis plugin pack */
    
    double p2v = weight / M_PI;
    
-   f->p0 += p2v * f->precalc_atan;
-   f->p1 += p2v/2.0 * log(f->precalc_sumsq);
+   return (double2) { p2v * f->precalc_atan, p2v/2.0 * log(f->precalc_sumsq) };
 }
 
-static void var71_popcorn2 (flam3_iter_helper *f, double weight) {
+static double2 var71_popcorn2 (flam3_iter_helper *f, double weight) {
 
    /* popcorn2 from the apophysis plugin pack */
    
-   f->p0 += weight * ( f->tx + f->xform->popcorn2_x * sin(tan(f->ty*f->xform->popcorn2_c)));
-   f->p1 += weight * ( f->ty + f->xform->popcorn2_y * sin(tan(f->tx*f->xform->popcorn2_c)));
+   return weight * (f->t + (double2) {
+                   f->xform->popcorn2_x * sin(tan(f->t[1]*f->xform->popcorn2_c)),
+				   f->xform->popcorn2_y * sin(tan(f->t[0]*f->xform->popcorn2_c)),
+				   });
 
 }
 
-static void var72_scry (flam3_iter_helper *f, double weight) {
+static double2 var72_scry (flam3_iter_helper *f, double weight) {
 
    /* scry from the apophysis plugin pack */
    /* note that scry does not multiply by weight, but as the */
@@ -1581,77 +1507,74 @@ static void var72_scry (flam3_iter_helper *f, double weight) {
    double t = f->precalc_sumsq;
    double r = 1.0 / (f->precalc_sqrt * (t + 1.0/(weight+EPS)));
    
-   f->p0 += f->tx * r;
-   f->p1 += f->ty * r;
+   return r * f->t;
 
 }
 
-static void var73_separation (flam3_iter_helper *f, double weight) {
+static double2 var73_separation (flam3_iter_helper *f, double weight) {
 
    /* separation from the apophysis plugin pack */
 
-   double sx2 = f->xform->separation_x * f->xform->separation_x;
-   double sy2 = f->xform->separation_y * f->xform->separation_y;
+   const double sx2 = f->xform->separation_x * f->xform->separation_x;
+   const double sy2 = f->xform->separation_y * f->xform->separation_y;
    
-   if (f->tx > 0.0)
-      f->p0 += weight * (sqrt(f->tx*f->tx + sx2)- f->tx*f->xform->separation_xinside);
-   else
-      f->p0 -= weight * (sqrt(f->tx*f->tx + sx2)+ f->tx*f->xform->separation_xinside);
-   
-   if (f->ty > 0.0)
-      f->p1 += weight * (sqrt(f->ty*f->ty + sy2)- f->ty*f->xform->separation_yinside);
-   else
-      f->p1 -= weight * (sqrt(f->ty*f->ty + sy2)+ f->ty*f->xform->separation_yinside);
-   
+   const double2 a = (double2) {
+                     sqrt(f->t[0]*f->t[0] + sx2),
+                     sqrt(f->t[1]*f->t[1] + sy2),
+					 };
+   const double2 b = (double2) {
+                     f->t[0]*f->xform->separation_xinside,
+                     f->t[1]*f->xform->separation_yinside,
+					 };
+   const double2 sign = (double2) {
+                         f->t[0] > 0.0 ? 1.0 : -1.0,
+						 f->t[1] > 0.0 ? 1.0 : -1.0,
+						 };
+   const double2 bsign = (double2) {
+                         f->t[0] > 0.0 ? -1.0 : 1.0,
+						 f->t[1] > 0.0 ? -1.0 : 1.0,
+                         };
+
+   return sign * (weight * (a + bsign * b));
 }
 
-static void var74_split (flam3_iter_helper *f, double weight) {
+static double2 var74_split (flam3_iter_helper *f, double weight) {
    
    /* Split from apo plugins pack */
 
-   if (cos(f->tx*f->xform->split_xsize*M_PI) >= 0)
-      f->p1 += weight*f->ty;
-   else
-      f->p1 -= weight*f->ty;
-      
-   if (cos(f->ty*f->xform->split_ysize*M_PI) >= 0)
-      f->p0 += weight * f->tx;
-   else
-      f->p0 -= weight * f->tx;
-
+   return weight * (double2) {
+                   cos(f->t[1]*f->xform->split_ysize*M_PI) >= 0 ? 1.0 : -1.0,
+                   cos(f->t[0]*f->xform->split_xsize*M_PI) >= 0 ? 1.0 : -1.0,
+				   } * f->t;
 }
 
-static void var75_splits (flam3_iter_helper *f, double weight) {
+static double2 var75_splits (flam3_iter_helper *f, double weight) {
    
    /* Splits from apo plugins pack */
 
-   if (f->tx >= 0)
-      f->p0 += weight*(f->tx+f->xform->splits_x);
-   else
-      f->p0 += weight*(f->tx-f->xform->splits_x);
-      
-   if (f->ty >= 0)
-      f->p1 += weight*(f->ty+f->xform->splits_y);
-   else
-      f->p1 += weight*(f->ty-f->xform->splits_y);
-
+   return weight * (f->t + (double2) {
+                           f->t[0] >= 0 ? f->xform->splits_x : -f->xform->splits_x,
+                           f->t[1] >= 0 ? f->xform->splits_y : -f->xform->splits_y,
+						   });
 }
 
-static void var76_stripes (flam3_iter_helper *f, double weight) {
+static double2 var76_stripes (flam3_iter_helper *f, double weight) {
    
    /* Stripes from apo plugins pack */
 
    double roundx,offsetx;
    
-   roundx = floor(f->tx + 0.5);
-   offsetx = f->tx - roundx;
+   roundx = floor(f->t[0] + 0.5);
+   offsetx = f->t[0] - roundx;
 
-   f->p0 += weight * (offsetx*(1.0-f->xform->stripes_space)+roundx);
-   f->p1 += weight * (f->ty + offsetx*offsetx*f->xform->stripes_warp);
+   return weight * (double2) {
+                   offsetx*(1.0-f->xform->stripes_space)+roundx,
+                   f->t[1] + offsetx*offsetx*f->xform->stripes_warp,
+				   };
 
 }
 
-static void var77_wedge (flam3_iter_helper *f, double weight) {
+static double2 var77_wedge (flam3_iter_helper *f, double weight) {
    
    /* Wedge from apo plugins pack */
 
@@ -1668,12 +1591,11 @@ static void var77_wedge (flam3_iter_helper *f, double weight) {
 
    r = weight * (r + f->xform->wedge_hole);
    
-   f->p0 += r*ca;
-   f->p1 += r*sa;
+   return r * (double2) { ca, sa };
 
 }
 
-static void var78_wedge_julia (flam3_iter_helper *f, double weight) {
+static double2 var78_wedge_julia (flam3_iter_helper *f, double weight) {
 
    /* wedge_julia from apo plugin pack */
 
@@ -1687,11 +1609,10 @@ static void var78_wedge_julia (flam3_iter_helper *f, double weight) {
    
    sincos(a,&sa,&ca);
 
-   f->p0 += r * ca;
-   f->p1 += r * sa;
+   return r * (double2) { ca, sa };
 }
 
-static void var79_wedge_sph (flam3_iter_helper *f, double weight) {
+static double2 var79_wedge_sph (flam3_iter_helper *f, double weight) {
    
    /* Wedge_sph from apo plugins pack */
 
@@ -1707,12 +1628,11 @@ static void var79_wedge_sph (flam3_iter_helper *f, double weight) {
    sincos(a,&sa,&ca);   
    r = weight * (r + f->xform->wedge_sph_hole);
    
-   f->p0 += r*ca;
-   f->p1 += r*sa;
+   return r * (double2) { ca, sa };
 
 }
 
-static void var80_whorl (flam3_iter_helper *f, double weight) {
+static double2 var80_whorl (flam3_iter_helper *f, double weight) {
    
    /* whorl from apo plugins pack */
    
@@ -1732,216 +1652,200 @@ static void var80_whorl (flam3_iter_helper *f, double weight) {
    
    sincos(a,&sa,&ca);
    
-   f->p0 += weight*r*ca;
-   f->p1 += weight*r*sa;
+   return weight * r * (double2) { ca, sa };
 
 }
 
-static void var81_waves2 (flam3_iter_helper *f, double weight) {
+static double2 var81_waves2 (flam3_iter_helper *f, double weight) {
    
    /* waves2 from Joel F */
    
-   f->p0 += weight*(f->tx + f->xform->waves2_scalex*sin(f->ty * f->xform->waves2_freqx));
-   f->p1 += weight*(f->ty + f->xform->waves2_scaley*sin(f->tx * f->xform->waves2_freqy));
+   return weight * (f->t + (double2) {
+                   f->xform->waves2_scalex*sin(f->t[1] * f->xform->waves2_freqx),
+                   f->xform->waves2_scaley*sin(f->t[0] * f->xform->waves2_freqy),
+				   });
 
 }
 
 /* complex vars by cothe */
 /* exp log sin cos tan sec csc cot sinh cosh tanh sech csch coth */
 
-static void var82_exp (flam3_iter_helper *f, double weight) {
+static double2 var82_exp (flam3_iter_helper *f, double weight) {
    //Exponential EXP
-   double expe = exp(f->tx);
+   double expe = exp(f->t[0]);
    double expcos,expsin;
-   sincos(f->ty,&expsin,&expcos);
-   f->p0 += weight * expe * expcos;
-   f->p1 += weight * expe * expsin;
+   sincos(f->t[1],&expsin,&expcos);
+   return weight * expe * (double2) { expcos, expsin };
 }
         
-static void var83_log (flam3_iter_helper *f, double weight) {
+static double2 var83_log (flam3_iter_helper *f, double weight) {
    //Natural Logarithm LOG
    // needs precalc_atanyx and precalc_sumsq
-   f->p0 += weight * 0.5 * log(f->precalc_sumsq);
-   f->p1 += weight * f->precalc_atanyx;
+   return weight * (double2) { 0.5 * log(f->precalc_sumsq), f->precalc_atanyx };
 }
 
-static void var84_sin (flam3_iter_helper *f, double weight) {
+static double2 var84_sin (flam3_iter_helper *f, double weight) {
    //Sine SIN
    double sinsin,sinacos,sinsinh,sincosh;
-   sincos(f->tx,&sinsin,&sinacos);
-   sinsinh = sinh(f->ty);
-   sincosh = cosh(f->ty);
-   f->p0 += weight * sinsin * sincosh;
-   f->p1 += weight * sinacos * sinsinh;
+   sincos(f->t[0],&sinsin,&sinacos);
+   sinsinh = sinh(f->t[1]);
+   sincosh = cosh(f->t[1]);
+   return weight * (double2) { sinsin * sincosh, sinacos * sinsinh };
 }
 
-static void var85_cos (flam3_iter_helper *f, double weight) {
+static double2 var85_cos (flam3_iter_helper *f, double weight) {
    //Cosine COS
    double cossin,coscos,cossinh,coscosh;
-   sincos(f->tx,&cossin,&coscos);
-   cossinh = sinh(f->ty);
-   coscosh = cosh(f->ty);
-   f->p0 += weight * coscos * coscosh;
-   f->p1 -= weight * cossin * cossinh;
+   sincos(f->t[0],&cossin,&coscos);
+   cossinh = sinh(f->t[1]);
+   coscosh = cosh(f->t[1]);
+   return weight * (double2) { coscos * coscosh, cossin * cossinh };
 }
 
-static void var86_tan (flam3_iter_helper *f, double weight) {
+static double2 var86_tan (flam3_iter_helper *f, double weight) {
    //Tangent TAN
    double tansin,tancos,tansinh,tancosh;
    double tanden;
-   sincos(2*f->tx,&tansin,&tancos);
-   tansinh = sinh(2.0*f->ty);
-   tancosh = cosh(2.0*f->ty);
+   sincos(2*f->t[0],&tansin,&tancos);
+   tansinh = sinh(2.0*f->t[1]);
+   tancosh = cosh(2.0*f->t[1]);
    tanden = 1.0/(tancos + tancosh);
-   f->p0 += weight * tanden * tansin;
-   f->p1 += weight * tanden * tansinh;
+   return weight * tanden * (double2) { tansin, tansinh };
 }
 
-static void var87_sec (flam3_iter_helper *f, double weight) {
+static double2 var87_sec (flam3_iter_helper *f, double weight) {
    //Secant SEC
    double secsin,seccos,secsinh,seccosh;
    double secden;
-   sincos(f->tx,&secsin,&seccos);
-   secsinh = sinh(f->ty);
-   seccosh = cosh(f->ty);
-   secden = 2.0/(cos(2*f->tx) + cosh(2*f->ty));
-   f->p0 += weight * secden * seccos * seccosh;
-   f->p1 += weight * secden * secsin * secsinh;
+   sincos(f->t[0],&secsin,&seccos);
+   secsinh = sinh(f->t[1]);
+   seccosh = cosh(f->t[1]);
+   secden = 2.0/(cos(2*f->t[0]) + cosh(2*f->t[1]));
+   return weight * secden * (double2) { seccos * seccosh, secsin * secsinh };
 }
 
-static void var88_csc (flam3_iter_helper *f, double weight) {
+static double2 var88_csc (flam3_iter_helper *f, double weight) {
    //Cosecant CSC
    double cscsin,csccos,cscsinh,csccosh;
    double cscden;
-   sincos(f->tx,&cscsin,&csccos);
-   cscsinh = sinh(f->ty);
-   csccosh = cosh(f->ty);
-   cscden = 2.0/(cosh(2.0*f->ty) - cos(2.0*f->tx));
-   f->p0 += weight * cscden * cscsin * csccosh;
-   f->p1 -= weight * cscden * csccos * cscsinh;
+   sincos(f->t[0],&cscsin,&csccos);
+   cscsinh = sinh(f->t[1]);
+   csccosh = cosh(f->t[1]);
+   cscden = 2.0/(cosh(2.0*f->t[1]) - cos(2.0*f->t[0]));
+   return weight * cscden * (double2) { cscsin * csccosh, csccos * cscsinh };
 }
 
-static void var89_cot (flam3_iter_helper *f, double weight) {
+static double2 var89_cot (flam3_iter_helper *f, double weight) {
    //Cotangent COT
    double cotsin,cotcos,cotsinh,cotcosh;
    double cotden;
-   sincos(2.0*f->tx,&cotsin,&cotcos);
-   cotsinh = sinh(2.0*f->ty);
-   cotcosh = cosh(2.0*f->ty);
+   sincos(2.0*f->t[0],&cotsin,&cotcos);
+   cotsinh = sinh(2.0*f->t[1]);
+   cotcosh = cosh(2.0*f->t[1]);
    cotden = 1.0/(cotcosh - cotcos);
-   f->p0 += weight * cotden * cotsin;
-   f->p1 += weight * cotden * -1 * cotsinh;
+   return weight * cotden * (double2) { cotsin, -1.0 * cotsinh };
 }
 
-static void var90_sinh (flam3_iter_helper *f, double weight) {
+static double2 var90_sinh (flam3_iter_helper *f, double weight) {
    //Hyperbolic Sine SINH
    double sinhsin,sinhcos,sinhsinh,sinhcosh;
-   sincos(f->ty,&sinhsin,&sinhcos);
-   sinhsinh = sinh(f->tx);
-   sinhcosh = cosh(f->tx);
-   f->p0 += weight * sinhsinh * sinhcos;
-   f->p1 += weight * sinhcosh * sinhsin;
+   sincos(f->t[1],&sinhsin,&sinhcos);
+   sinhsinh = sinh(f->t[0]);
+   sinhcosh = cosh(f->t[0]);
+   return weight * (double2) { sinhsinh * sinhcos, sinhcosh * sinhsin };
 }
 
-static void var91_cosh (flam3_iter_helper *f, double weight) {
+static double2 var91_cosh (flam3_iter_helper *f, double weight) {
    //Hyperbolic Cosine COSH
    double coshsin,coshcos,coshsinh,coshcosh;
-   sincos(f->ty,&coshsin,&coshcos);
-   coshsinh = sinh(f->tx);
-   coshcosh = cosh(f->tx);
-   f->p0 += weight * coshcosh * coshcos;
-   f->p1 += weight * coshsinh * coshsin;
+   sincos(f->t[1],&coshsin,&coshcos);
+   coshsinh = sinh(f->t[0]);
+   coshcosh = cosh(f->t[0]);
+   return weight * (double2) { coshcosh * coshcos, coshsinh * coshsin };
 }
 
-static void var92_tanh (flam3_iter_helper *f, double weight) {
+static double2 var92_tanh (flam3_iter_helper *f, double weight) {
    //Hyperbolic Tangent TANH
    double tanhsin,tanhcos,tanhsinh,tanhcosh;
    double tanhden;
-   sincos(2.0*f->ty,&tanhsin,&tanhcos);
-   tanhsinh = sinh(2.0*f->tx);
-   tanhcosh = cosh(2.0*f->tx);
+   sincos(2.0*f->t[1],&tanhsin,&tanhcos);
+   tanhsinh = sinh(2.0*f->t[0]);
+   tanhcosh = cosh(2.0*f->t[0]);
    tanhden = 1.0/(tanhcos + tanhcosh);
-   f->p0 += weight * tanhden * tanhsinh;
-   f->p1 += weight * tanhden * tanhsin;
+   return weight * tanhden * (double2) { tanhsinh, tanhsin };
 }
 
-static void var93_sech (flam3_iter_helper *f, double weight) {
+static double2 var93_sech (flam3_iter_helper *f, double weight) {
    //Hyperbolic Secant SECH
    double sechsin,sechcos,sechsinh,sechcosh;
    double sechden;
-   sincos(f->ty,&sechsin,&sechcos);
-   sechsinh = sinh(f->tx);
-   sechcosh = cosh(f->tx);
-   sechden = 2.0/(cos(2.0*f->ty) + cosh(2.0*f->tx));
-   f->p0 += weight * sechden * sechcos * sechcosh;
-   f->p1 -= weight * sechden * sechsin * sechsinh;
+   sincos(f->t[1],&sechsin,&sechcos);
+   sechsinh = sinh(f->t[0]);
+   sechcosh = cosh(f->t[0]);
+   sechden = 2.0/(cos(2.0*f->t[1]) + cosh(2.0*f->t[0]));
+   return weight * sechden * (double2) { sechcos * sechcosh, sechsin * sechsinh };
 }
 
-static void var94_csch (flam3_iter_helper *f, double weight) {
+static double2 var94_csch (flam3_iter_helper *f, double weight) {
    //Hyperbolic Cosecant CSCH
    double cschsin,cschcos,cschsinh,cschcosh;
    double cschden;
-   sincos(f->ty,&cschsin,&cschcos);
-   cschsinh = sinh(f->tx);
-   cschcosh = cosh(f->tx);
-   cschden = 2.0/(cosh(2.0*f->tx) - cos(2.0*f->ty));
-   f->p0 += weight * cschden * cschsinh * cschcos;
-   f->p1 -= weight * cschden * cschcosh * cschsin;
+   sincos(f->t[1],&cschsin,&cschcos);
+   cschsinh = sinh(f->t[0]);
+   cschcosh = cosh(f->t[0]);
+   cschden = 2.0/(cosh(2.0*f->t[0]) - cos(2.0*f->t[1]));
+   return weight * cschden * (double2) { cschsinh * cschcos, cschcosh * cschsin };
 }
 
-static void var95_coth (flam3_iter_helper *f, double weight) {
+static double2 var95_coth (flam3_iter_helper *f, double weight) {
    //Hyperbolic Cotangent COTH
    double cothsin,cothcos,cothsinh,cothcosh;
    double cothden;
-   sincos(2.0*f->ty,&cothsin,&cothcos);
-   cothsinh = sinh(2.0*f->tx);
-   cothcosh = cosh(2.0*f->tx);
+   sincos(2.0*f->t[1],&cothsin,&cothcos);
+   cothsinh = sinh(2.0*f->t[0]);
+   cothcosh = cosh(2.0*f->t[0]);
    cothden = 1.0/(cothcosh - cothcos);
-   f->p0 += weight * cothden * cothsinh;
-   f->p1 += weight * cothden * cothsin;
+   return weight * cothden * (double2) { cothsinh, cothsin };
 }
 
-static void var96_auger (flam3_iter_helper *f, double weight) {
+static double2 var96_auger (flam3_iter_helper *f, double weight) {
 
     // Auger, by Xyrus01
-    double s = sin(f->xform->auger_freq * f->tx);
-    double t = sin(f->xform->auger_freq * f->ty);
-    double dy = f->ty + f->xform->auger_weight*(f->xform->auger_scale*s/2.0 + fabs(f->ty)*s);
-    double dx = f->tx + f->xform->auger_weight*(f->xform->auger_scale*t/2.0 + fabs(f->tx)*t);
+    double s = sin(f->xform->auger_freq * f->t[0]);
+    double t = sin(f->xform->auger_freq * f->t[1]);
+    double dy = f->t[1] + f->xform->auger_weight*(f->xform->auger_scale*s/2.0 + fabs(f->t[1])*s);
+    double dx = f->t[0] + f->xform->auger_weight*(f->xform->auger_scale*t/2.0 + fabs(f->t[0])*t);
 
-    f->p0 += weight * (f->tx + f->xform->auger_sym*(dx-f->tx));
-    f->p1 += weight * dy;
+	return weight * (double2) { f->t[0] + f->xform->auger_sym*(dx-f->t[0]), dy };
 }
 
-static void var97_flux (flam3_iter_helper *f, double weight) {
+static double2 var97_flux (flam3_iter_helper *f, double weight) {
 
     // Flux, by meckie
-    double xpw = f->tx + weight;
-    double xmw = f->tx - weight;
-    double avgr = weight * (2 + f->xform->flux_spread) * sqrt( sqrt(f->ty*f->ty + xpw*xpw) / sqrt(f->ty*f->ty + xmw*xmw));
-    double avga = ( atan2(f->ty, xmw) - atan2(f->ty,xpw) ) * 0.5;
+    double xpw = f->t[0] + weight;
+    double xmw = f->t[0] - weight;
+    double avgr = weight * (2 + f->xform->flux_spread) * sqrt( sqrt(f->t[1]*f->t[1] + xpw*xpw) / sqrt(f->t[1]*f->t[1] + xmw*xmw));
+    double avga = ( atan2(f->t[1], xmw) - atan2(f->t[1],xpw) ) * 0.5;
 
     double s = sin(avga);
     double c = cos(avga);
 
-    f->p0 += avgr * cos(avga);
-    f->p1 += avgr * sin(avga);
+    return avgr * (double2) { cos(avga), sin(avga) };
 }
 
-static void var98_mobius (flam3_iter_helper *f, double weight) {
+static double2 var98_mobius (flam3_iter_helper *f, double weight) {
 
     // Mobius, by eralex
     double re_u, im_u, re_v, im_v, rad_v;
 
-    re_u = f->xform->mobius_re_a * f->tx - f->xform->mobius_im_a * f->ty + f->xform->mobius_re_b;
-    im_u = f->xform->mobius_re_a * f->ty + f->xform->mobius_im_a * f->tx + f->xform->mobius_im_b;
-    re_v = f->xform->mobius_re_c * f->tx - f->xform->mobius_im_c * f->ty + f->xform->mobius_re_d;
-    im_v = f->xform->mobius_re_c * f->ty + f->xform->mobius_im_c * f->tx + f->xform->mobius_im_d;
+    re_u = f->xform->mobius_re_a * f->t[0] - f->xform->mobius_im_a * f->t[1] + f->xform->mobius_re_b;
+    im_u = f->xform->mobius_re_a * f->t[1] + f->xform->mobius_im_a * f->t[0] + f->xform->mobius_im_b;
+    re_v = f->xform->mobius_re_c * f->t[0] - f->xform->mobius_im_c * f->t[1] + f->xform->mobius_re_d;
+    im_v = f->xform->mobius_re_c * f->t[1] + f->xform->mobius_im_c * f->t[0] + f->xform->mobius_im_d;
 
     rad_v = weight / (re_v*re_v + im_v*im_v);
 
-    f->p0 += rad_v * (re_u*re_v + im_u*im_v);
-    f->p1 += rad_v * (im_u*re_v - re_u*im_v);
+	return rad_v * (double2) { (re_u*re_v + im_u*im_v), (im_u*re_v - re_u*im_v) };
 }
     
 
@@ -2150,38 +2054,39 @@ int apply_xform(flam3_genome *cp, int fn, double *p, double *q, randctx *rc)
 
    //fprintf(stderr,"%d : %f %f %f\n",fn,cp->xform[fn].c[0][0],cp->xform[fn].c[1][0],cp->xform[fn].c[2][0]);
 
-   f.tx = cp->xform[fn].c[0][0] * p[0] + cp->xform[fn].c[1][0] * p[1] + cp->xform[fn].c[2][0];
-   f.ty = cp->xform[fn].c[0][1] * p[0] + cp->xform[fn].c[1][1] * p[1] + cp->xform[fn].c[2][1];
+   f.t = (double2) {
+         cp->xform[fn].c[0][0] * p[0] + cp->xform[fn].c[1][0] * p[1] + cp->xform[fn].c[2][0],
+         cp->xform[fn].c[0][1] * p[0] + cp->xform[fn].c[1][1] * p[1] + cp->xform[fn].c[2][1]
+		 };
 
    /* Pre-xforms go here, and modify the f.tx and f.ty values */
    if (cp->xform[fn].has_preblur!=0.0)
       var67_pre_blur(&f, cp->xform[fn].has_preblur);
 
    /* Always calculate sumsq and sqrt */
-   f.precalc_sumsq = f.tx*f.tx + f.ty*f.ty;
+   f.precalc_sumsq = f.t[0]*f.t[0] + f.t[1]*f.t[1];
    f.precalc_sqrt = sqrt(f.precalc_sumsq);
 
    /* Check to see if we can precalculate any parts */
    /* Precalculate atanxy, sin, cos */
    if (cp->xform[fn].precalc_atan_xy_flag > 0) {
-      f.precalc_atan = atan2(f.tx,f.ty);
+      f.precalc_atan = atan2(f.t[0],f.t[1]);
    }
    
    if (cp->xform[fn].precalc_angles_flag > 0) {
-      f.precalc_sina = f.tx / f.precalc_sqrt;
-      f.precalc_cosa = f.ty / f.precalc_sqrt;
+      f.precalc_sina = f.t[0] / f.precalc_sqrt;
+      f.precalc_cosa = f.t[1] / f.precalc_sqrt;
    }
 
    /* Precalc atanyx */
    if (cp->xform[fn].precalc_atan_yx_flag > 0) {
-      f.precalc_atanyx = atan2(f.ty,f.tx);
+      f.precalc_atanyx = atan2(f.t[1],f.t[0]);
    }
 
-   f.p0 = 0.0;
-   f.p1 = 0.0;
    f.xform = &(cp->xform[fn]);
 
    
+   double2 accum = (double2) {0.0, 0.0};
    for (var_n=0; var_n < cp->xform[fn].num_active_vars; var_n++) {
       
       weight = cp->xform[fn].active_var_weights[var_n];
@@ -2189,211 +2094,211 @@ int apply_xform(flam3_genome *cp, int fn, double *p, double *q, randctx *rc)
       switch (cp->xform[fn].varFunc[var_n]) {
  
          case (VAR_LINEAR):
-            var0_linear(&f, weight); break;               
+                accum += var0_linear(&f, weight); break;               
          case (VAR_SINUSOIDAL):
-                var1_sinusoidal(&f, weight); break;
+                accum += var1_sinusoidal(&f, weight); break;
          case (VAR_SPHERICAL):
-                var2_spherical(&f, weight); break;
+                accum += var2_spherical(&f, weight); break;
          case (VAR_SWIRL):
-                var3_swirl(&f, weight); break;
+                accum += var3_swirl(&f, weight); break;
          case (VAR_HORSESHOE):
-                var4_horseshoe(&f, weight); break;               
+                accum += var4_horseshoe(&f, weight); break;               
          case (VAR_POLAR): 
-                var5_polar(&f, weight); break;
+                accum += var5_polar(&f, weight); break;
          case (VAR_HANDKERCHIEF):
-                var6_handkerchief(&f, weight); break;               
+                accum += var6_handkerchief(&f, weight); break;               
          case (VAR_HEART):
-                var7_heart(&f, weight); break;               
+                accum += var7_heart(&f, weight); break;               
          case (VAR_DISC):
-                var8_disc(&f, weight); break;               
+                accum += var8_disc(&f, weight); break;               
          case (VAR_SPIRAL):
-                var9_spiral(&f, weight); break;               
+                accum += var9_spiral(&f, weight); break;               
          case (VAR_HYPERBOLIC):
-                var10_hyperbolic(&f, weight); break;               
+                accum += var10_hyperbolic(&f, weight); break;               
          case (VAR_DIAMOND):
-                var11_diamond(&f, weight); break;               
+                accum += var11_diamond(&f, weight); break;               
          case (VAR_EX):
-                var12_ex(&f, weight); break;               
+                accum += var12_ex(&f, weight); break;               
          case (VAR_JULIA): 
-                var13_julia(&f, weight); break;               
+                accum += var13_julia(&f, weight); break;               
          case (VAR_BENT):
-                var14_bent(&f, weight); break;
+                accum += var14_bent(&f, weight); break;
          case (VAR_WAVES):
-                var15_waves(&f, weight); break;
+                accum += var15_waves(&f, weight); break;
          case (VAR_FISHEYE): 
-                var16_fisheye(&f, weight); break;
+                accum += var16_fisheye(&f, weight); break;
          case (VAR_POPCORN):
-                var17_popcorn(&f, weight); break;
+                accum += var17_popcorn(&f, weight); break;
          case (VAR_EXPONENTIAL):
-                var18_exponential(&f, weight); break;
+                accum += var18_exponential(&f, weight); break;
          case (VAR_POWER): 
-                var19_power(&f, weight); break;               
+                accum += var19_power(&f, weight); break;               
          case (VAR_COSINE):
-                var20_cosine(&f, weight); break;
+                accum += var20_cosine(&f, weight); break;
          case (VAR_RINGS):
-                var21_rings(&f, weight); break;
+                accum += var21_rings(&f, weight); break;
          case (VAR_FAN):
-                var22_fan(&f, weight); break;
+                accum += var22_fan(&f, weight); break;
          case (VAR_BLOB):
-                var23_blob(&f, weight); break;               
+                accum += var23_blob(&f, weight); break;               
          case (VAR_PDJ):
-                var24_pdj(&f, weight); break;
+                accum += var24_pdj(&f, weight); break;
          case (VAR_FAN2):
-                var25_fan2(&f, weight); break;
+                accum += var25_fan2(&f, weight); break;
          case (VAR_RINGS2): 
-                var26_rings2(&f, weight); break;              
+                accum += var26_rings2(&f, weight); break;              
          case (VAR_EYEFISH): 
-                var27_eyefish(&f, weight); break;             
+                accum += var27_eyefish(&f, weight); break;             
          case (VAR_BUBBLE):
-                var28_bubble(&f, weight); break;
+                accum += var28_bubble(&f, weight); break;
          case (VAR_CYLINDER):
-                var29_cylinder(&f, weight); break;
+                accum += var29_cylinder(&f, weight); break;
          case (VAR_PERSPECTIVE):
-                var30_perspective(&f, weight); break;
+                accum += var30_perspective(&f, weight); break;
          case (VAR_NOISE):
-                var31_noise(&f, weight); break;
+                accum += var31_noise(&f, weight); break;
          case (VAR_JULIAN): 
-                var32_juliaN_generic(&f, weight); break;            
+                accum += var32_juliaN_generic(&f, weight); break;            
          case (VAR_JULIASCOPE):
-                var33_juliaScope_generic(&f, weight);break;
+                accum += var33_juliaScope_generic(&f, weight);break;
          case (VAR_BLUR):
-                var34_blur(&f, weight); break;
+                accum += var34_blur(&f, weight); break;
          case (VAR_GAUSSIAN_BLUR):
-                var35_gaussian(&f, weight); break;
+                accum += var35_gaussian(&f, weight); break;
          case (VAR_RADIAL_BLUR):
-                var36_radial_blur(&f, weight); break;
+                accum += var36_radial_blur(&f, weight); break;
          case (VAR_PIE):
-                var37_pie(&f, weight); break;
+                accum += var37_pie(&f, weight); break;
          case (VAR_NGON):
-                var38_ngon(&f, weight); break;          
+                accum += var38_ngon(&f, weight); break;          
          case (VAR_CURL):
-                var39_curl(&f, weight); break;
+                accum += var39_curl(&f, weight); break;
          case (VAR_RECTANGLES):
-                var40_rectangles(&f, weight); break;
+                accum += var40_rectangles(&f, weight); break;
          case (VAR_ARCH):
-                var41_arch(&f, weight); break;
+                accum += var41_arch(&f, weight); break;
          case (VAR_TANGENT):
-                var42_tangent(&f, weight); break;
+                accum += var42_tangent(&f, weight); break;
          case (VAR_SQUARE):
-                var43_square(&f, weight); break;
+                accum += var43_square(&f, weight); break;
          case (VAR_RAYS):
-                var44_rays(&f, weight); break;
+                accum += var44_rays(&f, weight); break;
          case (VAR_BLADE): 
-                var45_blade(&f, weight); break;              
+                accum += var45_blade(&f, weight); break;              
          case (VAR_SECANT2): 
-                var46_secant2(&f, weight); break;               
+                accum += var46_secant2(&f, weight); break;               
          case (VAR_TWINTRIAN): 
-                var47_twintrian(&f, weight); break;               
+                accum += var47_twintrian(&f, weight); break;               
          case (VAR_CROSS):
-                var48_cross(&f, weight); break;
+                accum += var48_cross(&f, weight); break;
          case (VAR_DISC2):
-                var49_disc2(&f, weight); break;            
+                accum += var49_disc2(&f, weight); break;            
          case (VAR_SUPER_SHAPE):
-                var50_supershape(&f, weight); break;
+                accum += var50_supershape(&f, weight); break;
          case (VAR_FLOWER):
-                var51_flower(&f, weight); break;            
+                accum += var51_flower(&f, weight); break;            
          case (VAR_CONIC):
-                var52_conic(&f, weight); break;
+                accum += var52_conic(&f, weight); break;
          case (VAR_PARABOLA): 
-                var53_parabola(&f, weight); break;              
+                accum += var53_parabola(&f, weight); break;              
          case (VAR_BENT2): 
-                var54_bent2(&f, weight); break;              
+                accum += var54_bent2(&f, weight); break;              
          case (VAR_BIPOLAR): 
-                var55_bipolar(&f, weight); break;              
+                accum += var55_bipolar(&f, weight); break;              
          case (VAR_BOARDERS): 
-                var56_boarders(&f, weight); break;              
+                accum += var56_boarders(&f, weight); break;              
          case (VAR_BUTTERFLY): 
-                var57_butterfly(&f, weight); break;              
+                accum += var57_butterfly(&f, weight); break;              
          case (VAR_CELL): 
-                var58_cell(&f, weight); break;              
+                accum += var58_cell(&f, weight); break;              
          case (VAR_CPOW): 
-                var59_cpow(&f, weight); break;              
+                accum += var59_cpow(&f, weight); break;              
          case (VAR_CURVE): 
-                var60_curve(&f, weight); break;              
+                accum += var60_curve(&f, weight); break;              
          case (VAR_EDISC): 
-                var61_edisc(&f, weight); break;              
+                accum += var61_edisc(&f, weight); break;              
          case (VAR_ELLIPTIC): 
-                var62_elliptic(&f, weight); break;              
+                accum += var62_elliptic(&f, weight); break;              
          case (VAR_ESCHER): 
-                var63_escher(&f, weight); break;              
+                accum += var63_escher(&f, weight); break;              
          case (VAR_FOCI): 
-                var64_foci(&f, weight); break;              
+                accum += var64_foci(&f, weight); break;              
          case (VAR_LAZYSUSAN): 
-                var65_lazysusan(&f, weight); break;              
+                accum += var65_lazysusan(&f, weight); break;              
          case (VAR_LOONIE): 
-                var66_loonie(&f, weight); break;              
+                accum += var66_loonie(&f, weight); break;              
          case (VAR_MODULUS): 
-                var68_modulus(&f, weight); break;              
+                accum += var68_modulus(&f, weight); break;              
          case (VAR_OSCILLOSCOPE): 
-                var69_oscope(&f, weight); break;              
+                accum += var69_oscope(&f, weight); break;              
          case (VAR_POLAR2): 
-                var70_polar2(&f, weight); break;              
+                accum += var70_polar2(&f, weight); break;              
          case (VAR_POPCORN2): 
-                var71_popcorn2(&f, weight); break;              
+                accum += var71_popcorn2(&f, weight); break;              
          case (VAR_SCRY): 
-                var72_scry(&f, weight); break;              
+                accum += var72_scry(&f, weight); break;              
          case (VAR_SEPARATION): 
-                var73_separation(&f, weight); break;              
+                accum += var73_separation(&f, weight); break;              
          case (VAR_SPLIT):
-                var74_split(&f, weight); break;
+                accum += var74_split(&f, weight); break;
          case (VAR_SPLITS):
-                var75_splits(&f, weight); break;
+                accum += var75_splits(&f, weight); break;
          case (VAR_STRIPES):
-                var76_stripes(&f, weight); break;
+                accum += var76_stripes(&f, weight); break;
          case (VAR_WEDGE):
-                var77_wedge(&f, weight); break;
+                accum += var77_wedge(&f, weight); break;
          case (VAR_WEDGE_JULIA):
-                var78_wedge_julia(&f, weight); break;
+                accum += var78_wedge_julia(&f, weight); break;
          case (VAR_WEDGE_SPH):
-                var79_wedge_sph(&f, weight); break;
+                accum += var79_wedge_sph(&f, weight); break;
          case (VAR_WHORL):
-                var80_whorl(&f, weight); break;
+                accum += var80_whorl(&f, weight); break;
          case (VAR_WAVES2):
-                var81_waves2(&f, weight); break;
+                accum += var81_waves2(&f, weight); break;
          case (VAR_EXP):
-                var82_exp(&f, weight); break;
+                accum += var82_exp(&f, weight); break;
          case (VAR_LOG):
-                var83_log(&f, weight); break;
+                accum += var83_log(&f, weight); break;
          case (VAR_SIN):
-                var84_sin(&f, weight); break;
+                accum += var84_sin(&f, weight); break;
          case (VAR_COS):
-                var85_cos(&f, weight); break;
+                accum += var85_cos(&f, weight); break;
          case (VAR_TAN):
-                var86_tan(&f, weight); break;
+                accum += var86_tan(&f, weight); break;
          case (VAR_SEC):
-                var87_sec(&f, weight); break;
+                accum += var87_sec(&f, weight); break;
          case (VAR_CSC):
-                var88_csc(&f, weight); break;
+                accum += var88_csc(&f, weight); break;
          case (VAR_COT):
-                var89_cot(&f, weight); break;
+                accum += var89_cot(&f, weight); break;
          case (VAR_SINH):
-                var90_sinh(&f, weight); break;
+                accum += var90_sinh(&f, weight); break;
          case (VAR_COSH):
-                var91_cosh(&f, weight); break;
+                accum += var91_cosh(&f, weight); break;
          case (VAR_TANH):
-                var92_tanh(&f, weight); break;
+                accum += var92_tanh(&f, weight); break;
          case (VAR_SECH):
-                var93_sech(&f, weight); break;
+                accum += var93_sech(&f, weight); break;
          case (VAR_CSCH):
-                var94_csch(&f, weight); break;
+                accum += var94_csch(&f, weight); break;
          case (VAR_COTH):
-                var95_coth(&f, weight); break;
+                accum += var95_coth(&f, weight); break;
          case (VAR_AUGER):
-                var96_auger(&f, weight); break;
+                accum += var96_auger(&f, weight); break;
          case (VAR_FLUX):
-                var97_flux(&f, weight); break;
+                accum += var97_flux(&f, weight); break;
          case (VAR_MOBIUS):
-                var98_mobius(&f, weight); break;
+                accum += var98_mobius(&f, weight); break;
       }
 
    }
    /* apply the post transform */
    if (cp->xform[fn].has_post) {
-      q[0] = cp->xform[fn].post[0][0] * f.p0 + cp->xform[fn].post[1][0] * f.p1 + cp->xform[fn].post[2][0];
-      q[1] = cp->xform[fn].post[0][1] * f.p0 + cp->xform[fn].post[1][1] * f.p1 + cp->xform[fn].post[2][1];
+      q[0] = cp->xform[fn].post[0][0] * accum[0] + cp->xform[fn].post[1][0] * accum[1] + cp->xform[fn].post[2][0];
+      q[1] = cp->xform[fn].post[0][1] * accum[0] + cp->xform[fn].post[1][1] * accum[1] + cp->xform[fn].post[2][1];
    } else {
-      q[0] = f.p0;
-      q[1] = f.p1;
+      q[0] = accum[0];
+      q[1] = accum[1];
    }
 
    /* Check for badvalues and return randoms if bad */
