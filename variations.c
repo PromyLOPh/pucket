@@ -1237,7 +1237,7 @@ static double2 var58_cell (const double2 in, const flam3_iter_helper * const f, 
       }
    }
    
-   return weight * (a + b*f->xform->cell_size);
+   return weight * (a + b*f->xform->cell_size) * (double2) { 1.0, -1.0 };
 }
 
 static double2 var59_cpow (const double2 in, const flam3_iter_helper * const f, double weight) {
@@ -1713,7 +1713,7 @@ static double2 var85_cos (const double2 in, const flam3_iter_helper * const f, d
    sincos(in[0],&cossin,&coscos);
    cossinh = sinh(in[1]);
    coscosh = cosh(in[1]);
-   return weight * (double2) { coscos * coscosh, cossin * cossinh };
+   return weight * (double2) { coscos * coscosh, -1.0 * cossin * cossinh };
 }
 
 static double2 var86_tan (const double2 in, const flam3_iter_helper * const f, double weight) {
@@ -1746,7 +1746,7 @@ static double2 var88_csc (const double2 in, const flam3_iter_helper * const f, d
    cscsinh = sinh(in[1]);
    csccosh = cosh(in[1]);
    cscden = 2.0/(cosh(2.0*in[1]) - cos(2.0*in[0]));
-   return weight * cscden * (double2) { cscsin * csccosh, csccos * cscsinh };
+   return weight * cscden * (double2) { cscsin * csccosh, -1.0 * csccos * cscsinh };
 }
 
 static double2 var89_cot (const double2 in, const flam3_iter_helper * const f, double weight) {
@@ -1797,7 +1797,7 @@ static double2 var93_sech (const double2 in, const flam3_iter_helper * const f, 
    sechsinh = sinh(in[0]);
    sechcosh = cosh(in[0]);
    sechden = 2.0/(cos(2.0*in[1]) + cosh(2.0*in[0]));
-   return weight * sechden * (double2) { sechcos * sechcosh, sechsin * sechsinh };
+   return weight * sechden * (double2) { sechcos * sechcosh, -1.0 * sechsin * sechsinh };
 }
 
 static double2 var94_csch (const double2 in, const flam3_iter_helper * const f, double weight) {
@@ -1808,7 +1808,7 @@ static double2 var94_csch (const double2 in, const flam3_iter_helper * const f, 
    cschsinh = sinh(in[0]);
    cschcosh = cosh(in[0]);
    cschden = 2.0/(cosh(2.0*in[0]) - cos(2.0*in[1]));
-   return weight * cschden * (double2) { cschsinh * cschcos, cschcosh * cschsin };
+   return weight * cschden * (double2) { cschsinh * cschcos, -1.0 * cschcosh * cschsin };
 }
 
 static double2 var95_coth (const double2 in, const flam3_iter_helper * const f, double weight) {
