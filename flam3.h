@@ -207,11 +207,12 @@ typedef struct {
 
 } flam3_image_store;
 
+#include "vector.h"
 
 typedef struct xform {
    double var[flam3_nvariations];   /* interp coefs between variations */
-   double c[3][2];      /* the coefs to the affine part of the function */
-   double post[3][2];   /* the post transform */
+   double2 c[3];      /* the coefs to the affine part of the function */
+   double2 post[3];   /* the post transform */
    double density;      /* probability that this function is chosen. 0 - 1 */
    double color;     /* color coords for this function. 0 - 1 */
    double color_speed;  /* scaling factor on color added to current iteration */
@@ -420,8 +421,7 @@ typedef struct xform {
    double radialBlur_zoomvar;
 
    /* Precalculate these values for waves */
-   double waves_dx2;
-   double waves_dy2;
+   double2 waves_d2;
 
    /* If disc2 is used, precalculate these values */
    double disc2_sinadd;

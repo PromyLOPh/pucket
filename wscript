@@ -26,5 +26,5 @@ def build(bld):
     bld.program (features='c cprogram', source='flam3-render.c', target='flam3-render', use='libflam3 xml2 jpeg png amdlibm pthread', includes='.')
     bld.program (features='c cprogram', source='flam3-genome.c', target='flam3-genome', use='libflam3 xml2 png amdlibm pthread', includes='.')
     bld.program (features='c cprogram', source='flam3-animate.c', target='flam3-animate', use='libflam3 xml2 png amdlibm pthread', includes='.')
-    bld.program (features='c cprogram', source='flam3-convert.c', target='flam3-convert', use='libflam3 xml2 png amdlibm pthread', includes='.')
+    #bld.program (features='c cprogram', source='flam3-convert.c', target='flam3-convert', use='libflam3 xml2 png amdlibm pthread', includes='.')
 

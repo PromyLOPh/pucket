@@ -37,8 +37,6 @@ extern void sincos(double x, double *s, double *c);
 #define trunc (int)
 #endif
 
-typedef double double2 __attribute__ ((vector_size (sizeof (double)*2)));
-
 typedef struct {
    double precalc_atan, precalc_sina;  /* Precalculated, if needed */
    double precalc_cosa, precalc_sqrt;
@@ -405,12 +403,11 @@ static double2 var15_waves (const double2 in, const flam3_iter_helper * const f,
       p[0] += v * nx;
       p[1] += v * ny; */
 
-   const double2 c1 = (double2) {f->xform->c[1][0], f->xform->c[1][1] };
+   const double2 c1 = f->xform->c[1];
+   const double2 inswap = (double2) { in[1], in[0] };
+   const double2 a = inswap * f->xform->waves_d2;
 
-   const double2 n = in + c1 * (double2) {
-                                 sin( in[1] * f->xform->waves_dx2 ),
-                                 sin( in[0] * f->xform->waves_dy2 ),
-								 };
+   const double2 n = in + c1 * (double2) { sin(a[0]), sin(a[1]), };
 
    return weight * n;
 }
@@ -447,10 +444,7 @@ static double2 var17_popcorn (const double2 in, const flam3_iter_helper * const 
    const double dx = tan(3.0*in[1]);
    const double dy = tan(3.0*in[0]);
 
-   const double2 n = in + (double2) {
-                            f->xform->c[2][0] * sin(dx),
-							f->xform->c[2][1] * sin(dy)
-                            };
+   const double2 n = in + f->xform->c[2] * (double2) { sin(dx), sin(dy) };
 
    return weight * n;
 }
@@ -1893,11 +1887,9 @@ static void radial_blur_precalc(flam3_xform *xf) {
 }
 
 static void waves_precalc(flam3_xform *xf) {
-   double dx = xf->c[2][0];
-   double dy = xf->c[2][1];
+   const double2 d = xf->c[2];
 
-   xf->waves_dx2 = 1.0/(dx * dx + EPS);
-   xf->waves_dy2 = 1.0/(dy * dy + EPS);
+   xf->waves_d2 = 1.0/(d * d + EPS);
 }
 
 static void disc2_precalc(flam3_xform *xf) {
@@ -2051,8 +2043,17 @@ int prepare_precalc_flags(flam3_genome *cp) {
    return(0);
 }
 
+/*	Apply affine coordinate transformation
+ */
+static double2 apply_affine (const double2 in, const double2 matrix[3]) {
+	return matrix[0] * in[0] + matrix[1] * in[1] + matrix[2];
+}
 
-int apply_xform(flam3_genome *cp, int fn, double *p, double *q, randctx *rc)
+static double sum(const double2 in) {
+	return in[0] + in[1];
+}
+
+int apply_xform(flam3_genome *cp, int fn, const double4 p, double4 *q_ret, randctx *rc)
 {
    flam3_iter_helper f;
    int var_n;
@@ -2063,22 +2064,21 @@ int apply_xform(flam3_genome *cp, int fn, double *p, double *q, randctx *rc)
 
    s1 = cp->xform[fn].color_speed;
 
-   q[2] = s1 * cp->xform[fn].color + (1.0-s1) * p[2];
-   q[3] = cp->xform[fn].vis_adjusted;
+   const double2 q23 = (double2) {
+         s1 * cp->xform[fn].color + (1.0-s1) * p[2],
+         cp->xform[fn].vis_adjusted,
+		 };
 
    //fprintf(stderr,"%d : %f %f %f\n",fn,cp->xform[fn].c[0][0],cp->xform[fn].c[1][0],cp->xform[fn].c[2][0]);
 
-   const double2 t = (double2) {
-         cp->xform[fn].c[0][0] * p[0] + cp->xform[fn].c[1][0] * p[1] + cp->xform[fn].c[2][0],
-         cp->xform[fn].c[0][1] * p[0] + cp->xform[fn].c[1][1] * p[1] + cp->xform[fn].c[2][1]
-		 };
+   const double2 t = apply_affine ((double2) { p[0], p[1] }, cp->xform[fn].c);
 
    /* Pre-xforms go here, and modify the f.tx and f.ty values */
    if (cp->xform[fn].has_preblur!=0.0)
       var67_pre_blur(t, &f, cp->xform[fn].has_preblur);
 
    /* Always calculate sumsq and sqrt */
-   f.precalc_sumsq = t[0]*t[0] + t[1]*t[1];
+   f.precalc_sumsq = sum(t*t);
    f.precalc_sqrt = sqrt(f.precalc_sumsq);
 
    /* Check to see if we can precalculate any parts */
@@ -2099,7 +2099,6 @@ int apply_xform(flam3_genome *cp, int fn, double *p, double *q, randctx *rc)
 
    f.xform = &(cp->xform[fn]);
 
-   
    double2 accum = (double2) {0.0, 0.0};
    for (var_n=0; var_n < cp->xform[fn].num_active_vars; var_n++) {
       
@@ -2306,22 +2305,22 @@ int apply_xform(flam3_genome *cp, int fn, double *p, double *q, randctx *rc)
       }
 
    }
+   double2 q01;
    /* apply the post transform */
    if (cp->xform[fn].has_post) {
-      q[0] = cp->xform[fn].post[0][0] * accum[0] + cp->xform[fn].post[1][0] * accum[1] + cp->xform[fn].post[2][0];
-      q[1] = cp->xform[fn].post[0][1] * accum[0] + cp->xform[fn].post[1][1] * accum[1] + cp->xform[fn].post[2][1];
+      q01 = apply_affine (accum, cp->xform[fn].post);
    } else {
-      q[0] = accum[0];
-      q[1] = accum[1];
+      q01 = accum;
    }
 
    /* Check for badvalues and return randoms if bad */
-   if (badvalue(q[0]) || badvalue(q[1])) {
-      q[0] = flam3_random_isaac_11(rc);
-      q[1] = flam3_random_isaac_11(rc);
+   if (badvalue(q01[0]) || badvalue(q01[1])) {
+      *q_ret = (double4) { flam3_random_isaac_11(rc), flam3_random_isaac_11(rc), q23[0], q23[1] };
       return(1);
-   } else
+   } else {
+	  *q_ret = (double4) { q01[0], q01[1], q23[0], q23[1] };
       return(0);
+   }
 
 }
 

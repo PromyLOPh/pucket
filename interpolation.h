@@ -35,11 +35,11 @@ double smoother(double t);
 double get_stagger_coef(double t, double stagger_prc, int num_xforms, int this_xform);
 
 double det_matrix(double s[2][2]);
-int id_matrix(double s[3][2]);
-int zero_matrix(double s[3][2]);
+int id_matrix(double2 s[3]);
+int zero_matrix(double2 s[3]);
 void copy_matrix(double to[3][2], double from[3][2]);
-void clear_matrix(double m[3][2]);
-void sum_matrix(double s, double m1[3][2], double m2[3][2]);
+void clear_matrix(double2 m[3]);
+void sum_matrix(double s, const double2 m1[3], double2 m2[3]);
 void mult_matrix(double s1[2][2], double s2[2][2], double d[2][2]);
 
 int compare_xforms(const void *av, const void *bv);

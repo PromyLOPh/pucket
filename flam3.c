@@ -229,16 +229,13 @@ int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_d
 
 int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned short *xform_distrib, randctx *rc) {
    int i;
-   double p[4], q[4];
+   double4 p, q;
    int consec = 0;
    int badvals = 0;
    int lastxf=0;
    int fn;
    
-   p[0] = samples[0];
-   p[1] = samples[1];
-   p[2] = samples[2];
-   p[3] = samples[3];
+   p = (double4) { samples[0], samples[1], samples[2], samples[3] };
 
    /* Perform precalculations */   
    for (i=0;i<cp->num_xforms;i++)
@@ -252,14 +249,11 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned 
       else
          fn = xform_distrib[ xorshift_step(rc) & CHOOSE_XFORM_GRAIN_M1 ];
       
-      if (apply_xform(cp, fn, p, q, rc)>0) {
+      if (apply_xform(cp, fn, p, &q, rc)>0) {
          consec ++;
          badvals ++;
          if (consec<5) {
-            p[0] = q[0];
-            p[1] = q[1];
-            p[2] = q[2];
-            p[3] = q[3];
+			p = q;
             i -= 4;
             continue;
          } else
@@ -270,17 +264,14 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned 
       /* Store the last used transform */
       lastxf = fn+1;
 
-      p[0] = q[0];
-      p[1] = q[1];
-      p[2] = q[2];
-      p[3] = q[3];
+	  p = q;
 
       if (cp->final_xform_enable == 1) {
          if (cp->xform[cp->final_xform_index].opacity==1 || 
                 flam3_random_isaac_01(rc)<cp->xform[cp->final_xform_index].opacity) {
-             apply_xform(cp, cp->final_xform_index, p, q, rc);
+             apply_xform(cp, cp->final_xform_index, p, &q, rc);
              /* Keep the opacity from the original xform */
-             q[3] = p[3];
+			 q = (double4) { q[0], q[1], q[2], p[3] };
          }
       }
 
@@ -296,6 +287,7 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned 
    return(badvals);
 }
 
+#if 0
 int flam3_xform_preview(flam3_genome *cp, int xi, double range, int numvals, int depth, double *result, randctx *rc) {
 
    /* We will evaluate the 'xi'th xform 'depth' times, over the following values:           */
@@ -345,6 +337,7 @@ int flam3_xform_preview(flam3_genome *cp, int xi, double range, int numvals, int
 
    return(0);
 }         
+#endif
 
 int flam3_colorhist(flam3_genome *cp, int num_batches, randctx *rc, double *hist) {
 

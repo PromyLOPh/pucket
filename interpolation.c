@@ -57,7 +57,7 @@ double det_matrix(double s[2][2]) {
    return s[0][0] * s[1][1] - s[0][1] * s[1][0];
 }
 
-int id_matrix(double s[3][2]) {
+int id_matrix(double2 s[3]) {
    return
       (s[0][0] == 1.0) &&
       (s[0][1] == 0.0) &&
@@ -67,7 +67,7 @@ int id_matrix(double s[3][2]) {
       (s[2][1] == 0.0);
 }
 
-int zero_matrix(double s[3][2]) {
+int zero_matrix(double2 s[3]) {
    return
       (s[0][0] == 0.0) &&
       (s[0][1] == 0.0) &&
@@ -88,23 +88,18 @@ void copy_matrix(double to[3][2], double from[3][2]) {
 }
 
 
-void clear_matrix(double m[3][2]) {
-   m[0][0] = 0.0;
-   m[0][1] = 0.0;
-   m[1][0] = 0.0;
-   m[1][1] = 0.0;
-   m[2][0] = 0.0;
-   m[2][1] = 0.0;
+void clear_matrix(double2 m[3]) {
+   const double2 zero = (double2) { 0.0, 0.0 };
+   m[0] = zero;
+   m[1] = zero;
+   m[2] = zero;
 }
 
-void sum_matrix(double s, double m1[3][2], double m2[3][2]) {
+void sum_matrix(double s, const double2 m1[3], double2 m2[3]) {
 
-   m2[0][0] += s * m1[0][0];
-   m2[0][1] += s * m1[0][1];
-   m2[1][0] += s * m1[1][0];
-   m2[1][1] += s * m1[1][1];
-   m2[2][0] += s * m1[2][0];
-   m2[2][1] += s * m1[2][1];
+   m2[0] += s * m1[0];
+   m2[1] += s * m1[1];
+   m2[2] += s * m1[2];
 }
 
 void mult_matrix(double s1[2][2], double s2[2][2], double d[2][2]) {
