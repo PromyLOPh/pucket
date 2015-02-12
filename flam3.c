@@ -227,7 +227,7 @@ int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_d
  */
 
 
-int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned short *xform_distrib, randctx *rc) {
+int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, unsigned short *xform_distrib, randctx *rc) {
    int i;
    double4 p, q;
    int consec = 0;
@@ -235,13 +235,13 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned 
    int lastxf=0;
    int fn;
    
-   p = (double4) { samples[0], samples[1], samples[2], samples[3] };
+   p = in;
 
    /* Perform precalculations */   
    for (i=0;i<cp->num_xforms;i++)
       xform_precalc(cp,i);
 
-   for (i = -4*fuse; i < 4*n; i+=4) {
+   for (i = fuse; i < n; i++) {
    
 //         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (((unsigned)irand(rc)) % CHOOSE_XFORM_GRAIN)];
       if (cp->chaos_enable)
@@ -254,7 +254,7 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned 
          badvals ++;
          if (consec<5) {
 			p = q;
-            i -= 4;
+            --i;
             continue;
          } else
             consec = 0;
@@ -277,10 +277,7 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse,  double *samples, unsigned 
 
       /* if fuse over, store it */
       if (i >= 0) {
-         samples[i] = q[0];
-         samples[i+1] = q[1];
-         samples[i+2] = q[2];
-         samples[i+3] = q[3];
+         samples[i] = q;
       }
    }
    
@@ -339,13 +336,16 @@ int flam3_xform_preview(flam3_genome *cp, int xi, double range, int numvals, int
 }         
 #endif
 
+#if 0
 int flam3_colorhist(flam3_genome *cp, int num_batches, randctx *rc, double *hist) {
 
   int lp,plp;
   int mycolor;
   unsigned short *xform_distrib;
   int sbs = 10000;
-  double sub_batch[4*10000];
+  double4 *sub_batch;
+
+  sub_batch = malloc (sizeof (*sub_batch) * sbs);
 
   memset(hist,0,256*sizeof(double));
   
@@ -357,15 +357,12 @@ int flam3_colorhist(flam3_genome *cp, int num_batches, randctx *rc, double *hist
 
   for (lp=0;lp<num_batches;lp++) {
   
-    sub_batch[0] = flam3_random_isaac_11(rc);
-    sub_batch[1] = flam3_random_isaac_11(rc);
-    sub_batch[2] = 0;
-    sub_batch[3] = 0;
+	double4 start = (double4) { flam3_random_isaac_11(rc), flam3_random_isaac_11(rc), 0, 0 };
 
     
     if (xform_distrib==NULL)
        return(1);
-    flam3_iterate(cp, sbs, 20, sub_batch, xform_distrib, rc);
+    flam3_iterate(cp, sbs, 20, start, sub_batch, xform_distrib, rc);
     
     // histogram the colors in the sub_batch array
     for (plp=0;plp<4*sbs;plp+=4) {
@@ -378,11 +375,13 @@ int flam3_colorhist(flam3_genome *cp, int num_batches, randctx *rc, double *hist
   }
   
   free(xform_distrib);
+  free(sub_batch);
   for (plp=0;plp<256;plp++)
     hist[plp] /= (float)(num_batches*sbs);
     
   return(0);
 } 
+#endif
   
 flam3_genome *sheep_loop(flam3_genome *cp, double blend) {
    
@@ -3485,16 +3484,16 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
 
 
 static int sort_by_x(const void *av, const void *bv) {
-    double *a = (double *) av;
-    double *b = (double *) bv;
+    double4 a = *((double4 *) av);
+    double4 b = *((double4 *) bv);
     if (a[0] < b[0]) return -1;
     if (a[0] > b[0]) return 1;
     return 0;
 }
 
 static int sort_by_y(const void *av, const void *bv) {
-    double *a = (double *) av;
-    double *b = (double *) bv;
+    double4 a = *((double4 *) av);
+    double4 b = *((double4 *) bv);
     if (a[1] < b[1]) return -1;
     if (a[1] > b[1]) return 1;
     return 0;
@@ -3527,24 +3526,21 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
    int i;
    int low_target, high_target;
    double min[2], max[2];
-   double *points;
+   double4 *points;
    int bv;
    unsigned short *xform_distrib;
 
    if (nsamples <= 0) nsamples = 10000;
 
-   points = (double *) malloc(sizeof(double) * 4 * nsamples);
-   points[0] = flam3_random_isaac_11(rc);
-   points[1] = flam3_random_isaac_11(rc);
-   points[2] = 0.0;
-   points[3] = 0.0;
+   points = (double4 *) malloc(sizeof(double4) * nsamples);
+   const double4 start = (double4) { flam3_random_isaac_11(rc), flam3_random_isaac_11(rc), 0.0, 0.0 };
 
    if (prepare_precalc_flags(cp))
       return(-1);
    xform_distrib = flam3_create_xform_distrib(cp);
    if (xform_distrib==NULL)
       return(-1);
-   bv=flam3_iterate(cp, nsamples, 20, points, xform_distrib, rc);
+   bv=flam3_iterate(cp, nsamples, 20, start, points, xform_distrib, rc);
    free(xform_distrib);
       
    if ( bv/(double)nsamples > eps )
@@ -3561,7 +3557,7 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
    max[0] = max[1] = -1e10;
 
    for (i = 0; i < nsamples; i++) {
-      double *p = &points[4*i];
+      const double4 p = points[i];
       if (p[0] < min[0]) min[0] = p[0];
       if (p[1] < min[1]) min[1] = p[1];
       if (p[0] > max[0]) max[0] = p[0];
@@ -3577,13 +3573,13 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
       return(bv);
    }
 
-   qsort(points, nsamples, sizeof(double) * 4, sort_by_x);
-   bmin[0] = points[4 * low_target];
-   bmax[0] = points[4 * high_target];
+   qsort(points, nsamples, sizeof(double4), sort_by_x);
+   bmin[0] = points[low_target][0];
+   bmax[0] = points[high_target][0];
 
-   qsort(points, nsamples, sizeof(double) * 4, sort_by_y);
-   bmin[1] = points[4 * low_target + 1];
-   bmax[1] = points[4 * high_target + 1];
+   qsort(points, nsamples, sizeof(double4), sort_by_y);
+   bmin[1] = points[low_target][1];
+   bmax[1] = points[high_target][1];
    free(points);
    
    return(bv);
@@ -3895,7 +3891,7 @@ void flam3_srandom() {
    srandom(seed);
 }
 
-
+#if 0
 /* correlation dimension, after clint sprott.
    computes slope of the correlation sum at a size scale
    the order of 2% the size of the attractor or the camera. */
@@ -3941,20 +3937,17 @@ double flam3_dimension(flam3_genome *cp, int ntries, int clip_to_camera) {
 
   got = 0;
   nclipped = 0;
+  double4 *subb = malloc (sizeof (*subb) * SBS);
   while (got < 2*ntries) {
-    double subb[40000];
     int i4, clipped;
     unsigned short *xform_distrib;
-    subb[0] = flam3_random_isaac_11(&rc);
-    subb[1] = flam3_random_isaac_11(&rc);
-    subb[2] = 0.0;
-    subb[3] = 0.0;
+	const double4 start = (double4) { flam3_random_isaac_11(&rc), flam3_random_isaac_11(&rc), 0.0, 0.0 };
     if (prepare_precalc_flags(cp))
       return(-1.0);
     xform_distrib = flam3_create_xform_distrib(cp);
     if (xform_distrib==NULL)
       return(-1.0);
-    flam3_iterate(cp, SBS, 20, subb, xform_distrib, &rc);
+    flam3_iterate(cp, SBS, 20, start, subb, xform_distrib, &rc);
     free(xform_distrib);
     i4 = 0;
     for (i = 0; i < SBS; i++) {
@@ -3973,12 +3966,14 @@ double flam3_dimension(flam3_genome *cp, int ntries, int clip_to_camera) {
    if (nclipped > 10 * ntries) {
        fprintf(stderr, "warning: too much clipping, "
           "flam3_dimension giving up.\n");
+	   free (subb);
        return sqrt(-1.0);
    }
       }
       i4 += 4;
     }
   }
+  free (subb);
   if (0)
     fprintf(stderr, "cliprate=%g\n", nclipped/(ntries+(double)nclipped));
 
@@ -4009,7 +4004,9 @@ double flam3_dimension(flam3_genome *cp, int ntries, int clip_to_camera) {
   free(hist);
   return fd;
 }
+#endif
 
+#if 0
 double flam3_lyapunov(flam3_genome *cp, int ntries) {
   double p[4];
   double x, y;
@@ -4100,4 +4097,5 @@ double flam3_lyapunov(flam3_genome *cp, int ntries) {
   }
   return sum/(log(2.0)*ntries);
 }
+#endif
 

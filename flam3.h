@@ -549,8 +549,7 @@ void clear_cp(flam3_genome *cp, int def_flag);
    (samples[2], samples[3]) as starting color coordinate,
    perform fuse iterations and throw them away, then perform
    nsamples iterations and save them in the samples array */
-EXPORT int flam3_iterate(flam3_genome *g, int nsamples, int fuse, double *samples,
-                     unsigned short *xform_distrib, randctx *rc);
+EXPORT int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, unsigned short *xform_distrib, randctx *rc);
 
 void apply_motion_parameters(flam3_xform *xf, flam3_xform *addto, double blend);
 

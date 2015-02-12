@@ -390,13 +390,15 @@ static void iter_thread(void *fth) {
       }
 
       /* Seed iterations */
-      fthp->iter_storage[0] = flam3_random_isaac_11(&(fthp->rc));
-      fthp->iter_storage[1] = flam3_random_isaac_11(&(fthp->rc));
-      fthp->iter_storage[2] = flam3_random_isaac_01(&(fthp->rc));
-      fthp->iter_storage[3] = flam3_random_isaac_01(&(fthp->rc));
+      const double4 start = (double4) {
+	                        flam3_random_isaac_11(&(fthp->rc)),
+                            flam3_random_isaac_11(&(fthp->rc)),
+                            flam3_random_isaac_01(&(fthp->rc)),
+                            flam3_random_isaac_01(&(fthp->rc)),
+							};
 
       /* Execute iterations */
-      badcount = flam3_iterate(&(fthp->cp), sub_batch_size, fuse, fthp->iter_storage, ficp->xform_distrib, &(fthp->rc));
+      badcount = flam3_iterate(&(fthp->cp), sub_batch_size, fuse, start, fthp->iter_storage, ficp->xform_distrib, &(fthp->rc));
 
       #if defined(HAVE_LIBPTHREAD) && defined(USE_LOCKS)
         /* Lock mutex for access to accumulator */
@@ -407,12 +409,12 @@ static void iter_thread(void *fth) {
       ficp->badvals += badcount;
 
       /* Put them in the bucket accumulator */
-      for (j = 0; j < sub_batch_size*4; j+=4) {
+      for (j = 0; j < sub_batch_size; j++) {
          double p0, p1, p00, p11;
          double dbl_index0,dbl_frac;
          double interpcolor[4];
          int ci, color_index0;
-         double *p = &(fthp->iter_storage[j]);
+         const double4 p = fthp->iter_storage[j];
          bucket *b;
 
          if (fthp->cp.rotate != 0.0) {
@@ -532,7 +534,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
    double nsamples, batch_size;
    bucket  *buckets;
    abucket *accumulate;
-   double *points;
+   double4 *points;
    double *filter, *temporal_filter, *temporal_deltas, *batch_filter;
    double ppux=0, ppuy=0;
    int image_width, image_height;    /* size of the image to produce */
@@ -698,7 +700,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
    /* Just free buckets at the end */   
    buckets = (bucket *) last_block;
    accumulate = (abucket *) (last_block + sizeof(bucket) * nbuckets);
-   points = (double *)  (last_block + (sizeof(bucket) + sizeof(abucket)) * nbuckets);
+   points = (double4 *)  (last_block + (sizeof(bucket) + sizeof(abucket)) * nbuckets);
 
    if (verbose) {
       fprintf(stderr, "chaos: ");
@@ -874,7 +876,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
 	         	fth[thi].timer_initialize = 0;
             }
 
-            fth[thi].iter_storage = &(points[thi*(spec->sub_batch_size)*4]);
+            fth[thi].iter_storage = &(points[thi*spec->sub_batch_size]);
             fth[thi].fic = &fic;
             flam3_copy(&(fth[thi].cp),&cp);
 
