@@ -1265,10 +1265,10 @@ static double2 var60_curve (const double2 in, const flam3_iter_helper * const f,
    
    if (pc_ylen<1E-20) pc_ylen = 1E-20;
 
-   return weight * in + (double2) {
+   return weight * (in + (double2) {
                    f->xform->curve_xamp * exp(-in[1]*in[1]/pc_xlen),
                    f->xform->curve_yamp * exp(-in[0]*in[0]/pc_ylen),
-				   };
+				   });
       
 }
 
