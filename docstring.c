@@ -61,7 +61,6 @@ static char *the_docstring1 =
 "template        NA          apply defaults based on this genome (genome only)\n"
 "dtime           1           time between frames (animate only)\n"
 "fields          0           if 1 then render fields, ie odd scanlines at time+0.5\n"
-"nstrips         1           number of strips, ie render fractions of a frame at once (render only)\n"
 "qs              1           quality scale, multiply quality of all frames by this\n"
 "ss              1           size scale, multiply size (in pixels) of all frames by this\n"
 "pixel_aspect    1.0         aspect ratio of pixels (width over height), eg 0.90909 for NTSC\n"

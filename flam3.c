@@ -3420,22 +3420,6 @@ typedef float abucket_float[4];
 #undef de_thread_helper
 #undef de_thread
 
-
-double flam3_render_memory_required(flam3_frame *spec)
-{
-  flam3_genome *cps = spec->genomes;
-  int real_bits = spec->bits;
-  int real_bytes;
-
-  if (33 == real_bits) real_bits = 32;
-
-  real_bytes = real_bits / 8;
-
-  return
-    (double) cps[0].spatial_oversample * cps[0].spatial_oversample *
-    (double) cps[0].width * cps[0].height * real_bytes * 9.0;
-}
-
 int flam3_render(flam3_frame *spec, void *out,
         int field, int nchan, int trans, stat_struct *stats) {
          

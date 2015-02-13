@@ -611,7 +611,6 @@ typedef struct {
    pixels are rgb or rgba if nchan is 3 or 4. */
 int flam3_render(flam3_frame *f, void *out, int field, int nchan, int transp, stat_struct *stats);
 
-double flam3_render_memory_required(flam3_frame *f);
 void rotate_by(double *p, double *center, double by);
 
 
