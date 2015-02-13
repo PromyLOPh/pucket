@@ -55,25 +55,6 @@ int main(int argc, char **argv) {
   char numiter_string[64];
   char rtime_string[64];
   
-#ifdef WIN32
-   
-  char *slashloc;
-  char exepath[256];
-  char palpath[256];
-  memset(exepath,0,256);
-  memset(palpath,0,256);  
-   slashloc = strrchr(argv[0],'\\');
-	if (NULL==slashloc) {
-	   sprintf(palpath,"flam3_palettes=flam3-palettes.xml");
-	} else {
-       strncpy(exepath,argv[0],slashloc-argv[0]+1);
-	   sprintf(palpath,"flam3_palettes=%sflam3-palettes.xml",exepath);
-	}
-	putenv(palpath);
-
-#endif         
-  
-  
   memset(&center_cp,0, sizeof(flam3_genome));
 
   if (1 != argc) {

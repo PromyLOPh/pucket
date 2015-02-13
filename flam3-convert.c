@@ -188,22 +188,6 @@ main(int argc, char **argv)
 {
   char *s, *ss;
 
-#ifdef WIN32
-   
-  char *slashloc;
-  char palpath[256],exepath[256];
-
-    slashloc = strrchr(argv[0],'\\');
-	if (NULL==slashloc) {
-	   sprintf(palpath,"flam3_palettes=flam3-palettes.xml");
-	} else {
-       strncpy(exepath,argv[0],slashloc-argv[0]+1);
-	   sprintf(palpath,"flam3_palettes=%sflam3-palettes.xml",exepath);
-	}
-	putenv(palpath);
-
-#endif           
-  
    if (1 != argc) {
      docstring();
      exit(0);

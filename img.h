@@ -22,10 +22,6 @@
 
 #define FLAM3_PNG_COM 8
 
-#ifdef WIN32
-   #define snprintf _snprintf
-#endif
-
 typedef struct {
 
    char *genome;

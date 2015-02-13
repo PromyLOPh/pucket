@@ -24,12 +24,7 @@
 #include <libxml/parser.h>
 #include "xorshift.h"
 
-#if defined(_MSC_VER) /* VC++ */
-#include <windows.h>
-#define EXPORT __declspec (dllexport)
-#else
 #define EXPORT
-#endif
 
 EXPORT char *flam3_version();
 

@@ -430,26 +430,6 @@ main(argc, argv)
    
    stat_struct stats;
 
-
-
-#ifdef WIN32
-   
-   char *slashloc;
-   char exepath[256];
-   char palpath[256];
-   memset(exepath,0,256);
-   memset(palpath,0,256);
-   slashloc = strrchr(argv[0],'\\');
-	if (NULL==slashloc) {
-	   sprintf(palpath,"flam3_palettes=flam3-palettes.xml");
-	} else {
-       strncpy(exepath,argv[0],slashloc-argv[0]+1);
-	   sprintf(palpath,"flam3_palettes=%sflam3-palettes.xml",exepath);
-	}
-	putenv(palpath);
-
-#endif   
-
    if (argc>1) {
       if (strcmp("--version",argv[1])==0) {
          printf("FLAM3-%s\n",flam3_version());

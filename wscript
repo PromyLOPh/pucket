@@ -10,7 +10,7 @@ def configure(conf):
 
     conf.check_cfg (path='xml2-config', args='--cflags --libs', package='', uselib_store='xml2')
     conf.check_cc (lib='xml2', header_name='libxml/parser.h', function_name='xmlParseFile', use='xml2')
-    conf.check_cc (lib='pthread', uselib_store='pthread', define_name='HAVE_LIBPTHREAD')
+    conf.check_cc (lib='pthread', uselib_store='pthread')
     conf.check_cc (lib='jpeg', uselib_store='jpeg')
     conf.check_cfg (package='libpng', uselib_store='png', args=['--cflags', '--libs'], msg='Checking for library png')
     conf.check_cc (lib='amdlibm', header_name='amdlibm.h', mandatory=False, define_name='HAVE_AMDLIBM', uselib_store='amdlibm')

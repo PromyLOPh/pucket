@@ -16,10 +16,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _MSC_VER /* VC++ */
-#define _GNU_SOURCE
-#endif
-
 #include "private.h"
 #include "img.h"
 #include "config.h"
@@ -40,25 +36,7 @@
 #endif
 #include <errno.h>
 
-#ifdef HAVE_LIBPTHREAD
 #include <pthread.h>
-#endif
-
-#ifdef __APPLE__
-#include <mach/mach.h>
-#include <mach/mach_error.h>
-#define flam3_os "OSX"
-#else
-#ifdef _WIN32
-#define WINVER 0x0500
-#include <windows.h>
-#define flam3_os "WIN"
-#else
-#define flam3_os "LNX"
-#endif
-#endif
-
-
 
 char *flam3_version() {
   return VERSION;
@@ -1357,31 +1335,7 @@ void clear_cp(flam3_genome *cp, int default_flag) {
 
 int flam3_count_nthreads(void) {
    int nthreads;
-#ifndef HAVE_LIBPTHREAD
-   return(1);
-#endif
 
-#ifdef _WIN32
-   SYSTEM_INFO sysInfo;
-   GetSystemInfo(&sysInfo);
-   nthreads = sysInfo.dwNumberOfProcessors;
-#else
-#ifdef __APPLE__
-   kern_return_t    kr;
-   host_name_port_t   host;
-   unsigned int     size;
-   struct host_basic_info   hi;
-
-   host = mach_host_self();
-   size = sizeof(hi)/sizeof(int);
-   kr = host_info(host, HOST_BASIC_INFO, (host_info_t)&hi, &size);
-   if (kr != KERN_SUCCESS) {
-       mach_error("host_info():", kr);
-       /* set threads to 1 on error */
-       nthreads = 1;
-   } else
-       nthreads = hi.avail_cpus;
-#else 
 #ifndef _SC_NPROCESSORS_ONLN
    char line[MAXBUF];
    FILE *f = fopen("/proc/cpuinfo", "r");
@@ -1400,8 +1354,6 @@ def:
 #else
    nthreads = sysconf(_SC_NPROCESSORS_ONLN);
    if (nthreads < 1) nthreads = 1;
-#endif
-#endif
 #endif
    return (nthreads);
 }
@@ -1618,20 +1570,6 @@ char *flam3_print_to_string(flam3_genome *cp) {
    
    tmpflame = tmpfile();
    if (NULL==tmpflame) {
-#ifdef _WIN32       
-       // This might be a permissions problem, so let's try to open a
-       // tempfile in the env var TEMP's area instead
-       tmp_path = getenv("TEMP");
-
-       if (tmp_path != NULL) {
-          strcpy(tmpnam, tmp_path);
-          strcat(tmpnam, "\\fr0st.tmp");
-          tmpflame = fopen(tmpnam, "w+");
-          if (tmpflame != NULL) {
-             using_tmpdir = 1;
-          }
-       }
-#endif
        if (using_tmpdir == 0) {
           perror("FLAM3: opening temporary file");
           return (NULL);
@@ -3603,7 +3541,6 @@ typedef float abucket_float[4];
    } \
 } while (0)
 /* single-threaded */
-#define USE_LOCKS
 #define bump_no_overflow(dest, delta) do { \
    if (UINT_MAX - dest > delta) dest += delta; else dest = UINT_MAX; \
 } while (0)

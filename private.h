@@ -28,20 +28,12 @@
 #include <string.h>
 #include <libxml/parser.h>
 
-#ifdef _WIN32
-#define basename(x) strdup(x)
-#define snprintf _snprintf
-#define _USE_MATH_DEFINES
-#else
 #include <unistd.h>
 #include <libgen.h>
-#endif
 
 #include <math.h>
 
-#ifdef HAVE_LIBPTHREAD
 #include <pthread.h>
-#endif
 
 #define PREFILTER_WHITE 255
 #define EPS (1e-10)
@@ -52,19 +44,6 @@
 #define max_specified_vars     (100)
 #define vlen(x) (sizeof(x)/sizeof(*x))
 
-
-#ifdef _WIN32
-
-#ifndef M_PI
-   #define M_PI   3.1415926536
-   #define M_1_PI 0.3183098862
-   #define M_PI_4 0.7853981634
-#endif
-#define random()  (rand() ^ (rand()<<15))
-#define srandom(x)  (srand(x))
-extern int getpid();
-#define rint(A) floor((A)+(((A) < 0)? -0.5 : 0.5))
-#endif
 
 #define argi(s,d)   ((ai = getenv(s)) ? atoi(ai) : (d))
 #define argf(s,d)   ((ai = getenv(s)) ? atof(ai) : (d))
@@ -92,10 +71,8 @@ typedef struct {
    time_t *progress_timer_history;
    double *progress_history;
    int *progress_history_mark;
-#ifdef HAVE_LIBPTHREAD
    /* mutex for bucket accumulator */
    pthread_mutex_t bucket_mutex;
-#endif
    
 } flam3_iter_constants;
 

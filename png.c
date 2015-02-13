@@ -27,11 +27,7 @@
 #include "flam3.h"
 #include "private.h"
 
-#ifdef _WIN32
-#include <winsock.h> /* for htons */
-#else
 #include <arpa/inet.h>
-#endif
 
 void write_png(FILE *file, void *image, int width, int height, flam3_img_comments *fpc, int bpc) {
   png_structp  png_ptr;

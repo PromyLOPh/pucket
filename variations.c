@@ -26,17 +26,6 @@
 
 #define badvalue(x) (((x)!=(x))||((x)>1e10)||((x)<-1e10))
 
-/* Wrap the sincos function for Macs */
-#if defined(__APPLE__) || defined(_MSC_VER)
-#define sincos(x,s,c) *(s)=sin(x); *(c)=cos(x);
-#else
-extern void sincos(double x, double *s, double *c);
-#endif
-
-#ifdef _MSC_VER
-#define trunc (int)
-#endif
-
 typedef struct {
    double precalc_atan, precalc_sina;  /* Precalculated, if needed */
    double precalc_cosa, precalc_sqrt;

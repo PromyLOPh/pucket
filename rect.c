@@ -199,11 +199,7 @@ static void de_thread(void *dth) {
                *(dthp->aborted) = -1;
                               
                do {
-#if defined(_WIN32) /* mingw or msvc */
-				   Sleep(100);
-#else
 				   nanosleep(&pauset,NULL);
-#endif
                   rv = (*dthp->spec->progress)(dthp->spec->progress_parameter,
                      100*(j-str)/(double)(enr-str), 1, 0);
                } while (rv==2);
@@ -214,38 +210,24 @@ static void de_thread(void *dth) {
 
 	        if (rv==1) {
 			   *(dthp->aborted) = 1;
-#ifdef HAVE_LIBPTHREAD
                pthread_exit((void *)0);
-#else
-               return;
-#endif
             }
          } else {
-#ifdef HAVE_LIBPTHREAD
 
             if (*(dthp->aborted)<0) {
             
                 do {
-#if defined(_WIN32) /* mingw or msvc */
-				   Sleep(100);
-#else
 				   nanosleep(&pauset,NULL);
-#endif
                 } while (*(dthp->aborted)<0);                            
             }
             
             if (*(dthp->aborted)>0) pthread_exit((void *)0);
-#else
-            if (*(dthp->aborted)>0) return;
-#endif
          }
       }
 
    }
 
-   #ifdef HAVE_LIBPTHREAD
      pthread_exit((void *)0);
-   #endif
 
 }
 
@@ -341,11 +323,7 @@ static void iter_thread(void *fth) {
                ficp->aborted = -1;
                
                do {
-#if defined(_WIN32) /* mingw or msvc */
-				   Sleep(100);
-#else
 				   nanosleep(&pauset,NULL);
-#endif
                   rv = (*ficp->spec->progress)(ficp->spec->progress_parameter, percent, 0, eta);
                } while (rv==2);
                
@@ -364,28 +342,16 @@ static void iter_thread(void *fth) {
                   
             if (rv==1) { /* ABORT */
 				   ficp->aborted = 1;
-#ifdef HAVE_LIBPTHREAD
                pthread_exit((void *)0);
-#else
-               return;
-#endif
             }
          } else {
             if (ficp->aborted<0) {
 
             do {
-#if defined(_WIN32) /* mingw or msvc */
-               Sleep(100);
-#else
                nanosleep(&pauset,NULL);
-#endif
             } while (ficp->aborted==-1);
             }
-#ifdef HAVE_LIBPTHREAD
             if (ficp->aborted>0) pthread_exit((void *)0);
-#else
-            if (ficp->aborted>0) return;
-#endif
          }
       }
 
@@ -400,10 +366,8 @@ static void iter_thread(void *fth) {
       /* Execute iterations */
       badcount = flam3_iterate(&(fthp->cp), sub_batch_size, fuse, start, fthp->iter_storage, ficp->xform_distrib, &(fthp->rc));
 
-      #if defined(HAVE_LIBPTHREAD) && defined(USE_LOCKS)
-        /* Lock mutex for access to accumulator */
-        pthread_mutex_lock(&ficp->bucket_mutex);
-      #endif
+      /* Lock mutex for access to accumulator */
+      pthread_mutex_lock(&ficp->bucket_mutex);
 
       /* Add the badcount to the counter */
       ficp->badvals += badcount;
@@ -490,15 +454,11 @@ static void iter_thread(void *fth) {
          }
       }
       
-      #if defined(HAVE_LIBPTHREAD) && defined(USE_LOCKS)
-        /* Release mutex */
-        pthread_mutex_unlock(&ficp->bucket_mutex);
-      #endif
+      /* Release mutex */
+      pthread_mutex_unlock(&ficp->bucket_mutex);
 
    }
-   #ifdef HAVE_LIBPTHREAD
      pthread_exit((void *)0);
-   #endif
 }
 
 static int render_rectangle(flam3_frame *spec, void *out,
@@ -532,10 +492,8 @@ static int render_rectangle(flam3_frame *spec, void *out,
    unsigned short *xform_distrib;
    flam3_iter_constants fic;
    flam3_thread_helper *fth;
-#ifdef HAVE_LIBPTHREAD
    pthread_attr_t pt_attr;
    pthread_t *myThreads=NULL;
-#endif
    int thread_status;
    int thi;
    time_t tstart,tend;   
@@ -856,13 +814,10 @@ static int render_rectangle(flam3_frame *spec, void *out,
 
          }
 
-#ifdef HAVE_LIBPTHREAD
          /* Let's make some threads */
          myThreads = (pthread_t *)malloc(spec->nthreads * sizeof(pthread_t));
 
-         #if defined(USE_LOCKS)
          pthread_mutex_init(&fic.bucket_mutex, NULL);
-         #endif
 
          pthread_attr_init(&pt_attr);
          pthread_attr_setdetachstate(&pt_attr,PTHREAD_CREATE_JOINABLE);
@@ -876,15 +831,9 @@ static int render_rectangle(flam3_frame *spec, void *out,
          for (thi=0; thi < spec->nthreads; thi++)
             pthread_join(myThreads[thi], NULL);
 
-         #if defined(USE_LOCKS)
          pthread_mutex_destroy(&fic.bucket_mutex);
-         #endif
          
          free(myThreads);
-#else
-         for (thi=0; thi < spec->nthreads; thi++)
-            iter_thread( (void *)(&(fth[thi])) );
-#endif
          
          /* Free the xform_distrib array */
          free(xform_distrib);
@@ -991,7 +940,6 @@ static int render_rectangle(flam3_frame *spec, void *out,
             }
          }
 
-#ifdef HAVE_LIBPTHREAD
          /* Let's make some threads */
          myThreads = (pthread_t *)malloc(spec->nthreads * sizeof(pthread_t));
 
@@ -1008,10 +956,6 @@ static int render_rectangle(flam3_frame *spec, void *out,
             pthread_join(myThreads[thi], NULL);
          
          free(myThreads);            
-#else         
-         for (thi=0; thi <spec->nthreads; thi ++)
-            de_thread((void *)(&(deth[thi])));
-#endif
 
          free(deth);
                   

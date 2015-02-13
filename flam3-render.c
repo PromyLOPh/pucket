@@ -16,15 +16,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef WIN32
-#define WINVER 0x0500
-#include <windows.h>
-#endif
-
-#ifdef __APPLE__
-#include <sys/sysctl.h>
-#endif
-
 #include <limits.h>
 
 
@@ -37,32 +28,9 @@ int calc_nstrips(flam3_frame *spec) {
   double mem_available;
   int nstrips,ninc;
   char *testmalloc;
-#ifdef WIN32
-  MEMORYSTATUS stat;
-  stat.dwLength = sizeof(stat);
-  GlobalMemoryStatus(&stat); // may want to go to GlobalMemoryStatusEx eventually
-  mem_available = (double)stat.dwTotalPhys;
-//  fprintf(stderr,"%lu bytes free memory...\n",(size_t)stat.dwAvailPhys);
-//  if (mem_available > 1e9) mem_available = 1e9;
-#elif defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
+#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
   mem_available =
       (double)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE);
-#elif defined __APPLE__
-#ifdef __LP64__
-long physmem;
-size_t len = sizeof(physmem);
-static int mib[2] = { CTL_HW, HW_MEMSIZE };
-#else
-unsigned int physmem;
-size_t len = sizeof(physmem);
-static int mib[2] = { CTL_HW, HW_PHYSMEM };
-#endif
-if (sysctl(mib, 2, &physmem, &len, NULL, 0) == 0 && len == sizeof(physmem)) {
-   mem_available = (double )physmem;
-} else {
-   fprintf(stderr, "warning: unable to determine physical memory.n");
-   mem_available = 2e9;
-}
 #else
   fprintf(stderr, "warning: unable to determine physical memory.\n");
   mem_available = 2e9;
@@ -145,26 +113,6 @@ int main(int argc, char **argv) {
    char badval_string[64];
    char rtime_string[64];
 
-#ifdef WIN32
-   
-   char *slashloc;
-   char exepath[256];
-   char palpath[256];
-   memset(exepath,0,256);
-   memset(palpath,0,256); 
-
-    slashloc = strrchr(argv[0],'\\');
-	if (NULL==slashloc) {
-	   sprintf(palpath,"flam3_palettes=flam3-palettes.xml");
-	} else {
-       strncpy(exepath,argv[0],slashloc-argv[0]+1);
-	   sprintf(palpath,"flam3_palettes=%sflam3-palettes.xml",exepath);
-	}
-	putenv(palpath);
-
-#endif         
-   
-   
    if (1 != argc) {
      docstring();
      exit(0);
