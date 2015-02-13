@@ -142,15 +142,16 @@ int compare_xforms(const void *av, const void *bv) {
 }
 
 void interpolate_cmap(flam3_palette cmap, double blend,
-                      int index0, double hue0, int index1, double hue1) {
+                      int index0, double hue0, int index1, double hue1,
+					  randctx * const rc) {
                  
    flam3_palette p0,p1;
    int i, j, rcode;
 
-   rcode = flam3_get_palette(index0, p0, hue0);
+   rcode = flam3_get_palette(index0, p0, hue0, rc);
    if (rcode<0)
       fprintf(stderr,"unable to retrieve palette %d, setting to white\n", index0);
-   rcode = flam3_get_palette(index1, p1, hue1);
+   rcode = flam3_get_palette(index1, p1, hue1, rc);
    if (rcode<0)
       fprintf(stderr,"unable to retrieve palette %d, setting to white\n", index1);
 

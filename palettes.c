@@ -138,7 +138,7 @@ static int init_palettes(char *filename) {
    return(1);
 }
 
-int flam3_get_palette(int n, flam3_palette c, double hue_rotation) {
+int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * const rc) {
    int cmap_len = 256;
    int idx, i, j, rcode;
 
@@ -159,7 +159,7 @@ int flam3_get_palette(int n, flam3_palette c, double hue_rotation) {
    }
    
    if (flam3_palette_random == n)
-      n = the_palettes[random()%npalettes].number;
+      n = the_palettes[rand_mod(rc, npalettes)].number;
 
    for (idx = 0; idx < npalettes; idx++) {
       
@@ -348,10 +348,10 @@ void flam3_calc_newrgb(double *cbuf, double ls, double highpow, double *newrgb) 
    }
 }
 
-static int random_xform(flam3_genome *g, int excluded) {
+static int random_xform(flam3_genome *g, int excluded, randctx * const rc) {
    int ntries = 0;
    while (ntries++ < 100) {
-      int i = random() % g->num_xforms;
+      int i = rand_mod(rc, g->num_xforms);
       if (g->xform[i].density > 0.0 && i != excluded)
          return i;
    }
@@ -392,7 +392,6 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     g->ntemporal_samples = 1;
 
 //    f.temporal_filter_radius = 0.0;
-   flam3_init_frame(&f);
     f.bits = 33;
     f.bytes_per_channel=1;
     f.verbose = 0;
@@ -455,25 +454,25 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     return (double) (hits / res3);
 }
 
-static void change_colors(flam3_genome *g, int change_palette) {
+static void change_colors(flam3_genome *g, int change_palette, randctx * const rc) {
    int i;
    int x0, x1;
    if (change_palette) {
       g->hue_rotation = 0.0;
-      g->palette_index = flam3_get_palette(flam3_palette_random, g->palette, 0.0);
+      g->palette_index = flam3_get_palette(flam3_palette_random, g->palette, 0.0, rc);
       if (g->palette_index < 0)
          fprintf(stderr,"error retrieving random palette, setting to all white\n");
    }
    for (i = 0; i < g->num_xforms; i++) {
-      g->xform[i].color = flam3_random01();
+      g->xform[i].color = rand_d01(rc);
    }
-   x0 = random_xform(g, -1);
-   x1 = random_xform(g, x0);
-   if (x0 >= 0 && (random()&1)) g->xform[x0].color = 0.0;
-   if (x1 >= 0 && (random()&1)) g->xform[x1].color = 1.0;
+   x0 = random_xform(g, -1, rc);
+   x1 = random_xform(g, x0, rc);
+   if (x0 >= 0 && rand_bool(rc)) g->xform[x0].color = 0.0;
+   if (x1 >= 0 && rand_bool(rc)) g->xform[x1].color = 1.0;
 }
 
-void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution) {
+void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution, randctx * const rc) {
    int i;
    double best, b;
    flam3_genome best_genome;
@@ -488,7 +487,7 @@ void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int c
 
    flam3_copy(&best_genome,g);
    for (i = 0; i < ntries; i++) {
-      change_colors(g, change_palette);
+      change_colors(g, change_palette, rc);
       b = try_colors(g, color_resolution);
       if (b < 0) {
          fprintf(stderr,"error in try_colors, aborting tries\n");

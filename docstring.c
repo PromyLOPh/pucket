@@ -64,7 +64,6 @@ static char *the_docstring1 =
 "qs              1           quality scale, multiply quality of all frames by this\n"
 "ss              1           size scale, multiply size (in pixels) of all frames by this\n"
 "pixel_aspect    1.0         aspect ratio of pixels (width over height), eg 0.90909 for NTSC\n"
-"seed            random      integer seed for random numbers, defaults to time+pid\n"
 "nthreads        0           number of threads to use for render.  default auto-detects.\n"
 "verbose         0           if non-zero then print progress meter on stderr\n"
 "bits            33          also 32 or 64: sets bit-width of internal buffers (33 means 32-bit floating-point)\n"

@@ -22,7 +22,6 @@
 
 #include <stdio.h>
 #include <libxml/parser.h>
-#include "xorshift.h"
 
 char *flam3_version();
 
@@ -45,7 +44,9 @@ typedef struct {
 
 typedef flam3_palette_entry flam3_palette[256];
 
-int flam3_get_palette(int palette_index, flam3_palette p, double hue_rotation);
+#include "random.h"
+
+int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * const rc);
 
 #define flam3_variation_random (-1)
 #define flam3_variation_random_fromspecified (-2)
@@ -531,7 +532,6 @@ void flam3_copyx(flam3_genome *dest, flam3_genome *src, int num_std, int num_fin
 void flam3_copy_params(flam3_xform *dest, flam3_xform *src, int varn);
 void flam3_delete_motion_elements(flam3_xform *xf);
 
-int flam3_xform_preview(flam3_genome *cp, int xi, double range, int numvals, int depth, double *result, randctx *rc);
 unsigned short* flam3_create_xform_distrib(flam3_genome *cp);
 int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_distrib);
 int flam3_check_unity_chaos(flam3_genome *cp);
@@ -559,7 +559,7 @@ char *flam3_print_to_string(flam3_genome *cp);
 /* ivars_n is the number of values in ivars to select from.            */
 /* sym is either a symmetry group or 0 meaning random or no symmetry   */
 /* spec_xforms specifies the number of xforms to use, setting to 0 makes the number random. */
-void flam3_random(flam3_genome *g, int *ivars, int ivars_n, int sym, int spec_xforms);
+void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_xforms, randctx * const rc);
 
 void add_to_action(char *action, char *addtoaction);
 
@@ -567,12 +567,12 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc, char *action);
 
 /* return NULL in case of error */
-flam3_genome *flam3_parse_xml2(char *s, char *fn, int default_flag, int *ncps);
-flam3_genome *flam3_parse_from_file(FILE *f, char *fn, int default_flag, int *ncps);
+flam3_genome *flam3_parse_xml2(char *s, char *fn, int default_flag, int *ncps, randctx * const);
+flam3_genome *flam3_parse_from_file(FILE *f, char *fn, int default_flag, int *ncps, randctx * const);
 
-void flam3_add_symmetry(flam3_genome *g, int sym);
+void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc);
 
-void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution);
+void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution, randctx * const);
 int flam3_colorhist(flam3_genome *cp, int num_batches, randctx *rc, double *hist);
 int flam3_estimate_bounding_box(flam3_genome *g, double eps, int nsamples,
              double *bmin, double *bmax, randctx *rc);
@@ -597,7 +597,6 @@ typedef struct {
    double         time;
    int            (*progress)(void *, double, int, double);
    void          *progress_parameter;
-   randctx       rc;
    int           nthreads;
    int           sub_batch_size;
 } flam3_frame;
@@ -614,22 +613,7 @@ int flam3_render(flam3_frame *f, void *out, int field, int nchan, int transp, st
 void rotate_by(double *p, double *center, double by);
 
 
-double flam3_random01();
-double flam3_random11();
-int flam3_random_bit();
-
-/* ISAAC random numbers */
-double flam3_random_isaac_01(randctx *);
-double flam3_random_isaac_11(randctx *);
-int flam3_random_isaac_bit(randctx *);
-
 void flam3_init_frame(flam3_frame *f);
-
-/* External memory helpers */
-void *flam3_malloc(size_t size);
-void flam3_free(void *ptr);
-
-void flam3_srandom();
 
 flam3_genome *sheep_loop(flam3_genome *cp, double blend);
 flam3_genome *sheep_edge(flam3_genome *cp, double blend, int seqflag, double stagger);

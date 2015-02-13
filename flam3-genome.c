@@ -17,7 +17,6 @@
 */
 
 #include "private.h"
-#include "isaacs.h"
 #include "config.h"
 
 int verbose;
@@ -60,7 +59,7 @@ void test_cp(flam3_genome *cp) {
    cp->estimator_curve = 0.6;
 }
 
-flam3_genome *string_to_cp(char *s, int *n) {
+flam3_genome *string_to_cp(char *s, int *n, randctx * const rc) {
   flam3_genome *cp;
   FILE *fp;
 
@@ -69,7 +68,7 @@ flam3_genome *string_to_cp(char *s, int *n) {
     perror(s);
     exit(1);
   }
-  cp = flam3_parse_from_file(fp, s, flam3_defaults_on, n);
+  cp = flam3_parse_from_file(fp, s, flam3_defaults_on, n, rc);
   if (NULL == cp) {
       fprintf(stderr, "could not read genome from %s.\n", s);
       exit(1);
@@ -370,7 +369,7 @@ void truncate_variations(flam3_genome *g, int max_vars, char *action) {
 }
 
 static double golden_bit(randctx *rc) {
-  return flam3_random_isaac_bit(rc)?0.38196:0.61804;
+  return rand_bool(rc)?0.38196:0.61804;
 }
 
 int
@@ -418,6 +417,7 @@ main(argc, argv)
    int num_threads = 1;
    flam3_genome *cp;
    int ncp;
+   randctx rc;
 
    int ivars[max_specified_vars];
    int novars[max_specified_vars];
@@ -452,9 +452,7 @@ main(argc, argv)
       exit(0);
    }
 
-   /* Init random number generators */
-   flam3_init_frame(&f);
-   flam3_srandom();
+   rand_seed(&rc);
 
    //f.temporal_filter_radius = 0.0;
    f.bits = bits;
@@ -579,7 +577,7 @@ main(argc, argv)
    if (getenv("template")) {
       char *tf = getenv("template");
 
-      templ = string_to_cp(tf, &ncp);
+      templ = string_to_cp(tf, &ncp, &rc);
       if (1 < ncp) {
          fprintf(stderr, "more than one control point in template, "
             "ignoring all but first.\n");
@@ -594,7 +592,7 @@ main(argc, argv)
 
    if (clone_all) {
 
-      cp = string_to_cp(clone_all, &ncp);
+      cp = string_to_cp(clone_all, &ncp, &rc);
 
       printf("<clone_all version=\"FLAM3-%s\">\n", flam3_version());
       for (i = 0; i < ncp; i++) {
@@ -612,7 +610,7 @@ main(argc, argv)
       int first_frame,last_frame;
       int ftime,iscp;
       double stagger = argf("stagger", 0.0);
-      cp = string_to_cp(animate, &ncp);
+      cp = string_to_cp(animate, &ncp, &rc);
       
       
       for (i = 0; i < ncp; i++) {
@@ -678,7 +676,7 @@ main(argc, argv)
          exit(1);
       }
 
-      cp = string_to_cp(sequence, &ncp);
+      cp = string_to_cp(sequence, &ncp, &rc);
 
       if (enclosed) printf("<sequence version=\"FLAM3-%s\">\n", flam3_version());
       spread = 1.0/nframes;
@@ -742,7 +740,7 @@ main(argc, argv)
       blend = frame/(double)nframes;
       spread = 1.0/nframes;
 
-      cp = string_to_cp(fname, &ncp);
+      cp = string_to_cp(fname, &ncp, &rc);
 
       if (enclosed) printf("<pick version=\"FLAM3-%s\">\n", flam3_version());
       if (rotate) {
@@ -775,7 +773,7 @@ main(argc, argv)
 
    if (strip) {
 
-      cp = string_to_cp(strip, &ncp);
+      cp = string_to_cp(strip, &ncp, &rc);
 
       if (enclosed) printf("<pick version=\"FLAM3-%s\">\n", flam3_version());
 
@@ -821,14 +819,14 @@ main(argc, argv)
 
       if (clone) {
 
-         parent0 = string_to_cp(clone, &parent0_n);
+         parent0 = string_to_cp(clone, &parent0_n, &rc);
          /* Action is 'clone' with trunc_vars concat */
          sprintf(action,"clone");
          
          if (getenv("clone_action"))
             sprintf(action,"clone %s", getenv("clone_action"));
 
-         flam3_copy(&selp0, &(parent0[random()%parent0_n]));
+         flam3_copy(&selp0, &(parent0[rand_mod(&rc,parent0_n)]));
          flam3_copy(&cp_save, &selp0);
          aselp0 = &selp0;
          aselp1 = NULL;
@@ -851,8 +849,8 @@ main(argc, argv)
             if (mutate) {
                int mutmeth;
 
-               parent0 = string_to_cp(mutate, &parent0_n);
-               flam3_copy(&selp0, &(parent0[(xorshift_step(&f.rc))%parent0_n]));
+               parent0 = string_to_cp(mutate, &parent0_n, &rc);
+               flam3_copy(&selp0, &(parent0[rand_mod(&rc, parent0_n)]));
                flam3_copy(&cp_orig, &selp0);
                aselp0 = &selp0;
                aselp1 = NULL;
@@ -878,7 +876,7 @@ main(argc, argv)
                   mutmeth = MUTATE_NOT_SPECIFIED;
                }
 
-               flam3_mutate(&cp_orig, mutmeth, ivars, num_ivars, sym, speed, &f.rc, action);
+               flam3_mutate(&cp_orig, mutmeth, ivars, num_ivars, sym, speed, &rc, action);
                
                /* Scan string returned for 'mutate color' */
                if ( strstr(action,"mutate color") )
@@ -894,11 +892,11 @@ main(argc, argv)
                int i0, i1;
                int crossmeth;
 
-               parent0 = string_to_cp(cross0, &parent0_n);
-               parent1 = string_to_cp(cross1, &parent1_n);
+               parent0 = string_to_cp(cross0, &parent0_n, &rc);
+               parent1 = string_to_cp(cross1, &parent1_n, &rc);
 
-               i0 = (xorshift_step(&f.rc))%parent0_n;
-               i1 = (xorshift_step(&f.rc))%parent1_n;
+               i0 = rand_mod(&rc, parent0_n);
+               i1 = rand_mod(&rc, parent1_n);
 
                flam3_copy(&selp0, &(parent0[i0]));
                flam3_copy(&selp1, &(parent1[i1]));
@@ -919,7 +917,7 @@ main(argc, argv)
                   crossmeth = CROSS_NOT_SPECIFIED;
                }
 
-               flam3_cross(&parent0[i0], &parent1[i1], &cp_orig, crossmeth, &f.rc, action);
+               flam3_cross(&parent0[i0], &parent1[i1], &cp_orig, crossmeth, &rc, action);
 
                if (parent0[i0].flame_name[0] || parent1[i1].flame_name[0]) {
                   snprintf(cp_orig.flame_name, flam3_name_len, "%d of %s x %s", 
@@ -929,7 +927,7 @@ main(argc, argv)
             } else {
                sprintf(action,"random");
                random_mode=1;
-               flam3_random(&cp_orig, ivars, num_ivars, sym, 0);
+               flam3_random(&cp_orig, ivars, num_ivars, sym, 0, &rc);
 
 
                aselp0 = NULL;
@@ -937,26 +935,26 @@ main(argc, argv)
             }
 
             /* Adjust bounding box half the time */
-            if (flam3_random_bit(&f.rc) || random_mode) {
+            if (rand_bool(&rc) || random_mode) {
                double bmin[2], bmax[2];
-               flam3_estimate_bounding_box(&cp_orig, 0.01, 100000, bmin, bmax, &f.rc);
-               if (flam3_random_isaac_01(&f.rc) < 0.3) {
+               flam3_estimate_bounding_box(&cp_orig, 0.01, 100000, bmin, bmax, &rc);
+               if (rand_d01(&rc) < 0.3) {
                   cp_orig.center[0] = (bmin[0] + bmax[0]) / 2.0;
                   cp_orig.center[1] = (bmin[1] + bmax[1]) / 2.0;
                   add_to_action(action," recentered");
                } else {
                   double mix0, mix1;
-                  if (flam3_random_isaac_bit(&f.rc)) {
-                     mix0 = golden_bit(&f.rc) + flam3_random_isaac_11(&f.rc)/5;
-                     mix1 = golden_bit(&f.rc);
+                  if (rand_bool(&rc)) {
+                     mix0 = golden_bit(&rc) + rand_d11(&rc)/5;
+                     mix1 = golden_bit(&rc);
                      add_to_action(action," reframed0");
-                  } else if (flam3_random_isaac_bit(&f.rc)) {
-                     mix0 = golden_bit(&f.rc);
-                     mix1 = golden_bit(&f.rc) + flam3_random_isaac_11(&f.rc)/5;
+                  } else if (rand_bool(&rc)) {
+                     mix0 = golden_bit(&rc);
+                     mix1 = golden_bit(&rc) + rand_d11(&rc)/5;
                      add_to_action(action," reframed1");
                   } else {
-                     mix0 = golden_bit(&f.rc) + flam3_random_isaac_11(&f.rc)/5;
-                     mix1 = golden_bit(&f.rc) + flam3_random_isaac_11(&f.rc)/5;
+                     mix0 = golden_bit(&rc) + rand_d11(&rc)/5;
+                     mix1 = golden_bit(&rc) + rand_d11(&rc)/5;
                      add_to_action(action," reframed2");
                   }
                   cp_orig.center[0] = mix0 * bmin[0] + (1-mix0)*bmax[0];
@@ -969,11 +967,11 @@ main(argc, argv)
 
             truncate_variations(&cp_orig, 5, action);
 
-            if (!did_color && random()&1) {
+            if (!did_color && rand_bool(&rc)) {
                if (debug)
                   fprintf(stderr,"improving colors...\n");
 
-               flam3_improve_colors(&cp_orig, 100, 0, 10);
+               flam3_improve_colors(&cp_orig, 100, 0, 10, &rc);
                //strcat(action," improved colors");
                add_to_action(action," improved colors");
             }

@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
   flam3_frame f;
   flam3_img_comments fpc;
   stat_struct stats,stats2;
+  randctx rc;
 
   char badval_string[64];
   char numiter_string[64];
@@ -62,9 +63,7 @@ int main(int argc, char **argv) {
       exit(0);
   }
 
-   /* Init random number generators */
-   flam3_init_frame(&f);
-   flam3_srandom();
+   rand_seed(&rc);
 
    /* Set the number of threads */
    if (num_threads==0) {
@@ -111,7 +110,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  cps = flam3_parse_from_file(in, inf, flam3_defaults_on, &ncps);
+  cps = flam3_parse_from_file(in, inf, flam3_defaults_on, &ncps, &rc);
   if (inf)
     fclose(in);
   if (NULL == cps) {

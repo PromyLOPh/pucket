@@ -357,10 +357,10 @@ static void iter_thread(void *fth) {
 
       /* Seed iterations */
       const double4 start = (double4) {
-	                        flam3_random_isaac_11(&(fthp->rc)),
-                            flam3_random_isaac_11(&(fthp->rc)),
-                            flam3_random_isaac_01(&(fthp->rc)),
-                            flam3_random_isaac_01(&(fthp->rc)),
+	                        rand_d11(&(fthp->rc)),
+                            rand_d11(&(fthp->rc)),
+                            rand_d01(&(fthp->rc)),
+                            rand_d01(&(fthp->rc)),
 							};
 
       /* Execute iterations */
@@ -792,8 +792,8 @@ static int render_rectangle(flam3_frame *spec, void *out,
          for (thi = 0; thi < spec->nthreads; thi++) {
 
             int rk;
-            /* Create a new isaac state for this thread */
-			xorshift_seed (&(fth[thi].rc));
+            /* Create a new state for this thread */
+			rand_seed (&fth[thi].rc);
 
             if (0==thi) {
 

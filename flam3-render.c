@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
    char numiter_string[64];
    char badval_string[64];
    char rtime_string[64];
+   randctx rc;
 
    if (1 != argc) {
      docstring();
@@ -67,8 +68,7 @@ int main(int argc, char **argv) {
    }
 
    /* Init random number generators */
-   flam3_init_frame(&f);
-   flam3_srandom();
+   rand_seed(&rc);
 
    /* Set the number of threads */
    if (num_threads==0) {
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
      exit(1);
    }
 
-   cps = flam3_parse_from_file(in, inf, flam3_defaults_on, &ncps);
+   cps = flam3_parse_from_file(in, inf, flam3_defaults_on, &ncps, &rc);
    if (NULL == cps) {
      fprintf(stderr,"error reading genomes from file\n");
      exit(1);

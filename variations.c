@@ -33,7 +33,7 @@ typedef struct {
 
    flam3_xform *xform; /* For the important values */
 
-   /* Pointer to the isaac RNG state */
+   /* Pointer to the RNG state */
    randctx *rc;
 
 } flam3_iter_helper;
@@ -358,7 +358,7 @@ static double2 var13_julia (const double2 in, const flam3_iter_helper * const f,
    double a = 0.5 * f->precalc_atan;
    double sa,ca;
 
-   if (flam3_random_isaac_bit(f->rc)) //(flam3_random_bit())
+   if (rand_bool(f->rc))
       a += M_PI;
 
    r = weight * sqrt(f->precalc_sqrt);
@@ -674,10 +674,10 @@ static double2 var31_noise (const double2 in, const flam3_iter_helper * const f,
 
    double tmpr, sinr, cosr, r;
 
-   tmpr = flam3_random_isaac_01(f->rc) * 2 * M_PI;
+   tmpr = rand_d01(f->rc) * 2 * M_PI;
    sincos(tmpr,&sinr,&cosr);
 
-   r = weight * flam3_random_isaac_01(f->rc);
+   r = weight * rand_d01(f->rc);
 
    return in * r * (double2) { cosr, sinr };
 }
@@ -685,7 +685,7 @@ static double2 var31_noise (const double2 in, const flam3_iter_helper * const f,
 static double2 var32_juliaN_generic (const double2 in, const flam3_iter_helper * const f, double weight) {
    /* juliaN (03/06) */
 
-   int t_rnd = trunc((f->xform->julian_rN)*flam3_random_isaac_01(f->rc));
+   int t_rnd = trunc((f->xform->julian_rN)*rand_d01(f->rc));
    
    double tmpr = (f->precalc_atanyx + 2 * M_PI * t_rnd) / f->xform->julian_power;
 
@@ -699,7 +699,7 @@ static double2 var32_juliaN_generic (const double2 in, const flam3_iter_helper *
 static double2 var33_juliaScope_generic (const double2 in, const flam3_iter_helper * const f, double weight) {
    /* juliaScope (03/06) */
 
-   int t_rnd = trunc((f->xform->juliascope_rN) * flam3_random_isaac_01(f->rc));
+   int t_rnd = trunc((f->xform->juliascope_rN) * rand_d01(f->rc));
 
    double tmpr, r;
    double sina, cosa;
@@ -721,10 +721,10 @@ static double2 var34_blur (const double2 in, const flam3_iter_helper * const f, 
 
    double tmpr, sinr, cosr, r;
 
-   tmpr = flam3_random_isaac_01(f->rc) * 2 * M_PI;
+   tmpr = rand_d01(f->rc) * 2 * M_PI;
    sincos(tmpr,&sinr,&cosr);
 
-   r = weight * flam3_random_isaac_01(f->rc);
+   r = weight * rand_d01(f->rc);
 
    return r * (double2) { cosr, sinr };
 }
@@ -734,11 +734,11 @@ static double2 var35_gaussian (const double2 in, const flam3_iter_helper * const
 
    double ang, r, sina, cosa;
 
-   ang = flam3_random_isaac_01(f->rc) * 2 * M_PI;
+   ang = rand_d01(f->rc) * 2 * M_PI;
    sincos(ang,&sina,&cosa);
 
-   r = weight * ( flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc)
-                   + flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc) - 2.0 );
+   r = weight * ( rand_d01(f->rc) + rand_d01(f->rc)
+                   + rand_d01(f->rc) + rand_d01(f->rc) - 2.0 );
 
    return r * (double2) { cosa, sina };
 }
@@ -750,8 +750,8 @@ static double2 var36_radial_blur (const double2 in, const flam3_iter_helper * co
    double rndG, ra, rz, tmpa, sa, ca;
 
    /* Get pseudo-gaussian */
-   rndG = weight * (flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc)
-                   + flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc) - 2.0);
+   rndG = weight * (rand_d01(f->rc) + rand_d01(f->rc)
+                   + rand_d01(f->rc) + rand_d01(f->rc) - 2.0);
 
    /* Calculate angle & zoom */
    ra = f->precalc_sqrt;
@@ -768,10 +768,10 @@ static double2 var37_pie(const double2 in, const flam3_iter_helper * const f, do
    double a, r, sa, ca;
    int sl;
 
-   sl = (int) (flam3_random_isaac_01(f->rc) * f->xform->pie_slices + 0.5);
+   sl = (int) (rand_d01(f->rc) * f->xform->pie_slices + 0.5);
    a = f->xform->pie_rotation +
-       2.0 * M_PI * (sl + flam3_random_isaac_01(f->rc) * f->xform->pie_thickness) / f->xform->pie_slices;
-   r = weight * flam3_random_isaac_01(f->rc);
+       2.0 * M_PI * (sl + rand_d01(f->rc) * f->xform->pie_thickness) / f->xform->pie_slices;
+   r = weight * rand_d01(f->rc);
    sincos(a,&sa,&ca);
 
    return r * (double2) { ca, sa };
@@ -836,7 +836,7 @@ static double2 var41_arch(const double2 in, const flam3_iter_helper * const f, d
     * it may change or even be removed in future versions of flam3.
     */
 
-   double ang = flam3_random_isaac_01(f->rc) * weight * M_PI;
+   double ang = rand_d01(f->rc) * weight * M_PI;
    double sinr,cosr;
    sincos(ang,&sinr,&cosr);
 
@@ -869,8 +869,8 @@ static double2 var43_square(const double2 in, const flam3_iter_helper * const f,
    */
 
    return weight * ((double2) {
-                   flam3_random_isaac_01(f->rc),
-                   flam3_random_isaac_01(f->rc),
+                   rand_d01(f->rc),
+                   rand_d01(f->rc),
 				   } - 0.5);
 
 }
@@ -896,7 +896,7 @@ static double2 var44_rays(const double2 in, const flam3_iter_helper * const f, d
     * it may change or even be removed in future versions of flam3.
     */
 
-   double ang = weight * flam3_random_isaac_01(f->rc) * M_PI;
+   double ang = weight * rand_d01(f->rc) * M_PI;
    double r = weight / (f->precalc_sumsq + EPS);
    double tanr = weight * tan(ang) * r;
 
@@ -925,7 +925,7 @@ static double2 var45_blade(const double2 in, const flam3_iter_helper * const f, 
     * it may change or even be removed in future versions of flam3.
     */
 
-   double r = flam3_random_isaac_01(f->rc) * weight * f->precalc_sqrt;
+   double r = rand_d01(f->rc) * weight * f->precalc_sqrt;
    double sinr,cosr;
    
    sincos(r,&sinr,&cosr);
@@ -972,7 +972,7 @@ static double2 var47_twintrian(const double2 in, const flam3_iter_helper * const
     * it may change or even be removed in future versions of flam3.
     */
 
-   double r = flam3_random_isaac_01(f->rc) * weight * f->precalc_sqrt;
+   double r = rand_d01(f->rc) * weight * f->precalc_sqrt;
    double sinr,cosr,diff;
    
    sincos(r,&sinr,&cosr);
@@ -1064,7 +1064,7 @@ static double2 var50_supershape(const double2 in, const flam3_iter_helper * cons
    
    myrnd = f->xform->super_shape_rnd;
 
-   r = weight * ( (myrnd*flam3_random_isaac_01(f->rc) + (1.0-myrnd)*f->precalc_sqrt) - f->xform->super_shape_holes) 
+   r = weight * ( (myrnd*rand_d01(f->rc) + (1.0-myrnd)*f->precalc_sqrt) - f->xform->super_shape_holes) 
       * pow(t1+t2,f->xform->super_shape_pneg1_n1) / f->precalc_sqrt;
 
    return r * in;
@@ -1078,7 +1078,7 @@ static double2 var51_flower(const double2 in, const flam3_iter_helper * const f,
          FPy^ := FPy^ + vvar*r*sin(theta);*/
  
     double theta = f->precalc_atanyx;
-    double r = weight * (flam3_random_isaac_01(f->rc) - f->xform->flower_holes) * 
+    double r = weight * (rand_d01(f->rc) - f->xform->flower_holes) * 
                     cos(f->xform->flower_petals*theta) / f->precalc_sqrt;
 
 	return r * in;
@@ -1092,7 +1092,7 @@ static double2 var52_conic(const double2 in, const flam3_iter_helper * const f, 
          FPy^ := FPy^ + vvar*r*sin(theta); */
  
     double ct = in[0] / f->precalc_sqrt;
-    double r = weight * (flam3_random_isaac_01(f->rc) - f->xform->conic_holes) * 
+    double r = weight * (rand_d01(f->rc) - f->xform->conic_holes) * 
                     f->xform->conic_eccentricity / (1 + f->xform->conic_eccentricity*ct) / f->precalc_sqrt;
 
 	return r * in;
@@ -1110,8 +1110,8 @@ static double2 var53_parabola(const double2 in, const flam3_iter_helper * const 
     sincos(r,&sr,&cr);
     
 	return weight * (double2) {
-                    f->xform->parabola_height * sr*sr * flam3_random_isaac_01(f->rc),
-                    f->xform->parabola_width * cr * flam3_random_isaac_01(f->rc),
+                    f->xform->parabola_height * sr*sr * rand_d01(f->rc),
+                    f->xform->parabola_width * cr * rand_d01(f->rc),
 					};
     
 }      
@@ -1154,7 +1154,7 @@ static double2 var56_boarders (const double2 in, const flam3_iter_helper * const
    double2 round = (double2) { rint(in[0]), rint(in[1]) };
    double2 offset = in - round;
     
-   if (flam3_random_isaac_01(f->rc) >= 0.75) {
+   if (rand_d01(f->rc) >= 0.75) {
 	  return weight*(offset*0.5 + round);
    } else {
       
@@ -1232,7 +1232,7 @@ static double2 var59_cpow (const double2 in, const flam3_iter_helper * const f, 
    double va = 2.0 * M_PI / f->xform->cpow_power;
    double vc = f->xform->cpow_r / f->xform->cpow_power;
    double vd = f->xform->cpow_i / f->xform->cpow_power;
-   double ang = vc*a + vd*lnr + va*floor(f->xform->cpow_power*flam3_random_isaac_01(f->rc));
+   double ang = vc*a + vd*lnr + va*floor(f->xform->cpow_power*rand_d01(f->rc));
    double sa,ca;
    
    double m = weight * exp(vc * lnr - vd * a);
@@ -1414,9 +1414,9 @@ static double2 var67_pre_blur (const double2 in, const flam3_iter_helper * const
    /* pre-xform: PreBlur (Apo 2.08) */
    
    /* Get pseudo-gaussian */
-   double rndG = weight * (flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc)
-                   + flam3_random_isaac_01(f->rc) + flam3_random_isaac_01(f->rc) - 2.0);
-   double rndA = flam3_random_isaac_01(f->rc) * 2.0 * M_PI;
+   double rndG = weight * (rand_d01(f->rc) + rand_d01(f->rc)
+                   + rand_d01(f->rc) + rand_d01(f->rc) - 2.0);
+   double rndA = rand_d01(f->rc) * 2.0 * M_PI;
    double sinA,cosA;
    
    sincos(rndA,&sinA,&cosA);
@@ -1597,7 +1597,7 @@ static double2 var78_wedge_julia (const double2 in, const flam3_iter_helper * co
    /* wedge_julia from apo plugin pack */
 
    double r = weight * pow(f->precalc_sumsq, f->xform->wedgeJulia_cn);
-   int t_rnd = (int)((f->xform->wedgeJulia_rN)*flam3_random_isaac_01(f->rc));
+   int t_rnd = (int)((f->xform->wedgeJulia_rN)*rand_d01(f->rc));
    double a = (f->precalc_atanyx + 2 * M_PI * t_rnd) / f->xform->wedge_julia_power;
    double c = floor( (f->xform->wedge_julia_count * a + M_PI)*M_1_PI*0.5 );
    double sa,ca;
@@ -2304,7 +2304,7 @@ int apply_xform(flam3_genome *cp, int fn, const double4 p, double4 *q_ret, randc
 
    /* Check for badvalues and return randoms if bad */
    if (badvalue(q01[0]) || badvalue(q01[1])) {
-      *q_ret = (double4) { flam3_random_isaac_11(rc), flam3_random_isaac_11(rc), q23[0], q23[1] };
+      *q_ret = (double4) { rand_d11(rc), rand_d11(rc), q23[0], q23[1] };
       return(1);
    } else {
 	  *q_ret = (double4) { q01[0], q01[1], q23[0], q23[1] };

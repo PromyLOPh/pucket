@@ -213,7 +213,7 @@ int flam3_interp_missing_colors(flam3_genome *cp) {
 }
 
 
-void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag, flam3_genome **all_cps, int *all_ncps) {
+void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag, flam3_genome **all_cps, int *all_ncps, randctx * const rc) {
 
    xmlNode *this_node = NULL;
    flam3_genome loc_current_cp;
@@ -233,7 +233,7 @@ void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag
          /* This is a flame element.  Parse it. */
          clear_cp(&loc_current_cp, default_flag);
 
-         pfe_success = parse_flame_element(this_node,&loc_current_cp);
+         pfe_success = parse_flame_element(this_node,&loc_current_cp, rc);
          
          if (pfe_success>0) {
             fprintf(stderr,"error parsing flame element\n");
@@ -255,7 +255,7 @@ void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag
 
          if (loc_current_cp.palette_index != -1) {
             col_success = flam3_get_palette(loc_current_cp.palette_index, loc_current_cp.palette,
-               loc_current_cp.hue_rotation);
+               loc_current_cp.hue_rotation, rc);
             if (col_success < 0)
                fprintf(stderr,"error retrieving palette %d, setting to all white\n",loc_current_cp.palette_index);
          }
@@ -271,7 +271,7 @@ void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag
 
       } else {
          /* Check all of the children of this element */
-         scan_for_flame_nodes(this_node->children, parent_file, default_flag, all_cps, all_ncps);
+         scan_for_flame_nodes(this_node->children, parent_file, default_flag, all_cps, all_ncps, rc);
       }
    }
    
@@ -281,7 +281,8 @@ void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag
 }
 
 
-int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp) {
+int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
+                        randctx * const rc) {
    flam3_genome *cp = loc_current_cp;
    xmlNode *chld_node, *motion_node;
    xmlNodePtr edit_node;
@@ -653,7 +654,7 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp) {
          }
 
          if (old_format>0)
-            interpolate_cmap(cp->palette, blend, index0, hue0, index1, hue1);
+            interpolate_cmap(cp->palette, blend, index0, hue0, index1, hue1, rc);
          else {
 
             char *pal_str;
@@ -699,7 +700,7 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp) {
          }
 
          bef = cp->num_xforms;
-         flam3_add_symmetry(cp,kind);
+         flam3_add_symmetry(cp,kind, rc);
          aft = cp->num_xforms;
          num_std_xforms += (aft-bef);
          

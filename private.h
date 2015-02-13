@@ -80,7 +80,7 @@ typedef struct {
 
 typedef struct {
    double4 *iter_storage; /* Storage for iteration coordinates */
-   randctx rc; /* Thread-unique ISAAC seed */
+   randctx rc; /* Thread-unique rng context */
    flam3_genome cp; /* Full copy of genome for use by the thread */
    int first_thread;
    int timer_initialize;

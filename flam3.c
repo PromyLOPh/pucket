@@ -24,7 +24,7 @@
 #include "parser.h"
 #include "filters.h"
 #include "palettes.h"
-#include "xorshift.h"
+#include "random.h"
 #include <limits.h>
 #include <locale.h>
 #include <math.h>
@@ -46,9 +46,6 @@ char *flam3_version() {
 #define CHOOSE_XFORM_GRAIN 16384
 #define CHOOSE_XFORM_GRAIN_M1 16383
 
-#define random_distrib(v) ((v)[random()%vlen(v)])
-                                   
-                                    
 unsigned short *flam3_create_xform_distrib(flam3_genome *cp) {
 
    /* Xform distrib is created in this function             */   
@@ -202,9 +199,9 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *
    
 //         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (((unsigned)irand(rc)) % CHOOSE_XFORM_GRAIN)];
       if (cp->chaos_enable)
-         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (xorshift_step(rc) & CHOOSE_XFORM_GRAIN_M1)];
+         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (rand_u64(rc) & CHOOSE_XFORM_GRAIN_M1)];
       else
-         fn = xform_distrib[ xorshift_step(rc) & CHOOSE_XFORM_GRAIN_M1 ];
+         fn = xform_distrib[ rand_u64(rc) & CHOOSE_XFORM_GRAIN_M1 ];
       
       if (apply_xform(cp, fn, p, &q, rc)>0) {
          consec ++;
@@ -225,7 +222,7 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *
 
       if (cp->final_xform_enable == 1) {
          if (cp->xform[cp->final_xform_index].opacity==1 || 
-                flam3_random_isaac_01(rc)<cp->xform[cp->final_xform_index].opacity) {
+                rand_d01(rc)<cp->xform[cp->final_xform_index].opacity) {
              apply_xform(cp, cp->final_xform_index, p, &q, rc);
              /* Keep the opacity from the original xform */
 			 q = (double4) { q[0], q[1], q[2], p[3] };
@@ -1238,7 +1235,7 @@ def:
    return (nthreads);
 }
 
-flam3_genome *flam3_parse_xml2(char *xmldata, char *xmlfilename, int default_flag, int *ncps) {
+flam3_genome *flam3_parse_xml2(char *xmldata, char *xmlfilename, int default_flag, int *ncps, randctx * const rc) {
 
    xmlDocPtr doc; /* Parsed XML document tree */
    xmlNode *rootnode;
@@ -1279,7 +1276,7 @@ flam3_genome *flam3_parse_xml2(char *xmldata, char *xmlfilename, int default_fla
    bn = basename(xmlfilename);
 
    /* Have to use &loc_all_cp since the memory gets allocated in scan_for_flame_nodes */
-   scan_for_flame_nodes(rootnode, bn, default_flag,&loc_all_cp,&loc_all_ncps);
+   scan_for_flame_nodes(rootnode, bn, default_flag,&loc_all_cp,&loc_all_ncps, rc);
 
    // restore locale
    if (locale != NULL) {
@@ -1339,7 +1336,7 @@ flam3_genome *flam3_parse_xml2(char *xmldata, char *xmlfilename, int default_fla
    return loc_all_cp;
 }
 
-flam3_genome * flam3_parse_from_file(FILE *f, char *fname, int default_flag, int *ncps) {
+flam3_genome * flam3_parse_from_file(FILE *f, char *fname, int default_flag, int *ncps, randctx * const rc) {
    int i, c, slen = 5000;
    char *s, *snew;
    flam3_genome *ret;
@@ -1368,9 +1365,9 @@ flam3_genome * flam3_parse_from_file(FILE *f, char *fname, int default_flag, int
 
    /* Parse the XML string */
    if (fname)
-      ret = flam3_parse_xml2(s, fname, default_flag, ncps);
+      ret = flam3_parse_xml2(s, fname, default_flag, ncps, rc);
    else
-      ret = flam3_parse_xml2(s, "stdin", default_flag, ncps);
+      ret = flam3_parse_xml2(s, "stdin", default_flag, ncps, rc);
       
    free(s);
    
@@ -2266,48 +2263,6 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
       fprintf(f, "/>\n");
 }
 
-
-/* returns a uniform variable from 0 to 1 */
-double flam3_random01() {
-   return (random() & 0xfffffff) / (double) 0xfffffff;
-}
-
-double flam3_random11() {
-   return ((random() & 0xfffffff) - 0x7ffffff) / (double) 0x7ffffff;
-}
-
-/* This function must be called prior to rendering a frame */
-void flam3_init_frame(flam3_frame *f) {
-	xorshift_seed (&f->rc);
-}
-
-/* returns uniform variable from ISAAC rng */
-double flam3_random_isaac_01(randctx *ct) {
-   return ((uint32_t) xorshift_step (ct) & 0xfffffff) / (double) 0xfffffff;
-}
-
-double flam3_random_isaac_11(randctx *ct) {
-   return (((uint32_t) xorshift_step(ct) & 0xfffffff) - 0x7ffffff) / (double) 0x7ffffff;
-}
-
-int flam3_random_bit() {
-  /* might not be threadsafe */
-  static int n = 0;
-  static int l;
-  if (0 == n) {
-    l = random();
-    n = 20;
-  } else {
-    l = l >> 1;
-    n--;
-  }
-  return l & 1;
-}
-
-int flam3_random_isaac_bit(randctx *ct) {
-   return xorshift_step(ct) & 1;
-}
-
 static double round6(double x) {
   x *= 1e6;
   if (x < 0) x -= 1.0;
@@ -2320,7 +2275,7 @@ static double round6(double x) {
    sym=-1 means bilateral (reflection)
    sym=-2 or less means rotational and reflective
 */
-void flam3_add_symmetry(flam3_genome *cp, int sym) {
+void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc) {
    int i, j, k;
    double a;
    int result = 0;
@@ -2334,12 +2289,12 @@ void flam3_add_symmetry(flam3_genome *cp, int sym) {
          3, 3,
          4, 4,
       };
-      if (random()&1) {
-         sym = random_distrib(sym_distrib);
-      } else if (random()&31) {
-         sym = (random()%13)-6;
+      if (rand_bool(rc)) {
+         sym = rand_distrib(rc, sym_distrib);
+      } else if (rand_mod(rc, 32)) {
+         sym = rand_mod(rc, 13)-6;
       } else {
-         sym = (random()%51)-25;
+         sym = rand_mod(rc, 51)-25;
       }
    }
 
@@ -2428,7 +2383,7 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
 
    if (cross_mode == CROSS_NOT_SPECIFIED) {
    
-      double s = flam3_random_isaac_01(rc);
+      double s = rand_d01(rc);
       
       if (s < 0.1)
          cross_mode = CROSS_UNION;
@@ -2475,7 +2430,7 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
    
       /* linearly interpolate somewhere between the two */
       flam3_genome parents[2];
-      double t = flam3_random_isaac_01(rc);
+      double t = rand_d01(rc);
 
       memset(parents, 0, 2*sizeof(flam3_genome));
 
@@ -2510,7 +2465,7 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
 
          trystr[0] = 0;
          got0 = got1 = 0;
-         rb = flam3_random_isaac_bit(rc);
+         rb = rand_bool(rc);
          sprintf(ministr,"%d:",rb);
          strcat(trystr,ministr);
 
@@ -2525,7 +2480,7 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
          /* Only replace non-final xforms */
 
          for (i = 0; i < out->num_xforms - out->final_xform_enable; i++) {
-            rb = flam3_random_isaac_bit(rc);
+            rb = rand_bool(rc);
 
             /* Replace xform if bit is 1 */
             if (rb==1) {
@@ -2578,10 +2533,10 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
    }
                
    /* Potentially genetically cross the two colormaps together */
-   if (flam3_random_isaac_01(rc) < 0.4) {
+   if (rand_d01(rc) < 0.4) {
                               
       /* Select the starting parent */
-      int startParent=flam3_random_isaac_bit(rc);
+      int startParent=rand_bool(rc);
       int ci;
                         
       add_to_action(action," cmap_cross");
@@ -2590,7 +2545,7 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
                   
       /* Loop over the entries, switching to the other parent 1% of the time */
       for (ci=0;ci<256;ci++) {
-         if (flam3_random_isaac_01(rc)<.01) {
+         if (rand_d01(rc)<.01) {
             startParent = 1-startParent;
             sprintf(ministr," %d",ci);
             add_to_action(action,ministr);
@@ -2612,7 +2567,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
    /* If mutate_mode = -1, choose a random mutation mode */
    if (mutate_mode == MUTATE_NOT_SPECIFIED) {
    
-      randselect = flam3_random_isaac_01(rc);
+      randselect = rand_d01(rc);
       
       if (randselect < 0.1)
          mutate_mode = MUTATE_ALL_VARIATIONS;
@@ -2640,7 +2595,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       do {
          /* Create a random flame, and use the variations */
          /* to replace those in the original              */
-         flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms);
+         flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms, rc);
          for (i = 0; i < cp->num_xforms; i++) {
             for (j = 0; j < flam3_nvariations; j++) {
                if (cp->xform[i].var[j] != mutation.xform[i].var[j]) {
@@ -2662,10 +2617,10 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       int modxf;
    
       /* Generate a 2-xform random */
-      flam3_random(&mutation, ivars, ivars_n, sym, 2);
+      flam3_random(&mutation, ivars, ivars_n, sym, 2, rc);
       
       /* Which xform do we mutate? */
-      modxf = (xorshift_step(rc)) % cp->num_xforms;
+      modxf = rand_mod(rc, cp->num_xforms);
       
       add_to_action(action,"mutate xform ");
       sprintf(ministr,"%d coefs",modxf);
@@ -2684,12 +2639,12 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
    } else if (mutate_mode == MUTATE_ADD_SYMMETRY) {
    
       add_to_action(action,"mutate symmetry");
-      flam3_add_symmetry(cp, 0);
+      flam3_add_symmetry(cp, 0, rc);
       
    } else if (mutate_mode == MUTATE_POST_XFORMS) {
    
-      int b = 1 + (xorshift_step(rc))%6;
-      int same = (xorshift_step(rc))&3; /* 25% chance of using the same post for all of them */
+      int b = 1 + rand_mod(rc, 6);
+      int same = rand_mod(rc, 4); /* 25% chance of using the same post for all of them */
       
       sprintf(ministr,"(%d%s)",b,(same>0) ? " same" : "");
       add_to_action(action,"mutate post xforms ");
@@ -2707,7 +2662,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 
             if (b&1) { /* 50% chance */
             
-               double f = M_PI * flam3_random_isaac_11(rc);
+               double f = M_PI * rand_d11(rc);
                double t[2][2];
 
                t[0][0] = (cp->xform[i].c[0][0] * cos(f) + cp->xform[i].c[0][1] * -sin(f));
@@ -2736,16 +2691,16 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 
             if (b&2) { /* 33% chance */
             
-               double f = 0.2 + flam3_random_isaac_01(rc);
-               double g = 0.2 + flam3_random_isaac_01(rc);
+               double f = 0.2 + rand_d01(rc);
+               double g = 0.2 + rand_d01(rc);
 
-               if (flam3_random_isaac_bit(rc))
+               if (rand_bool(rc))
                   f = 1.0 / f;
                
-               if (flam3_random_isaac_bit(rc))
+               if (rand_bool(rc))
                   g = f;
                else {               
-                  if (flam3_random_isaac_bit(rc))
+                  if (rand_bool(rc))
                      g = 1.0 / g;
                }
 
@@ -2761,8 +2716,8 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 
             if (b&4) { /* 16% chance */
 
-               double f = flam3_random_isaac_11(rc);
-               double g = flam3_random_isaac_11(rc);
+               double f = rand_d11(rc);
+               double g = rand_d11(rc);
 
                cp->xform[i].c[2][0] -= f;
                cp->xform[i].c[2][1] -= g;
@@ -2773,21 +2728,21 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       }
    } else if (mutate_mode == MUTATE_COLOR_PALETTE) {
    
-      double s = flam3_random_isaac_01(rc);
+      double s = rand_d01(rc);
 
       if (s < 0.4) { /* randomize xform color coords */
       
-         flam3_improve_colors(cp, 100, 0, 10);
+         flam3_improve_colors(cp, 100, 0, 10, rc);
          add_to_action(action,"mutate color coords");
          
       } else if (s < 0.8) { /* randomize xform color coords and palette */
       
-         flam3_improve_colors(cp, 25, 1, 10);
+         flam3_improve_colors(cp, 25, 1, 10, rc);
          add_to_action(action,"mutate color all");
          
       } else { /* randomize palette only */
 
-         cp->palette_index = flam3_get_palette(flam3_palette_random, cp->palette, cp->hue_rotation);
+         cp->palette_index = flam3_get_palette(flam3_palette_random, cp->palette, cp->hue_rotation, rc);
          /* if our palette retrieval fails, skip the mutation */
          if (cp->palette_index >= 0)
             add_to_action(action,"mutate color palette");
@@ -2797,7 +2752,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       }
    } else if (mutate_mode == MUTATE_DELETE_XFORM) {
    
-      int nx = (xorshift_step(rc))%cp->num_xforms;
+      int nx = rand_mod(rc, cp->num_xforms);
       sprintf(ministr,"%d",nx);
       add_to_action(action,"mutate delete xform ");
       add_to_action(action,ministr);
@@ -2809,7 +2764,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
    
       int x;
       add_to_action(action,"mutate all coefs");
-      flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms);
+      flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms, rc);
 
       /* change all the coefs by a fraction of the random */
       for (x = 0; x < cp->num_xforms; x++) {
@@ -2827,15 +2782,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 
 }
 
-static int random_var() {
-  return random() % flam3_nvariations;
-}
-
-static int random_varn(int n) {
-   return random() % n;
-}
-
-void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_xforms) {
+void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_xforms, randctx * const rc) {
 
    int i, j, nxforms, var, samed, multid, samepost, postid, addfinal=0;
    int finum = -1;
@@ -2855,8 +2802,8 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
 
    clear_cp(cp,flam3_defaults_on);
 
-   cp->hue_rotation = (random()&7) ? 0.0 : flam3_random01();
-   cp->palette_index = flam3_get_palette(flam3_palette_random, cp->palette, cp->hue_rotation);
+   cp->hue_rotation = rand_mod(rc, 8) ? 0.0 : rand_d01(rc);
+   cp->palette_index = flam3_get_palette(flam3_palette_random, cp->palette, cp->hue_rotation, rc);
    if (cp->palette_index < 0)
       fprintf(stderr,"error getting palette from xml file, setting to all white\n");
    cp->time = 0.0;
@@ -2868,10 +2815,10 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
       nxforms = spec_xforms;
       flam3_add_xforms(cp,nxforms,0,0);
    } else {
-      nxforms = random_distrib(xform_distrib);
+      nxforms = rand_distrib(rc, xform_distrib);
       flam3_add_xforms(cp,nxforms,0,0);
       /* Add a final xform 15% of the time */
-      addfinal = flam3_random01() < 0.15;
+      addfinal = rand_d01(rc) < 0.15;
       if (addfinal) {
          flam3_add_xforms(cp,1,0,1);
          nxforms = nxforms + addfinal;
@@ -2882,8 +2829,8 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
    /* If first input variation is 'flam3_variation_random' */
    /* choose one to use or decide to use multiple    */
    if (flam3_variation_random == ivars[0]) {
-      if (flam3_random_bit()) {
-         var = random_varn(mvar);
+      if (rand_bool(rc)) {
+         var = rand_mod(rc, mvar);
       } else {
          var = flam3_variation_random;
       }
@@ -2891,10 +2838,10 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
       var = flam3_variation_random_fromspecified;
    }
 
-   samed = flam3_random_bit();
-   multid = flam3_random_bit();
-   postid = flam3_random01() < 0.6;
-   samepost = flam3_random_bit();
+   samed = rand_bool(rc);
+   multid = rand_bool(rc);
+   postid = rand_d01(rc) < 0.6;
+   samepost = rand_bool(rc);
 
    /* Loop over xforms */
    for (i = 0; i < nxforms; i++) {
@@ -2905,7 +2852,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
       cp->xform[i].animate = 1.0;
       for (j = 0; j < 3; j++) {
          for (k = 0; k < 2; k++) {
-            cp->xform[i].c[j][k] = flam3_random11();
+            cp->xform[i].c[j][k] = rand_d11(rc);
             cp->xform[i].post[j][k] = (double)(k==j);
          }
       }
@@ -2917,7 +2864,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
             for (j = 0; j < 3; j++)
             for (k = 0; k < 2; k++) {
                if (samepost || (i==0))
-                  cp->xform[i].post[j][k] = flam3_random11();
+                  cp->xform[i].post[j][k] = rand_d11(rc);
                else
                   cp->xform[i].post[j][k] = cp->xform[0].post[j][k];
             }
@@ -2936,7 +2883,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
          } else if (multid && flam3_variation_random == var) {
 
            /* Choose a random var for this xform */
-             cp->xform[i].var[random_varn(mvar)] = 1.0;
+             cp->xform[i].var[rand_mod(rc, mvar)] = 1.0;
 
          } else {
 
@@ -2954,7 +2901,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
                /* but less than flam3_nvariations.Probability leans */
                /* towards fewer variations.                         */
                n = 2;
-               while ((flam3_random_bit()) && (n<mvar))
+               while ((rand_bool(rc)) && (n<mvar))
                   n++;
                
                /* Randomly choose n variations, and change their weights. */
@@ -2962,9 +2909,9 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
                /* the probability that multiple vars are used.            */
                for (j = 0; j < n; j++) {
                   if (flam3_variation_random_fromspecified != var)
-                     cp->xform[i].var[random_varn(mvar)] = flam3_random01();
+                     cp->xform[i].var[rand_mod(rc, mvar)] = rand_d01(rc);
                   else
-                     cp->xform[i].var[ivars[random_varn(ivars_n)]] = flam3_random01();
+                     cp->xform[i].var[ivars[rand_mod(rc, ivars_n)]] = rand_d01(rc);
                }
 
                /* Normalize weights to 1.0 total. */
@@ -2972,7 +2919,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
                for (j = 0; j < flam3_nvariations; j++)
                   sum += cp->xform[i].var[j];
                if (sum == 0.0)
-                  cp->xform[i].var[random_var()] = 1.0;
+                  cp->xform[i].var[rand_mod(rc, flam3_nvariations)] = 1.0;
                else {
                   for (j = 0; j < flam3_nvariations; j++)
                      cp->xform[i].var[j] /= sum;
@@ -2982,16 +2929,16 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
       } else {
          /* Handle final xform randomness. */
          n = 1;
-         if (flam3_random_bit()) n++;
+         if (rand_bool(rc)) n++;
          
          /* Randomly choose n variations, and change their weights. */
          /* A var can be selected more than once, further reducing  */
          /* the probability that multiple vars are used.            */
          for (j = 0; j < n; j++) {
             if (flam3_variation_random_fromspecified != var)
-               cp->xform[i].var[random_varn(mvar)] = flam3_random01();
+               cp->xform[i].var[rand_mod(rc, mvar)] = rand_d01(rc);
             else
-               cp->xform[i].var[ivars[random_varn(ivars_n)]] = flam3_random01();
+               cp->xform[i].var[ivars[rand_mod(rc, ivars_n)]] = rand_d01(rc);
          }
 
          /* Normalize weights to 1.0 total. */
@@ -2999,7 +2946,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
          for (j = 0; j < flam3_nvariations; j++)
             sum += cp->xform[i].var[j];
          if (sum == 0.0)
-            cp->xform[i].var[random_var()] = 1.0;
+            cp->xform[i].var[rand_mod(rc, flam3_nvariations)] = 1.0;
          else {
             for (j = 0; j < flam3_nvariations; j++)
                cp->xform[i].var[j] /= sum;
@@ -3009,42 +2956,42 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
       /* Generate random params for parametric variations, if selected. */
       if (cp->xform[i].var[VAR_BLOB] > 0) {
          /* Create random params for blob */
-         cp->xform[i].blob_low = 0.2 + 0.5 * flam3_random01();
-         cp->xform[i].blob_high = 0.8 + 0.4 * flam3_random01();
-         cp->xform[i].blob_waves = (int)(2 + 5 * flam3_random01());
+         cp->xform[i].blob_low = 0.2 + 0.5 * rand_d01(rc);
+         cp->xform[i].blob_high = 0.8 + 0.4 * rand_d01(rc);
+         cp->xform[i].blob_waves = (int)(2 + 5 * rand_d01(rc));
       }
 
       if (cp->xform[i].var[VAR_PDJ] > 0) {
          /* Create random params for PDJ */
-         cp->xform[i].pdj_a = 3.0 * flam3_random11();
-         cp->xform[i].pdj_b = 3.0 * flam3_random11();
-         cp->xform[i].pdj_c = 3.0 * flam3_random11();
-         cp->xform[i].pdj_d = 3.0 * flam3_random11();
+         cp->xform[i].pdj_a = 3.0 * rand_d11(rc);
+         cp->xform[i].pdj_b = 3.0 * rand_d11(rc);
+         cp->xform[i].pdj_c = 3.0 * rand_d11(rc);
+         cp->xform[i].pdj_d = 3.0 * rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_FAN2] > 0) {
          /* Create random params for fan2 */
-         cp->xform[i].fan2_x = flam3_random11();
-         cp->xform[i].fan2_y = flam3_random11();
+         cp->xform[i].fan2_x = rand_d11(rc);
+         cp->xform[i].fan2_y = rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_RINGS2] > 0) {
          /* Create random params for rings2 */
-         cp->xform[i].rings2_val = 2*flam3_random01();
+         cp->xform[i].rings2_val = 2*rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_PERSPECTIVE] > 0) {
 
          /* Create random params for perspective */
-         cp->xform[i].perspective_angle = flam3_random01();
-         cp->xform[i].perspective_dist = 2*flam3_random01() + 1.0;
+         cp->xform[i].perspective_angle = rand_d01(rc);
+         cp->xform[i].perspective_dist = 2*rand_d01(rc) + 1.0;
 
       }
 
       if (cp->xform[i].var[VAR_JULIAN] > 0) {
 
          /* Create random params for julian */
-         cp->xform[i].julian_power = (int)(5*flam3_random01() + 2);
+         cp->xform[i].julian_power = (int)(5*rand_d01(rc) + 2);
          cp->xform[i].julian_dist = 1.0;
 
       }
@@ -3052,7 +2999,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
       if (cp->xform[i].var[VAR_JULIASCOPE] > 0) {
 
          /* Create random params for juliaScope */
-         cp->xform[i].juliascope_power = (int)(5*flam3_random01() + 2);
+         cp->xform[i].juliascope_power = (int)(5*rand_d01(rc) + 2);
          cp->xform[i].juliascope_dist = 1.0;
 
       }
@@ -3060,234 +3007,234 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
       if (cp->xform[i].var[VAR_RADIAL_BLUR] > 0) {
 
          /* Create random params for radialBlur */
-         cp->xform[i].radial_blur_angle = (2 * flam3_random01() - 1);
+         cp->xform[i].radial_blur_angle = (2 * rand_d01(rc) - 1);
 
       }
 
       if (cp->xform[i].var[VAR_PIE] > 0) {
          /* Create random params for pie */
-         cp->xform[i].pie_slices = (int) 10.0*flam3_random01();
-         cp->xform[i].pie_thickness = flam3_random01();
-         cp->xform[i].pie_rotation = 2.0 * M_PI * flam3_random11();
+         cp->xform[i].pie_slices = (int) 10.0*rand_d01(rc);
+         cp->xform[i].pie_thickness = rand_d01(rc);
+         cp->xform[i].pie_rotation = 2.0 * M_PI * rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_NGON] > 0) {
          /* Create random params for ngon */
-         cp->xform[i].ngon_sides = (int) flam3_random01()* 10 + 3;
-         cp->xform[i].ngon_power = 3*flam3_random01() + 1;
-         cp->xform[i].ngon_circle = 3*flam3_random01();
-         cp->xform[i].ngon_corners = 2*flam3_random01()*cp->xform[i].ngon_circle;
+         cp->xform[i].ngon_sides = (int) rand_d01(rc)* 10 + 3;
+         cp->xform[i].ngon_power = 3*rand_d01(rc) + 1;
+         cp->xform[i].ngon_circle = 3*rand_d01(rc);
+         cp->xform[i].ngon_corners = 2*rand_d01(rc)*cp->xform[i].ngon_circle;
       }
 
       if (cp->xform[i].var[VAR_CURL] > 0) {
          /* Create random params for curl */
-         cp->xform[i].curl_c1 = flam3_random01();
-         cp->xform[i].curl_c2 = flam3_random01();
+         cp->xform[i].curl_c1 = rand_d01(rc);
+         cp->xform[i].curl_c2 = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_RECTANGLES] > 0) {
          /* Create random params for rectangles */
-         cp->xform[i].rectangles_x = flam3_random01();
-         cp->xform[i].rectangles_y = flam3_random01();
+         cp->xform[i].rectangles_x = rand_d01(rc);
+         cp->xform[i].rectangles_y = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_DISC2] > 0) {
       /* Create random params for disc2 */
-      cp->xform[i].disc2_rot = 0.5 * flam3_random01();
-      cp->xform[i].disc2_twist = 0.5 * flam3_random01();
+      cp->xform[i].disc2_rot = 0.5 * rand_d01(rc);
+      cp->xform[i].disc2_twist = 0.5 * rand_d01(rc);
 
       }
 
       if (cp->xform[i].var[VAR_SUPER_SHAPE] > 0) {
          /* Create random params for supershape */
-         cp->xform[i].super_shape_rnd = flam3_random01();
-         cp->xform[i].super_shape_m = (int) flam3_random01()*6;
-         cp->xform[i].super_shape_n1 = flam3_random01()*40;
-         cp->xform[i].super_shape_n2 = flam3_random01()*20;
+         cp->xform[i].super_shape_rnd = rand_d01(rc);
+         cp->xform[i].super_shape_m = (int) rand_d01(rc)*6;
+         cp->xform[i].super_shape_n1 = rand_d01(rc)*40;
+         cp->xform[i].super_shape_n2 = rand_d01(rc)*20;
          cp->xform[i].super_shape_n3 = cp->xform[i].super_shape_n2;
          cp->xform[i].super_shape_holes = 0.0;
       }
 
       if (cp->xform[i].var[VAR_FLOWER] > 0) {
          /* Create random params for flower */
-         cp->xform[i].flower_petals = 4 * flam3_random01();
-         cp->xform[i].flower_holes = flam3_random01();
+         cp->xform[i].flower_petals = 4 * rand_d01(rc);
+         cp->xform[i].flower_holes = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_CONIC] > 0) {
          /* Create random params for conic */
-         cp->xform[i].conic_eccentricity = flam3_random01();
-         cp->xform[i].conic_holes = flam3_random01();
+         cp->xform[i].conic_eccentricity = rand_d01(rc);
+         cp->xform[i].conic_holes = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_PARABOLA] > 0) {
          /* Create random params for parabola */
-         cp->xform[i].parabola_height = 0.5 + flam3_random01();
-         cp->xform[i].parabola_width = 0.5 + flam3_random01();
+         cp->xform[i].parabola_height = 0.5 + rand_d01(rc);
+         cp->xform[i].parabola_width = 0.5 + rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_BENT2] > 0) {
          /* Create random params for bent2 */
-         cp->xform[i].bent2_x = 3*(-0.5 + flam3_random01());
-         cp->xform[i].bent2_y = 3*(-0.5 + flam3_random01());
+         cp->xform[i].bent2_x = 3*(-0.5 + rand_d01(rc));
+         cp->xform[i].bent2_y = 3*(-0.5 + rand_d01(rc));
       }
 
       if (cp->xform[i].var[VAR_BIPOLAR] > 0) {
          /* Create random params for bipolar */
-         cp->xform[i].bipolar_shift = 2.0 * flam3_random01() - 1;
+         cp->xform[i].bipolar_shift = 2.0 * rand_d01(rc) - 1;
       }
 
       if (cp->xform[i].var[VAR_CELL] > 0) {
          /* Create random params for cell */
-         cp->xform[i].cell_size = 2.0 * flam3_random01() + 0.5;
+         cp->xform[i].cell_size = 2.0 * rand_d01(rc) + 0.5;
       }
 
       if (cp->xform[i].var[VAR_CPOW] > 0) {
          /* Create random params for cpow */
-         cp->xform[i].cpow_r = 3.0 * flam3_random01();
-         cp->xform[i].cpow_i = flam3_random01() - 0.5;
-         cp->xform[i].cpow_power = (int)(5.0 * flam3_random01());
+         cp->xform[i].cpow_r = 3.0 * rand_d01(rc);
+         cp->xform[i].cpow_i = rand_d01(rc) - 0.5;
+         cp->xform[i].cpow_power = (int)(5.0 * rand_d01(rc));
       }
 
       if (cp->xform[i].var[VAR_CURVE] > 0) {
          /* Create random params for curve */
-         cp->xform[i].curve_xamp = 5 * (flam3_random01()-.5);
-         cp->xform[i].curve_yamp = 4 * (flam3_random01()-.5);
-         cp->xform[i].curve_xlength = 2 * (flam3_random01()+.5);
-         cp->xform[i].curve_ylength = 2 * (flam3_random01()+.5);
+         cp->xform[i].curve_xamp = 5 * (rand_d01(rc)-.5);
+         cp->xform[i].curve_yamp = 4 * (rand_d01(rc)-.5);
+         cp->xform[i].curve_xlength = 2 * (rand_d01(rc)+.5);
+         cp->xform[i].curve_ylength = 2 * (rand_d01(rc)+.5);
       }
 
       if (cp->xform[i].var[VAR_ESCHER] > 0) {
          /* Create random params for escher */
-         cp->xform[i].escher_beta = M_PI * flam3_random11();
+         cp->xform[i].escher_beta = M_PI * rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_LAZYSUSAN] > 0) {
          /* Create random params for lazysusan */
-         cp->xform[i].lazysusan_x = 2.0*flam3_random11();
-         cp->xform[i].lazysusan_y = 2.0*flam3_random11();
-         cp->xform[i].lazysusan_spin = M_PI*flam3_random11();
-         cp->xform[i].lazysusan_space = 2.0*flam3_random11();
-         cp->xform[i].lazysusan_twist = 2.0*flam3_random11();
+         cp->xform[i].lazysusan_x = 2.0*rand_d11(rc);
+         cp->xform[i].lazysusan_y = 2.0*rand_d11(rc);
+         cp->xform[i].lazysusan_spin = M_PI*rand_d11(rc);
+         cp->xform[i].lazysusan_space = 2.0*rand_d11(rc);
+         cp->xform[i].lazysusan_twist = 2.0*rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_MODULUS] > 0) {
          /* Create random params for modulus */
-         cp->xform[i].modulus_x = flam3_random11();
-         cp->xform[i].modulus_y = flam3_random11();
+         cp->xform[i].modulus_x = rand_d11(rc);
+         cp->xform[i].modulus_y = rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_OSCILLOSCOPE] > 0) {
          /* Create random params for oscope */
-         cp->xform[i].oscope_separation = 1.0 + flam3_random11();
-         cp->xform[i].oscope_frequency = M_PI * flam3_random11();
-         cp->xform[i].oscope_amplitude = 1.0 + 2 * flam3_random01();
-         cp->xform[i].oscope_damping = flam3_random01();
+         cp->xform[i].oscope_separation = 1.0 + rand_d11(rc);
+         cp->xform[i].oscope_frequency = M_PI * rand_d11(rc);
+         cp->xform[i].oscope_amplitude = 1.0 + 2 * rand_d01(rc);
+         cp->xform[i].oscope_damping = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_POPCORN2] > 0) {
          /* Create random params for popcorn2 */
-         cp->xform[i].popcorn2_x = 0.2 * flam3_random01();
-         cp->xform[i].popcorn2_y = 0.2 * flam3_random01();
-         cp->xform[i].popcorn2_c = 5 * flam3_random01();
+         cp->xform[i].popcorn2_x = 0.2 * rand_d01(rc);
+         cp->xform[i].popcorn2_y = 0.2 * rand_d01(rc);
+         cp->xform[i].popcorn2_c = 5 * rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_SEPARATION] > 0) {
          /* Create random params for separation */
-         cp->xform[i].separation_x = 1 + flam3_random11();
-         cp->xform[i].separation_y = 1 + flam3_random11();
-         cp->xform[i].separation_xinside = flam3_random11();
-         cp->xform[i].separation_yinside = flam3_random11();
+         cp->xform[i].separation_x = 1 + rand_d11(rc);
+         cp->xform[i].separation_y = 1 + rand_d11(rc);
+         cp->xform[i].separation_xinside = rand_d11(rc);
+         cp->xform[i].separation_yinside = rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_SPLIT] > 0) {
          /* Create random params for split */
-         cp->xform[i].split_xsize = flam3_random11();
-         cp->xform[i].split_ysize = flam3_random11();
+         cp->xform[i].split_xsize = rand_d11(rc);
+         cp->xform[i].split_ysize = rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_SPLITS] > 0) {
          /* Create random params for splits */
-         cp->xform[i].splits_x = flam3_random11();
-         cp->xform[i].splits_y = flam3_random11();
+         cp->xform[i].splits_x = rand_d11(rc);
+         cp->xform[i].splits_y = rand_d11(rc);
       }
 
       if (cp->xform[i].var[VAR_STRIPES] > 0) {
          /* Create random params for stripes */
-         cp->xform[i].stripes_space = flam3_random01();
-         cp->xform[i].stripes_warp = 5*flam3_random01();
+         cp->xform[i].stripes_space = rand_d01(rc);
+         cp->xform[i].stripes_warp = 5*rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_WEDGE] > 0) {
          /* Create random params for wedge */
-         cp->xform[i].wedge_angle = M_PI*flam3_random01();
-         cp->xform[i].wedge_hole = 0.5*flam3_random11();
-         cp->xform[i].wedge_count = floor(5*flam3_random01())+1;
-         cp->xform[i].wedge_swirl = flam3_random01();
+         cp->xform[i].wedge_angle = M_PI*rand_d01(rc);
+         cp->xform[i].wedge_hole = 0.5*rand_d11(rc);
+         cp->xform[i].wedge_count = floor(5*rand_d01(rc))+1;
+         cp->xform[i].wedge_swirl = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_WEDGE_JULIA] > 0) {
 
          /* Create random params for wedge_julia */
-         cp->xform[i].wedge_julia_power = (int)(5*flam3_random01() + 2);
+         cp->xform[i].wedge_julia_power = (int)(5*rand_d01(rc) + 2);
          cp->xform[i].wedge_julia_dist = 1.0;
-         cp->xform[i].wedge_julia_count = (int)(3*flam3_random01() + 1);
-         cp->xform[i].wedge_julia_angle = M_PI * flam3_random01();
+         cp->xform[i].wedge_julia_count = (int)(3*rand_d01(rc) + 1);
+         cp->xform[i].wedge_julia_angle = M_PI * rand_d01(rc);
 
       }
 
       if (cp->xform[i].var[VAR_WEDGE_SPH] > 0) {
          /* Create random params for wedge_sph */
-         cp->xform[i].wedge_sph_angle = M_PI*flam3_random01();
-         cp->xform[i].wedge_sph_hole = 0.5*flam3_random11();
-         cp->xform[i].wedge_sph_count = floor(5*flam3_random01())+1;
-         cp->xform[i].wedge_sph_swirl = flam3_random01();
+         cp->xform[i].wedge_sph_angle = M_PI*rand_d01(rc);
+         cp->xform[i].wedge_sph_hole = 0.5*rand_d11(rc);
+         cp->xform[i].wedge_sph_count = floor(5*rand_d01(rc))+1;
+         cp->xform[i].wedge_sph_swirl = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_WHORL] > 0) {
          /* Create random params for whorl */
-         cp->xform[i].whorl_inside = flam3_random01();
-         cp->xform[i].whorl_outside = flam3_random01();
+         cp->xform[i].whorl_inside = rand_d01(rc);
+         cp->xform[i].whorl_outside = rand_d01(rc);
       }
 
       if (cp->xform[i].var[VAR_WAVES2] > 0) {
          /* Create random params for waves2 */
-         cp->xform[i].waves2_scalex = 0.5 + flam3_random01();
-         cp->xform[i].waves2_scaley = 0.5 + flam3_random01();
-         cp->xform[i].waves2_freqx = 4 * flam3_random01();
-         cp->xform[i].waves2_freqy = 4 * flam3_random01();
+         cp->xform[i].waves2_scalex = 0.5 + rand_d01(rc);
+         cp->xform[i].waves2_scaley = 0.5 + rand_d01(rc);
+         cp->xform[i].waves2_freqx = 4 * rand_d01(rc);
+         cp->xform[i].waves2_freqy = 4 * rand_d01(rc);
       }         
 
       if (cp->xform[i].var[VAR_AUGER] > 0) {
          /* Create random params for auger */
          cp->xform[i].auger_sym = 0;
-         cp->xform[i].auger_weight = 0.5 + flam3_random01()/2.0;
-         cp->xform[i].auger_freq = floor(5*flam3_random01())+1;
-         cp->xform[i].auger_scale = flam3_random01();
+         cp->xform[i].auger_weight = 0.5 + rand_d01(rc)/2.0;
+         cp->xform[i].auger_freq = floor(5*rand_d01(rc))+1;
+         cp->xform[i].auger_scale = rand_d01(rc);
       }         
 
       if (cp->xform[i].var[VAR_FLUX] > 0) {
          /* Create random params for flux */
-         cp->xform[i].flux_spread = 0.5 + flam3_random01()/2.0;
+         cp->xform[i].flux_spread = 0.5 + rand_d01(rc)/2.0;
       }
 
       if (cp->xform[i].var[VAR_MOBIUS] > 0) {
          /* Create random params for mobius */
-         cp->xform[i].mobius_re_a = flam3_random11();
-         cp->xform[i].mobius_im_a = flam3_random11();
-         cp->xform[i].mobius_re_b = flam3_random11();
-         cp->xform[i].mobius_im_b = flam3_random11();
-         cp->xform[i].mobius_re_c = flam3_random11();
-         cp->xform[i].mobius_im_c = flam3_random11();
-         cp->xform[i].mobius_re_d = flam3_random11();
-         cp->xform[i].mobius_im_d = flam3_random11();
+         cp->xform[i].mobius_re_a = rand_d11(rc);
+         cp->xform[i].mobius_im_a = rand_d11(rc);
+         cp->xform[i].mobius_re_b = rand_d11(rc);
+         cp->xform[i].mobius_im_b = rand_d11(rc);
+         cp->xform[i].mobius_re_c = rand_d11(rc);
+         cp->xform[i].mobius_im_c = rand_d11(rc);
+         cp->xform[i].mobius_re_d = rand_d11(rc);
+         cp->xform[i].mobius_im_d = rand_d11(rc);
       }
 
    }
 
    /* Randomly add symmetry (but not if we've already added a final xform) */
-   if (sym || (!(random()%4) && !addfinal))
-      flam3_add_symmetry(cp, sym);
+   if (sym || (!rand_mod(rc, 4) && !addfinal))
+      flam3_add_symmetry(cp, sym, rc);
    else
       cp->symmetry = 0;
 
@@ -3329,7 +3276,7 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
    if (nsamples <= 0) nsamples = 10000;
 
    points = (double4 *) malloc(sizeof(double4) * nsamples);
-   const double4 start = (double4) { flam3_random_isaac_11(rc), flam3_random_isaac_11(rc), 0.0, 0.0 };
+   const double4 start = (double4) { rand_d11(rc), rand_d11(rc), 0.0, 0.0 };
 
    if (prepare_precalc_flags(cp))
       return(-1);
@@ -3427,18 +3374,5 @@ int flam3_render(flam3_frame *spec, void *out,
   
   retval = render_rectangle (spec, out, field, nchan, trans, stats);
   return(retval);
-}
-
-
-void flam3_srandom() {
-   unsigned int seed;
-   char *s = getenv("seed");
-
-   if (s)
-      seed = atoi(s);
-   else
-      seed = time(0) + getpid();
-
-   srandom(seed);
 }
 
