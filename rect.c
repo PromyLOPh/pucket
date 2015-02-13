@@ -494,7 +494,6 @@ static int render_rectangle(flam3_frame *spec, void *out,
    flam3_thread_helper *fth;
    pthread_attr_t pt_attr;
    pthread_t *myThreads=NULL;
-   int thread_status;
    int thi;
    time_t tstart,tend;   
    double sumfilt;
@@ -791,7 +790,6 @@ static int render_rectangle(flam3_frame *spec, void *out,
          /* Initialize the thread helper structures */
          for (thi = 0; thi < spec->nthreads; thi++) {
 
-            int rk;
             /* Create a new state for this thread */
 			rand_seed (&fth[thi].rc);
 

@@ -1824,9 +1824,6 @@ static double2 var97_flux (const double2 in, const flam3_iter_helper * const f, 
     double avgr = weight * (2 + f->xform->flux_spread) * sqrt( sqrt(in[1]*in[1] + xpw*xpw) / sqrt(in[1]*in[1] + xmw*xmw));
     double avga = ( atan2(in[1], xmw) - atan2(in[1],xpw) ) * 0.5;
 
-    double s = sin(avga);
-    double c = cos(avga);
-
     return avgr * (double2) { cos(avga), sin(avga) };
 }
 
@@ -2046,7 +2043,7 @@ int apply_xform(flam3_genome *cp, int fn, const double4 p, double4 *q_ret, randc
 {
    flam3_iter_helper f;
    int var_n;
-   double next_color,s,s1;
+   double s1;
    double weight;
 
    f.rc = rc;

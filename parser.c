@@ -291,7 +291,7 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
    char *att_str;
    int num_std_xforms=-1;
    char tmps[2];
-   int i,j;
+   int i;
    flam3_xform tmpcpy;
    flam3_chaos_entry *xaos=NULL;
    int num_xaos=0;
@@ -551,7 +551,7 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
          }
       } else if (!xmlStrcmp(chld_node->name, (const xmlChar *)"colors")) {
 
-         int count;
+         int count = 0;
 
          /* Loop through the attributes of the colors element */
          att_ptr = chld_node->properties;
@@ -1252,7 +1252,7 @@ void flam3_edit_print(FILE *f, xmlNodePtr editNode, int tabs, int formatting) {
    int ti,strl;
    xmlAttrPtr att_ptr=NULL,cur_att=NULL;
    xmlNodePtr chld_ptr=NULL, cur_chld=NULL;
-   int edit_or_sheep = 0, indent_printed = 0;
+   int indent_printed = 0;
    char *ai;
    int tablim = argi("print_edit_depth",0);
 
@@ -1275,13 +1275,8 @@ void flam3_edit_print(FILE *f, xmlNodePtr editNode, int tabs, int formatting) {
       /* This can either be an edit node or a sheep node */
       /* If it's an edit node, add one to the tab        */
       if (!xmlStrcmp(editNode->name, (const xmlChar *)"edit")) {
-         edit_or_sheep = 1;
          tabs ++;
-      } else if (!xmlStrcmp(editNode->name, (const xmlChar *)"sheep"))
-         edit_or_sheep = 2;
-      else
-         edit_or_sheep = 0;
-
+      }
 
       /* Print the attributes */
       att_ptr = editNode->properties;

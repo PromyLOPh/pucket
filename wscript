@@ -6,6 +6,7 @@ def configure(conf):
     conf.load ('compiler_c')
 
     conf.env.append_unique ('CFLAGS', '-std=gnu99')
+    conf.env.append_unique ('CFLAGS', '-D_GNU_SOURCE')
 
     conf.check_cfg (path='xml2-config', args='--cflags --libs', package='', uselib_store='xml2')
     conf.check_cc (lib='xml2', header_name='libxml/parser.h', function_name='xmlParseFile', use='xml2')

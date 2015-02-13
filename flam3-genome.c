@@ -667,7 +667,7 @@ main(argc, argv)
 
 
    if (sequence) {
-      double blend, spread;
+      double blend;
       int seqflag;
       int framecount;
 
@@ -679,7 +679,6 @@ main(argc, argv)
       cp = string_to_cp(sequence, &ncp, &rc);
 
       if (enclosed) printf("<sequence version=\"FLAM3-%s\">\n", flam3_version());
-      spread = 1.0/nframes;
       framecount = 0;
 #if 1
       for (i = 0; i < ncp; i++) {
