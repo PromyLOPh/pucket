@@ -198,7 +198,7 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *
    for (i=0;i<cp->num_xforms;i++)
       xform_precalc(cp,i);
 
-   for (i = fuse; i < n; i++) {
+   for (i = -fuse; i < n; i++) {
    
 //         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (((unsigned)irand(rc)) % CHOOSE_XFORM_GRAIN)];
       if (cp->chaos_enable)
