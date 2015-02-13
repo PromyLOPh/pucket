@@ -14,8 +14,6 @@ def configure(conf):
     conf.check_cc (lib='jpeg', uselib_store='jpeg')
     conf.check_cfg (package='libpng', uselib_store='png', args=['--cflags', '--libs'], msg='Checking for library png')
     conf.check_cc (lib='amdlibm', header_name='amdlibm.h', mandatory=False, define_name='HAVE_AMDLIBM', uselib_store='amdlibm')
-    conf.check_cc (fragment='#include <stdint.h>\nint main() { uint32_t a = 4; __sync_bool_compare_and_swap(&a, 4, 5); }', define_name='HAVE_GCC_ATOMIC_OPS', msg='Checking for atomic CAS')
-    conf.check_cc (fragment='#include <stdint.h>\nint main() { uint64_t a = 4; __sync_bool_compare_and_swap(&a, 4, 5); }', define_name='HAVE_GCC_64BIT_ATOMIC_OPS', msg='Checking for 64 bit atomic CAS')
 
     # does not work
     #conf.check_cc (function_name='__builtin_ia32_rdrand64_step', define_name='HAVE_RDRAND64')
