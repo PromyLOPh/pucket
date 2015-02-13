@@ -4,6 +4,12 @@
  *	generators, scrambled”, Sebastiano Vigna
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <assert.h>
+#include <unistd.h>
+
 #include "random.h"
 
 uint64_t rand_u64 (randctx * const st) {
@@ -33,21 +39,15 @@ int rand_bool (randctx * const st) {
 	return rand_u64 (st) & 1;
 }
 
-/*	Generate random uint64_t with Intel’s rdrand instruction
- */
-static uint64_t rand64 () {
-	unsigned long long rand;
-	while (!__builtin_ia32_rdrand64_step (&rand));
-	return rand;
-}
-
 /*	Seed rng with rdrand
  */
 void rand_seed (randctx * const st) {
-	/* seed with high-quality randomness */
-	for (unsigned char i = 0; i < XORSHIFT_S; i++) {
-		st->s[i] = rand64 ();
-	}
+	int fd = open ("/dev/urandom", O_RDONLY);
+	assert (fd != -1);
+	int ret = read (fd, &st->s, sizeof (st->s));
+	assert (ret != -1);
+	close (fd);
+	st->p = 0;
 }
 
 #if 0
