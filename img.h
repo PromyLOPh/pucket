@@ -32,9 +32,7 @@ typedef struct {
 } flam3_img_comments;
 
 
-void write_jpeg(FILE *file, unsigned char *image, int width, int height, flam3_img_comments *fpc);
 void write_png(FILE *file, void *image, int width, int height, flam3_img_comments *fpc, int bpc);
 
 /* returns RGBA pixel array or NULL on failure */
 unsigned char *read_png(FILE *file, int *width, int *height);
-unsigned char *read_jpeg(FILE *file, int *width, int *height);

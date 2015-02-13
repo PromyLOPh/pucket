@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
   int write_genome = argi("write_genome",0);
   double qs = argf("qs", 1.0);
   double ss = argf("ss", 1.0);
-  char *format = getenv("format");
+  const char *format = "png";
   int verbose = argi("verbose", 1);
   int transparency = argi("transparency", 0);
   int bits = argi("bits", 33);
@@ -95,15 +95,6 @@ int main(int argc, char **argv) {
     }
     first_frame = last_frame = frame_time;
   }
-
-  if (NULL == format) format = "png";
-  if (strcmp(format, "jpg") &&
-      strcmp(format, "ppm") &&
-      strcmp(format, "png")) {
-      fprintf(stderr, "format must be either jpg, ppm, or png, not %s.\n", format);
-      exit(1);
-  }
-
 
    if (pixel_aspect <= 0.0) {
      fprintf(stderr, "pixel aspect ratio must be positive, not %g.\n",
@@ -277,22 +268,7 @@ int main(int argc, char **argv) {
     sprintf(rtime_string,"%d",stats.render_seconds);
     fpc.rtime = rtime_string;
    
-    if (!strcmp(format, "png")) {
-    
-       write_png(fp, image, cps[0].width, cps[0].height, &fpc, f.bytes_per_channel);       
-       
-    } else if (!strcmp(format, "jpg")) {
-    
-       write_jpeg(fp, image, cps[0].width, cps[0].height, &fpc);
-
-    } else {
-	int size = 3 * cps[0].width * cps[0].height;
-       fprintf(fp, "P6\n");
-       fprintf(fp, "%d %d\n255\n", cps[0].width, cps[0].height);
-       if (size != fwrite(image, 1, size, fp)) {
-	   perror(fname);
-       }
-    }
+    write_png(fp, image, cps[0].width, cps[0].height, &fpc, f.bytes_per_channel);
 
     /* Free string */
     free(fpc.genome);

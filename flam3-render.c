@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
    randctx savectx;
    char *prefix = args("prefix", "");
    char *out = args("out", NULL);
-   char *format = getenv("format");
+   const char *format = "png";
    int verbose = argi("verbose", 1);
    int bits = argi("bits", 33);
    int bpc = argi("bpc",8);
@@ -132,16 +132,6 @@ int main(int argc, char **argv) {
          fprintf(stderr,"Manually specified %d thread(s)...\n",num_threads);
    }
 
-
-   if (NULL == format) format = "png";
-   if (strcmp(format, "jpg") &&
-       strcmp(format, "ppm") &&
-       strcmp(format, "png")) {
-       fprintf(stderr,
-          "format must be either jpg, ppm, or png, not %s.\n",
-          format);
-       exit(1);
-   }
 
    channels = strcmp(format, "png") ? 3 : 4;
 
@@ -322,21 +312,7 @@ int main(int argc, char **argv) {
          sprintf(rtime_string,"%d",stats.render_seconds);
          fpc.rtime = rtime_string;
 
-         if (!strcmp(format, "png")) {
-
-             write_png(fp, image, cps[i].width, real_height, &fpc, f.bytes_per_channel);            
-            
-         } else if (!strcmp(format, "jpg")) {
-                                      
-             write_jpeg(fp, (unsigned char *)image, cps[i].width, real_height, &fpc);
-            
-         } else {
-            fprintf(fp, "P6\n");
-            fprintf(fp, "%d %d\n255\n", cps[i].width, real_height);
-            if (this_size != fwrite((unsigned char *)image, 1, this_size, fp)) {
-		       perror(fname);
-	        }
-         }
+		 write_png(fp, image, cps[i].width, real_height, &fpc, f.bytes_per_channel);
          /* Free string */
          free(fpc.genome);
 
