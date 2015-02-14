@@ -36,201 +36,6 @@
 #define FUSE_28 100
 #define WHITE_LEVEL 255
 
-
-typedef struct {
-
-   bucket *b;
-   abucket *accumulate;
-   int width, height, oversample;
-   flam3_de_helper *de;
-   double k1,k2;
-   double curve;
-   int last_thread;
-   int start_row, end_row;
-   flam3_frame *spec;
-   int *aborted;
-   int progress_size;
-   
-} de_thread_helper;
-
-static void de_thread(void *dth) {
-
-   de_thread_helper *dthp = (de_thread_helper *)dth;
-   int oversample = dthp->oversample;   
-   int ss = (int)floor(oversample / 2.0);
-   int scf = !(oversample & 1);
-   double scfact = pow(oversample/(oversample+1.0), 2.0);
-   int wid=dthp->width;
-   int hig=dthp->height;
-   int ps =dthp->progress_size;
-   int str = (oversample-1)+dthp->start_row;
-   int enr = (oversample-1)+dthp->end_row;
-   int i,j;
-   time_t progress_timer=0;
-   struct timespec pauset;
-   int progress_count = 0;
-   int pixel_num;
-   
-   pauset.tv_sec = 0;
-   pauset.tv_nsec = 100000000;
-         
-   /* Density estimation code */         
-   for (j = str; j < enr; j++) {
-      for (i = oversample-1; i < wid-(oversample-1); i++) {
-
-         int ii,jj;
-         double f_select=0.0;
-         int f_select_int,f_coef_idx;
-         int arr_filt_width;
-         bucket *b;
-         double c[4],ls;
-               
-         b = dthp->b + i + j*wid;
-         
-         /* Don't do anything if there's no hits here */
-         if (b[0][4] == 0 || b[0][3] == 0)
-            continue;
-
-         /* Count density in ssxss area   */
-         /* Scale if OS>1 for equal iters */
-         for (ii=-ss; ii<=ss; ii++) {
-            for (jj=-ss; jj<=ss; jj++) {
-               b = dthp->b + (i + ii) + (j + jj)*wid;
-               f_select += b[0][4]/255.0;
-            }
-         }
-               
-         if (scf)
-            f_select *= scfact;
-                  
-         if (f_select > dthp->de->max_filtered_counts)
-            f_select_int = dthp->de->max_filter_index;                  
-         else if (f_select<=DE_THRESH)
-            f_select_int = (int)ceil(f_select)-1;
-         else
-            f_select_int = (int)DE_THRESH +
-               (int)floor(pow(f_select-DE_THRESH,dthp->curve));
-
-         /* If the filter selected below the min specified clamp it to the min */
-         if (f_select_int > dthp->de->max_filter_index)
-            f_select_int = dthp->de->max_filter_index;
-
-         /* We only have to calculate the values for ~1/8 of the square */
-         f_coef_idx = f_select_int*dthp->de->kernel_size;
-
-         arr_filt_width = (int)ceil(dthp->de->filter_widths[f_select_int])-1;
-
-         b = dthp->b + i + j*wid;
-
-         for (jj=0; jj<=arr_filt_width; jj++) {
-            for (ii=0; ii<=jj; ii++) {
-            
-               /* Skip if coef is 0 */
-               if (dthp->de->filter_coefs[f_coef_idx]==0.0) {
-                  f_coef_idx++;
-                  continue;
-               }
-                     
-               c[0] = (double) b[0][0];
-               c[1] = (double) b[0][1];
-               c[2] = (double) b[0][2];
-               c[3] = (double) b[0][3];
-
-               ls = dthp->de->filter_coefs[f_coef_idx]*(dthp->k1 * log(1.0 + c[3] * dthp->k2))/c[3];
-
-               c[0] *= ls;
-               c[1] *= ls;
-               c[2] *= ls;
-               c[3] *= ls;
-
-               if (jj==0 && ii==0) {
-                  add_c_to_accum(dthp->accumulate,i,ii,j,jj,wid,hig,c);
-               }
-               else if (ii==0) {
-                  add_c_to_accum(dthp->accumulate,i,jj,j,0,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,-jj,j,0,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,0,j,jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,0,j,-jj,wid,hig,c);
-               } else if (jj==ii) {
-                  add_c_to_accum(dthp->accumulate,i,ii,j,jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,-ii,j,jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,ii,j,-jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,-ii,j,-jj,wid,hig,c);
-               } else {
-                  add_c_to_accum(dthp->accumulate,i,ii,j,jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,-ii,j,jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,ii,j,-jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,-ii,j,-jj,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,jj,j,ii,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,-jj,j,ii,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,jj,j,-ii,wid,hig,c);
-                  add_c_to_accum(dthp->accumulate,i,-jj,j,-ii,wid,hig,c);
-               }
-
-               f_coef_idx++;
-
-            }
-         }
-      }
-            
-      pixel_num = (j-str+1)*wid;
-
-      if (dthp->last_thread) {
-         /* Standard progress function */
-         if (dthp->spec->verbose && time(NULL) != progress_timer) {
-            progress_timer = time(NULL);
-            fprintf(stderr, "\rdensity estimation: %d/%d          ", j-str, enr-str);
-            fflush(stderr);
-         }
-         
-      }
-      /* Custom progress function */
-      if (dthp->spec->progress && pixel_num > progress_count + ps) {
-      
-         progress_count = ps * floor(pixel_num/(double)ps);
-      
-         if (dthp->last_thread) {
-         
-            int rv = (*dthp->spec->progress)(dthp->spec->progress_parameter,
-				      100*(j-str)/(double)(enr-str), 1, 0);
-				      
-            if (rv==2) { /* PAUSE */
-            
-               *(dthp->aborted) = -1;
-                              
-               do {
-				   nanosleep(&pauset,NULL);
-                  rv = (*dthp->spec->progress)(dthp->spec->progress_parameter,
-                     100*(j-str)/(double)(enr-str), 1, 0);
-               } while (rv==2);
-
-               *(dthp->aborted) = 0;
-
-            }
-
-	        if (rv==1) {
-			   *(dthp->aborted) = 1;
-               pthread_exit((void *)0);
-            }
-         } else {
-
-            if (*(dthp->aborted)<0) {
-            
-                do {
-				   nanosleep(&pauset,NULL);
-                } while (*(dthp->aborted)<0);                            
-            }
-            
-            if (*(dthp->aborted)>0) pthread_exit((void *)0);
-         }
-      }
-
-   }
-
-     pthread_exit((void *)0);
-
-}
-
 static void iter_thread(void *fth) {
    double sub_batch;
    int j;
@@ -487,7 +292,6 @@ static int render_rectangle(flam3_frame *spec, void *out,
    int vib_gam_n = 0;
    time_t progress_began=0;
    int verbose = spec->verbose;
-   int gnm_idx,max_gnm_de_fw,de_offset;
    flam3_genome cp;
    unsigned short *xform_distrib;
    flam3_iter_constants fic;
@@ -588,32 +392,6 @@ static int render_rectangle(flam3_frame *spec, void *out,
    */
    gutter_width = (filter_width - oversample) / 2;
 
-   /* 
-      Check the size of the density estimation filter.
-      If the 'radius' of the density estimation filter is greater than the          
-      gutter width, we have to pad with more.  Otherwise, we can use the same value.
-   */
-   max_gnm_de_fw=0;
-   for (gnm_idx = 0; gnm_idx < spec->ngenomes; gnm_idx++) {
-      int this_width = (int)ceil(spec->genomes[gnm_idx].estimator) * oversample;
-      if (this_width > max_gnm_de_fw)
-         max_gnm_de_fw = this_width;
-   }
-
-   /* Add OS-1 for the averaging at the edges, if it's > 0 already */
-   if (max_gnm_de_fw>0)
-      max_gnm_de_fw += (oversample-1);
-
-   /* max_gnm_de_fw is now the number of pixels of additional gutter      */
-   /* necessary to appropriately perform the density estimation filtering */
-   /* Check to see if it's greater than the gutter_width                  */
-   if (max_gnm_de_fw > gutter_width) {
-      de_offset = max_gnm_de_fw - gutter_width;
-      gutter_width = max_gnm_de_fw;
-   } else
-      de_offset = 0;
-
-
    /* Allocate the space required to render the image */
    fic.height = oversample * image_height + 2 * gutter_width;
    fic.width  = oversample * image_width  + 2 * gutter_width;
@@ -644,45 +422,11 @@ static int render_rectangle(flam3_frame *spec, void *out,
 
    /* Batch loop - outermost */
    for (batch_num = 0; batch_num < nbatches; batch_num++) {
-      double de_time;
       double sample_density=0.0;
       double k1, area, k2;
-      flam3_de_helper de;
-
-      de_time = spec->time + temporal_deltas[batch_num*ntemporal_samples];
 
       memset((char *) buckets, 0, sizeof(bucket) * nbuckets);
 
-      /* interpolate and get a control point                      */
-      /* ONLY FOR DENSITY FILTER WIDTH PURPOSES                   */
-      /* additional interpolation will be done in the temporal_sample loop */
-      flam3_interpolate(spec->genomes, spec->ngenomes, de_time, 0, &cp);
-
-      /* if instructed to by the genome, create the density estimation */
-      /* filter kernels.  Check boundary conditions as well.           */
-      if (cp.estimator < 0.0 || cp.estimator_minimum < 0.0) {
-         fprintf(stderr,"density estimator filter widths must be >= 0\n");
-         return(1);
-      }
-
-      if (spec->bits <= 32) {
-         if (cp.estimator > 0.0) {
-            fprintf(stderr, "warning: density estimation disabled with %d bit buffers.\n", spec->bits);
-            cp.estimator = 0.0;
-         }
-      }
-
-      /* Create DE filters */
-      if (cp.estimator > 0.0) {
-         de = flam3_create_de_filters(cp.estimator,cp.estimator_minimum,
-                                      cp.estimator_curve,oversample);
-         if (de.kernel_size<0) {
-            fprintf(stderr,"de.kernel_size returned 0 - aborting.\n");
-            return(1);
-         }
-      } else
-         de.max_filter_index = 0;
-      
       /* Temporal sample loop */
       for (temporal_sample_num = 0; temporal_sample_num < ntemporal_samples; temporal_sample_num++) {
 
@@ -864,111 +608,31 @@ static int render_rectangle(flam3_frame *spec, void *out,
       printf("k1=%f,k2=%15.12f\n",k1,k2);
 #endif
 
-      if (de.max_filter_index == 0) {
+      for (j = 0; j < fic.height; j++) {
+         for (i = 0; i < fic.width; i++) {
 
-         for (j = 0; j < fic.height; j++) {
-            for (i = 0; i < fic.width; i++) {
+            abucket *a = accumulate + i + j * fic.width;
+            bucket *b = buckets + i + j * fic.width;
+            double c[4], ls;
 
-               abucket *a = accumulate + i + j * fic.width;
-               bucket *b = buckets + i + j * fic.width;
-               double c[4], ls;
+            c[0] = (double) b[0][0];
+            c[1] = (double) b[0][1];
+            c[2] = (double) b[0][2];
+            c[3] = (double) b[0][3];
+            if (0.0 == c[3])
+               continue;
 
-               c[0] = (double) b[0][0];
-               c[1] = (double) b[0][1];
-               c[2] = (double) b[0][2];
-               c[3] = (double) b[0][3];
-               if (0.0 == c[3])
-                  continue;
+            ls = (k1 * log(1.0 + c[3] * k2))/c[3];
+            c[0] *= ls;
+            c[1] *= ls;
+            c[2] *= ls;
+            c[3] *= ls;
 
-               ls = (k1 * log(1.0 + c[3] * k2))/c[3];
-               c[0] *= ls;
-               c[1] *= ls;
-               c[2] *= ls;
-               c[3] *= ls;
-
-               abump_no_overflow(a[0][0], c[0]);
-               abump_no_overflow(a[0][1], c[1]);
-               abump_no_overflow(a[0][2], c[2]);
-               abump_no_overflow(a[0][3], c[3]);
-            }
+            abump_no_overflow(a[0][0], c[0]);
+            abump_no_overflow(a[0][1], c[1]);
+            abump_no_overflow(a[0][2], c[2]);
+            abump_no_overflow(a[0][3], c[3]);
          }
-      } else {
-      
-         de_thread_helper *deth;
-         int de_aborted=0;
-         int myspan = (fic.height-2*(oversample-1)+1);
-         int swath = myspan/(spec->nthreads);
-                  
-         /* Create the de helper structures */
-         deth = (de_thread_helper *)calloc(spec->nthreads,sizeof(de_thread_helper));
-         
-         for (thi=0;thi<(spec->nthreads);thi++) {
-         
-            /* Set up the contents of the helper structure */
-            deth[thi].b = buckets;
-            deth[thi].accumulate = accumulate;
-            deth[thi].width = fic.width;
-            deth[thi].height = fic.height;
-            deth[thi].oversample = oversample;
-            deth[thi].progress_size = spec->sub_batch_size/10;
-            deth[thi].de = &de;
-            deth[thi].k1 = k1;
-            deth[thi].k2 = k2;
-            deth[thi].curve = cp.estimator_curve;
-            deth[thi].spec = spec;
-            deth[thi].aborted = &de_aborted;
-            if ( (spec->nthreads)>myspan) { /* More threads than rows */
-               deth[thi].start_row=0;
-               if (thi==spec->nthreads-1) {
-                  deth[thi].end_row=myspan;
-                  deth[thi].last_thread=1;
-               } else {
-                  deth[thi].end_row=-1;
-                  deth[thi].last_thread=0;
-               }
-            } else { /* Normal case */
-               deth[thi].start_row=thi*swath;
-               deth[thi].end_row=(thi+1)*swath;
-               if (thi==spec->nthreads-1) {
-                  deth[thi].end_row=myspan;
-                  deth[thi].last_thread=1;
-               } else {
-                  deth[thi].last_thread=0;
-               }
-            }
-         }
-
-         /* Let's make some threads */
-         myThreads = (pthread_t *)malloc(spec->nthreads * sizeof(pthread_t));
-
-         pthread_attr_init(&pt_attr);
-         pthread_attr_setdetachstate(&pt_attr,PTHREAD_CREATE_JOINABLE);
-
-         for (thi=0; thi <spec->nthreads; thi ++)
-            pthread_create(&myThreads[thi], &pt_attr, (void *)de_thread, (void *)(&(deth[thi])));
-
-         pthread_attr_destroy(&pt_attr);
-
-         /* Wait for them to return */
-         for (thi=0; thi < spec->nthreads; thi++)
-            pthread_join(myThreads[thi], NULL);
-         
-         free(myThreads);            
-
-         free(deth);
-                  
-         if (de_aborted) {
-            if (verbose) fprintf(stderr, "\naborted!\n");
-            goto done;
-         }
-
-      } /* End density estimation loop */
-
-
-      /* If allocated, free the de filter memory for the next batch */
-      if (de.max_filter_index > 0) {
-         free(de.filter_coefs);
-         free(de.filter_widths);
       }
 
    }
@@ -1050,9 +714,9 @@ static int render_rectangle(flam3_frame *spec, void *out,
       }
 
       /* Apply the spatial filter */
-      y = de_offset;
+      y = 0;
       for (j = 0; j < image_height; j++) {
-         x = de_offset;
+         x = 0;
          for (i = 0; i < image_width; i++) {
             int ii, jj,rgbi;
             void *p;

@@ -376,7 +376,6 @@ static double try_colors(flam3_genome *g, int color_resolution) {
 
     g->sample_density = 1;
     g->spatial_oversample = 1;
-    g->estimator = 0.0;
     
     /* Scale the image so that the total number of pixels is ~10000 */
     pixtotal = g->width * g->height;    
@@ -446,7 +445,6 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     g->pixels_per_unit = saved.pixels_per_unit;
     g->nbatches = saved.nbatches;
     g->ntemporal_samples = saved.ntemporal_samples;
-    g->estimator = saved.estimator;
 
     /* Free xform storage */
     clear_cp(&saved,flam3_defaults_on);

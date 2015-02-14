@@ -471,12 +471,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
          cp->vibrancy = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"hue")) {
          cp->hue_rotation = fmod(flam3_atof(att_str), 1.0);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"estimator_radius")) {
-         cp->estimator = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"estimator_minimum")) {
-         cp->estimator_minimum = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"estimator_curve")) {
-         cp->estimator_curve = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"gamma_threshold")) {
          cp->gam_lin_thresh = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"soloxform")) {

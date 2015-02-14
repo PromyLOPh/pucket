@@ -438,9 +438,6 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
    INTERP(rotate);
    INTERI(nbatches);
    INTERI(ntemporal_samples);
-   INTERP(estimator);
-   INTERP(estimator_minimum);
-   INTERP(estimator_curve);
    INTERP(gam_lin_thresh);
    
    /* Interpolate the chaos array */

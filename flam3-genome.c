@@ -54,9 +54,6 @@ void test_cp(flam3_genome *cp) {
    cp->sample_density = 1;
    cp->nbatches = 1;
    cp->ntemporal_samples = 1;
-   cp->estimator = 0.0;
-   cp->estimator_minimum = 0.0;
-   cp->estimator_curve = 0.6;
 }
 
 flam3_genome *string_to_cp(char *s, int *n, randctx * const rc) {

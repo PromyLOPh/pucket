@@ -488,12 +488,6 @@ typedef struct {
    int nbatches;
    int ntemporal_samples;
 
-   /* Density estimation parameters for blurring low density hits */
-   double estimator;             /* Filter width for bin with one hit */
-   double estimator_curve;              /* Exponent on decay function ( MAX / a^(k-1) ) */
-   double estimator_minimum;         /* Minimum filter width used -
-                                    forces filter to be used of at least this width on all pts */
-
    /* XML Edit structure */
    xmlDocPtr edits;
 

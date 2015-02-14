@@ -1141,10 +1141,6 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->spatial_filter_radius = 0.5;
        cp->zoom = 0.0;
        cp->sample_density = 1;
-       /* Density estimation stuff defaulting to ON */
-       cp->estimator = 9.0;
-       cp->estimator_minimum = 0.0;
-       cp->estimator_curve = 0.4;
        cp->gam_lin_thresh = 0.01;
 //       cp->motion_exp = 0.0;
        cp->nbatches = 1;
@@ -1170,9 +1166,6 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->width = -1;
        cp->height = -1;
        cp->sample_density = -1;
-       cp->estimator = -1;
-       cp->estimator_minimum = -1;
-       cp->estimator_curve = -1;
        cp->gam_lin_thresh = -1;
 //       cp->motion_exp = -999;
        cp->nbatches = 0;
@@ -1404,12 +1397,6 @@ void flam3_apply_template(flam3_genome *cp, flam3_genome *templ) {
    }
    if (templ->height > 0)
       cp->height = templ->height;
-   if (templ->estimator >= 0)
-      cp->estimator = templ->estimator;
-   if (templ->estimator_minimum >= 0)
-      cp->estimator_minimum = templ->estimator_minimum;
-   if (templ->estimator_curve >= 0)
-      cp->estimator_curve = templ->estimator_curve;
    if (templ->gam_lin_thresh >= 0)
       cp->gam_lin_thresh = templ->gam_lin_thresh;
    if (templ->nbatches>0)
@@ -1559,8 +1546,6 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
       fprintf(f, " highlight_power=\"%g\"", cp->highlight_power);
       
    fprintf(f, " vibrancy=\"%g\"", cp->vibrancy);
-   fprintf(f, " estimator_radius=\"%g\" estimator_minimum=\"%g\" estimator_curve=\"%g\"",
-      cp->estimator, cp->estimator_minimum, cp->estimator_curve);
    fprintf(f, " gamma_threshold=\"%g\"", cp->gam_lin_thresh);
    
    if (flam3_palette_mode_step == cp->palette_mode)
@@ -3353,8 +3338,6 @@ typedef float abucket_float[4];
    if (UINT_MAX - dest > delta) dest += delta; else dest = UINT_MAX; \
 } while (0)
 #define iter_thread iter_thread_float
-#define de_thread_helper de_thread_helper_33
-#define de_thread de_thread_33
 #include "rect.c"
 #undef iter_thread
 #undef render_rectangle
@@ -3363,8 +3346,6 @@ typedef float abucket_float[4];
 #undef abucket
 #undef bump_no_overflow
 #undef abump_no_overflow
-#undef de_thread_helper
-#undef de_thread
 
 int flam3_render(flam3_frame *spec, void *out,
         int field, int nchan, int trans, stat_struct *stats) {
