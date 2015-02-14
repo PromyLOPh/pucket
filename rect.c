@@ -17,6 +17,7 @@
 */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "private.h"
 #include "filters.h"
@@ -380,14 +381,24 @@ int render_rectangle(flam3_frame *spec, void *out,
 
    nbuckets = (long)fic.width * (long)fic.height;
 
-   double4 * const buckets = malloc (nbuckets * sizeof (*buckets));
+   double4 *buckets;
+   int ret = posix_memalign ((void **) &buckets, sizeof (*buckets),
+                             nbuckets * sizeof (*buckets));
+   assert (ret == 0);
    assert (buckets != NULL);
-   double4 * const accumulate = malloc (nbuckets * sizeof (*accumulate));
+   double4 *accumulate;
+   ret = posix_memalign ((void **) &accumulate, sizeof (*accumulate),
+                         nbuckets * sizeof (*accumulate));
+   assert (ret == 0);
    assert (accumulate != NULL);
    double4 ** const iter_storage = malloc (spec->nthreads * sizeof (*iter_storage));
    assert (iter_storage != NULL);
    for (size_t i = 0; i < spec->nthreads; i++) {
-      iter_storage[i] = malloc (spec->sub_batch_size * sizeof (*iter_storage[i]));
+      ret = posix_memalign ((void **) &iter_storage[i],
+	                        sizeof (*iter_storage[i]),
+							spec->sub_batch_size * sizeof (*iter_storage[i]));
+	  assert (ret == 0);
+	  assert (iter_storage[i] != NULL);
    }
 
    if (verbose) {

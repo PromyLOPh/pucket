@@ -35,6 +35,7 @@
 #include <unistd.h>
 #endif
 #include <errno.h>
+#include <assert.h>
 
 #include <pthread.h>
 
@@ -3259,7 +3260,8 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
 
    if (nsamples <= 0) nsamples = 10000;
 
-   points = (double4 *) malloc(sizeof(double4) * nsamples);
+   int ret = posix_memalign ((void **) &points, sizeof (*points), sizeof(*points) * nsamples);
+   assert (ret == 0 && points != NULL);
    const double4 start = (double4) { rand_d11(rc), rand_d11(rc), 0.0, 0.0 };
 
    if (prepare_precalc_flags(cp))
