@@ -3312,41 +3312,6 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
    return(bv);
 }
 
-
-typedef double bucket_double[5];
-typedef double abucket_double[4];
-typedef unsigned int bucket_int[5];
-typedef unsigned int abucket_int[4];
-typedef float bucket_float[5];
-typedef float abucket_float[4];
-
-/* experimental 32-bit datatypes (called 33) */
-#define bucket bucket_int
-#define abucket abucket_float
-#define abump_no_overflow(dest, delta) do {dest += delta;} while (0)
-#define add_c_to_accum(acc,i,ii,j,jj,wid,hgt,c) do { \
-   if ( (j) + (jj) >=0 && (j) + (jj) < (hgt) && (i) + (ii) >=0 && (i) + (ii) < (wid)) { \
-   abucket *a = (acc) + ( (i) + (ii) ) + ( (j) + (jj) ) * (wid); \
-   abump_no_overflow(a[0][0],(c)[0]); \
-   abump_no_overflow(a[0][1],(c)[1]); \
-   abump_no_overflow(a[0][2],(c)[2]); \
-   abump_no_overflow(a[0][3],(c)[3]); \
-   } \
-} while (0)
-/* single-threaded */
-#define bump_no_overflow(dest, delta) do { \
-   if (UINT_MAX - dest > delta) dest += delta; else dest = UINT_MAX; \
-} while (0)
-#define iter_thread iter_thread_float
-#include "rect.c"
-#undef iter_thread
-#undef render_rectangle
-#undef add_c_to_accum
-#undef bucket
-#undef abucket
-#undef bump_no_overflow
-#undef abump_no_overflow
-
 int flam3_render(flam3_frame *spec, void *out,
         int field, int nchan, int trans, stat_struct *stats) {
          

@@ -167,22 +167,24 @@ int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * con
       	/* Loop over elements of cmap */
 	      for (i = 0; i < cmap_len; i++) {
             int ii = (i * 256) / cmap_len;
-            double rgb[3], hsv[3];
+            double4 rgb, hsv;
             
-            /* Colors are in 0-1 space */
-            for (j = 0; j < 3; j++)
-               rgb[j] = the_palettes[idx].colors[ii][j] / 255.0;
+             rgb = (double4) {
+			       the_palettes[idx].colors[ii][0] / 255.0,
+				   the_palettes[idx].colors[ii][1] / 255.0,
+				   the_palettes[idx].colors[ii][2] / 255.0,
+				   1.0,
+				   };
 	       
-	         rgb2hsv(rgb, hsv);
+	         hsv = rgb2hsv(rgb);
 	         hsv[0] += hue_rotation * 6.0;
-	         hsv2rgb(hsv, rgb);
+	         rgb = hsv2rgb(hsv);
 	         
 	         c[i].index = i;
 	       
-	         for (j = 0; j < 3; j++)
-		         c[i].color[j] = rgb[j];
+		     c[i].color = rgb;
 		         
-		      c[i].color[3] = 1.0;
+		     c[i].color[3] = 1.0;
          }
 	   
 	      return n;
@@ -196,8 +198,7 @@ int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * con
 
 /* rgb 0 - 1,
    h 0 - 6, s 0 - 1, v 0 - 1 */
-void rgb2hsv(rgb, hsv)
-   double *rgb; double *hsv;
+double4 rgb2hsv(double4 rgb)
  {
   double rd, gd, bd, h, s, v, max, min, del, rc, gc, bc;
 
@@ -231,17 +232,13 @@ void rgb2hsv(rgb, hsv)
     if (h<0) h += 6;
   }
 
-  hsv[0] = h;
-  hsv[1] = s;
-  hsv[2] = v;
+  return (double4) { h, s, v, rgb[3] };
 }
 
 
 /* h 0 - 6, s 0 - 1, v 0 - 1
    rgb 0 - 1 */
-void hsv2rgb(hsv, rgb)
-   double *hsv;
-   double *rgb;
+double4 hsv2rgb(double4 hsv)
 {
    double h = hsv[0], s = hsv[1], v = hsv[2];
   int    j;
@@ -266,9 +263,7 @@ void hsv2rgb(hsv, rgb)
     default: rd = v;  gd = t;  bd = p;  break;
    }
 
-   rgb[0] = rd;
-   rgb[1] = gd;
-   rgb[2] = bd;
+   return (double4) { rd, gd, bd, hsv[3] };
 }
 
 double flam3_calc_alpha(double density, double gamma, double linrange) {
@@ -289,19 +284,15 @@ double flam3_calc_alpha(double density, double gamma, double linrange) {
    return(alpha);
 }
           
-void flam3_calc_newrgb(double *cbuf, double ls, double highpow, double *newrgb) {
+double4 flam3_calc_newrgb(double4 cbuf, double ls, double highpow) {
 
    int rgbi;
    double newls,lsratio;
-   double newhsv[3];
    double a, maxa=-1.0, maxc=0;
    double adjhlp;
    
    if (ls==0.0 || (cbuf[0]==0.0 && cbuf[1]==0.0 && cbuf[2]==0.0)) {
-      newrgb[0] = 0.0;
-      newrgb[1] = 0.0;
-      newrgb[2] = 0.0;
-      return;
+      return (double4) { 0, 0, 0, 0 };
    }
    
    /* Identify the most saturated channel */
@@ -320,17 +311,13 @@ void flam3_calc_newrgb(double *cbuf, double ls, double highpow, double *newrgb) 
       lsratio = pow(newls/ls,highpow);
 
       /* Calculate the max-value color (ranged 0 - 1) */
-      for (rgbi=0;rgbi<3;rgbi++)
-         newrgb[rgbi] = newls*(cbuf[rgbi]/PREFILTER_WHITE)/255.0;
+	  double4 newrgb = newls*(cbuf/PREFILTER_WHITE)/255.0;
 
       /* Reduce saturation by the lsratio */
-      rgb2hsv(newrgb,newhsv);
+      double4 newhsv = rgb2hsv(newrgb);
       newhsv[1] *= lsratio;
-      hsv2rgb(newhsv,newrgb);
 
-      for (rgbi=0;rgbi<3;rgbi++)
-         newrgb[rgbi] *= 255.0;
-      
+      return hsv2rgb(newhsv) * 255.0;
    } else {
       newls = 255.0/maxc;
       adjhlp = -highpow;
@@ -339,12 +326,10 @@ void flam3_calc_newrgb(double *cbuf, double ls, double highpow, double *newrgb) 
       if (maxa<=255)
          adjhlp=1.0;
 
-      /* Calculate the max-value color (ranged 0 - 1) interpolated with the old behaviour */
-      for (rgbi=0;rgbi<3;rgbi++)
-         newrgb[rgbi] = ((1.0-adjhlp)*newls + adjhlp*ls)*(cbuf[rgbi]/PREFILTER_WHITE);
-
-//     for (rgbi=0;rgbi<3;rgbi++)
-//        newrgb[rgbi] = ls*(cbuf[rgbi]/PREFILTER_WHITE);
+	  /* Calculate the max-value color (ranged 0 - 1) interpolated with the old
+	   * behaviour */
+		
+      return ((1.0-adjhlp)*newls + adjhlp*ls)*(cbuf/PREFILTER_WHITE);
    }
 }
 

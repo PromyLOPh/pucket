@@ -156,23 +156,25 @@ void interpolate_cmap(flam3_palette cmap, double blend,
       fprintf(stderr,"unable to retrieve palette %d, setting to white\n", index1);
 
    for (i = 0; i < 256; i++) {
-      double t[5], s[5];
+      double4 t, s;
+	  double t4, s4;
     
-      rgb2hsv(p0[i].color, s);
-      rgb2hsv(p1[i].color, t);
+      s = rgb2hsv(p0[i].color);
+      t = rgb2hsv(p1[i].color);
       
       s[3] = p0[i].color[3];
       t[3] = p1[i].color[3];
       
-      s[4] = p0[i].index;
-      t[4] = p1[i].index;
+      s4 = p0[i].index;
+      t4 = p1[i].index;
     
-      for (j = 0; j < 5; j++)
+      for (j = 0; j < 4; j++)
          t[j] = ((1.0-blend) * s[j]) + (blend * t[j]);
+      t4 = ((1.0-blend) * s4) + (blend * t4);
          
-      hsv2rgb(t, cmap[i].color);
+      cmap[i].color = hsv2rgb(t);
       cmap[i].color[3] = t[3];
-      cmap[i].index = t[4];      
+      cmap[i].index = t4;
    }
 }
 
@@ -362,29 +364,30 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
    if (flam3_palette_interpolation_hsv == cpi[0].palette_interpolation) {
    
       for (i = 0; i < 256; i++) {
-         double t[3], s[5];
+         double s4;
+		 double4 s, t;
          int alpha1 = 1;
 
-         s[0] = s[1] = s[2] = s[3] = s[4] = 0.0;
+         s[0] = s[1] = s[2] = s[3] = s4 = 0.0;
          
          for (k = 0; k < ncp; k++) {
-            rgb2hsv(cpi[k].palette[i].color, t);
+            t = rgb2hsv(cpi[k].palette[i].color);
             for (j = 0; j < 3; j++)
                s[j] += c[k] * t[j];
             
             s[3] += c[k] * cpi[k].palette[i].color[3];
             if (cpi[k].palette[i].color[3] != 1.0)
                alpha1 = 0;
-            s[4] += c[k] * cpi[k].palette[i].index;
+            s4 += c[k] * cpi[k].palette[i].index;
             
          }
 
          if (alpha1 == 1)
             s[3] = 1.0;
        
-         hsv2rgb(s, result->palette[i].color);
+         result->palette[i].color = hsv2rgb(s);
          result->palette[i].color[3] = s[3];
-         result->palette[i].index = s[4];
+         result->palette[i].index = s4;
        
          for (j = 0; j < 4; j++) {
             if (result->palette[i].color[j] < 0.0)

@@ -16,7 +16,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* this file is included into flam3.c once for each buffer bit-width */
+#include <assert.h>
+
+#include "private.h"
+#include "filters.h"
+#include "variations.h"
+#include "palettes.h"
 
 /*
  * for batch
@@ -181,10 +186,9 @@ static void iter_thread(void *fth) {
       for (j = 0; j < sub_batch_size; j++) {
          double p0, p1, p00, p11;
          double dbl_index0,dbl_frac;
-         double interpcolor[4];
-         int ci, color_index0;
+         double4 interpcolor;
+         int color_index0;
          const double4 p = fthp->iter_storage[j];
-         bucket *b;
 
          if (fthp->cp.rotate != 0.0) {
             p00 = p[0] - fthp->cp.rot_center[0];
@@ -199,7 +203,6 @@ static void iter_thread(void *fth) {
          if (p0 >= ficp->bounds[0] && p1 >= ficp->bounds[1] && p0 <= ficp->bounds[2] && p1 <= ficp->bounds[3]) {
 
             double logvis=1.0;
-            bucket *buckets = (bucket *)(ficp->buckets);
 
             /* Skip if invisible */
             if (p[3]==0)
@@ -207,9 +210,6 @@ static void iter_thread(void *fth) {
             else
                logvis = p[3];
             
-            b = buckets + (int)(ficp->ws0 * p0 - ficp->wb0s0) +
-                ficp->width * (int)(ficp->hs1 * p1 - ficp->hb1s1);
-
             dbl_index0 = p[2] * cmap_size;
             color_index0 = (int) (dbl_index0);
             
@@ -225,11 +225,8 @@ static void iter_thread(void *fth) {
                   dbl_frac = dbl_index0 - (double)color_index0;
                }
                         
-               for (ci=0;ci<4;ci++) {
-                  interpcolor[ci] = ficp->dmap[color_index0].color[ci] * (1.0-dbl_frac) + 
-                                    ficp->dmap[color_index0+1].color[ci] * dbl_frac;               
-               }
-               
+               interpcolor = ficp->dmap[color_index0].color * (1.0-dbl_frac) + 
+                                    ficp->dmap[color_index0+1].color * dbl_frac;
             } else { /* Palette mode step */
             
                if (color_index0 < 0) {
@@ -238,23 +235,14 @@ static void iter_thread(void *fth) {
                   color_index0 = cmap_size_m1;
                }
                         
-               for (ci=0;ci<4;ci++)
-                  interpcolor[ci] = ficp->dmap[color_index0].color[ci];               
+               interpcolor = ficp->dmap[color_index0].color;
             }
 
-            if (p[3]==1.0) {
-               bump_no_overflow(b[0][0], interpcolor[0]);
-               bump_no_overflow(b[0][1], interpcolor[1]);
-               bump_no_overflow(b[0][2], interpcolor[2]);
-               bump_no_overflow(b[0][3], interpcolor[3]);
-               bump_no_overflow(b[0][4], 255.0);
-            } else {
-               bump_no_overflow(b[0][0], logvis*interpcolor[0]);
-               bump_no_overflow(b[0][1], logvis*interpcolor[1]);
-               bump_no_overflow(b[0][2], logvis*interpcolor[2]);
-               bump_no_overflow(b[0][3], logvis*interpcolor[3]);
-               bump_no_overflow(b[0][4], logvis*255.0);
+            if (p[3]!=1.0) {
+			   interpcolor *= logvis;
             }
+
+            ficp->buckets[(int)(ficp->ws0 * p0 - ficp->wb0s0) + ficp->width * (int)(ficp->hs1 * p1 - ficp->hb1s1)] += interpcolor;
 
          }
       }
@@ -266,14 +254,11 @@ static void iter_thread(void *fth) {
      pthread_exit((void *)0);
 }
 
-static int render_rectangle(flam3_frame *spec, void *out,
+int render_rectangle(flam3_frame *spec, void *out,
 			     int field, int nchan, int transp, stat_struct *stats) {
    long nbuckets;
    int i, j, k, batch_num, temporal_sample_num;
    double nsamples, batch_size;
-   bucket  *buckets;
-   abucket *accumulate;
-   double4 *points;
    double *filter, *temporal_filter, *temporal_deltas, *batch_filter;
    double ppux=0, ppuy=0;
    int image_width, image_height;    /* size of the image to produce */
@@ -304,9 +289,6 @@ static int render_rectangle(flam3_frame *spec, void *out,
    char *ai;
    int cmap_size;
    
-   char *last_block;
-   size_t memory_rqd;
-
    /* Per-render progress timers */
    time_t progress_timer=0;
    time_t progress_timer_history[64];
@@ -397,19 +379,16 @@ static int render_rectangle(flam3_frame *spec, void *out,
    fic.width  = oversample * image_width  + 2 * gutter_width;
 
    nbuckets = (long)fic.width * (long)fic.height;
-   memory_rqd = (sizeof(bucket) * nbuckets + sizeof(abucket) * nbuckets +
-                 4 * sizeof(double) * (size_t)(spec->sub_batch_size) * spec->nthreads);
-   last_block = (char *) malloc(memory_rqd);
-   if (NULL == last_block) {
-      fprintf(stderr, "render_rectangle: cannot malloc %g bytes.\n", (double)memory_rqd);
-      fprintf(stderr, "render_rectangle: w=%d h=%d nb=%ld.\n", fic.width, fic.height, nbuckets);
-      return(1);
-   }
 
-   /* Just free buckets at the end */   
-   buckets = (bucket *) last_block;
-   accumulate = (abucket *) (last_block + sizeof(bucket) * nbuckets);
-   points = (double4 *)  (last_block + (sizeof(bucket) + sizeof(abucket)) * nbuckets);
+   double4 * const buckets = malloc (nbuckets * sizeof (*buckets));
+   assert (buckets != NULL);
+   double4 * const accumulate = malloc (nbuckets * sizeof (*accumulate));
+   assert (accumulate != NULL);
+   double4 ** const iter_storage = malloc (spec->nthreads * sizeof (*iter_storage));
+   assert (iter_storage != NULL);
+   for (size_t i = 0; i < spec->nthreads; i++) {
+      iter_storage[i] = malloc (spec->sub_batch_size * sizeof (*iter_storage[i]));
+   }
 
    if (verbose) {
       fprintf(stderr, "chaos: ");
@@ -417,7 +396,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
    }
 
    background[0] = background[1] = background[2] = 0.0;
-   memset((char *) accumulate, 0, sizeof(abucket) * nbuckets);
+   memset(accumulate, 0, sizeof(*accumulate) * nbuckets);
 
 
    /* Batch loop - outermost */
@@ -425,7 +404,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
       double sample_density=0.0;
       double k1, area, k2;
 
-      memset((char *) buckets, 0, sizeof(bucket) * nbuckets);
+      memset(buckets, 0, sizeof(*buckets) * nbuckets);
 
       /* Temporal sample loop */
       for (temporal_sample_num = 0; temporal_sample_num < ntemporal_samples; temporal_sample_num++) {
@@ -550,7 +529,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
 	         	fth[thi].timer_initialize = 0;
             }
 
-            fth[thi].iter_storage = &(points[thi*spec->sub_batch_size]);
+            fth[thi].iter_storage = iter_storage[thi];
             fth[thi].fic = &fic;
             flam3_copy(&(fth[thi].cp),&cp);
 
@@ -610,28 +589,14 @@ static int render_rectangle(flam3_frame *spec, void *out,
 
       for (j = 0; j < fic.height; j++) {
          for (i = 0; i < fic.width; i++) {
+			const double4 c = buckets[i + j * fic.width];
 
-            abucket *a = accumulate + i + j * fic.width;
-            bucket *b = buckets + i + j * fic.width;
-            double c[4], ls;
-
-            c[0] = (double) b[0][0];
-            c[1] = (double) b[0][1];
-            c[2] = (double) b[0][2];
-            c[3] = (double) b[0][3];
             if (0.0 == c[3])
                continue;
 
-            ls = (k1 * log(1.0 + c[3] * k2))/c[3];
-            c[0] *= ls;
-            c[1] *= ls;
-            c[2] *= ls;
-            c[3] *= ls;
+            const double ls = (k1 * log(1.0 + c[3] * k2))/c[3];
 
-            abump_no_overflow(a[0][0], c[0]);
-            abump_no_overflow(a[0][1], c[1]);
-            abump_no_overflow(a[0][2], c[2]);
-            abump_no_overflow(a[0][3], c[3]);
+            accumulate[i + j * fic.width] += c * ls;
          }
       }
 
@@ -646,7 +611,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
    /* filter the accumulation buffer down into the image */
    if (1) {
       int x, y;
-      double t[4],newrgb[3];
+      double4 t,newrgb;
       double g = 1.0 / (gamma / vib_gam_n);
       double tmp,a;
       double alpha,ls;
@@ -666,26 +631,22 @@ static int render_rectangle(flam3_frame *spec, void *out,
 
          for (j = 0; j < fic.height; j++) {
             for (i = 0; i < fic.width; i++) {
-
-               abucket *ac = accumulate + i + j*fic.width;
+               double4 ac = accumulate[i + j*fic.width];
                
-               if (ac[0][3]<=0) {
+               if (ac[3]<=0) {
                   alpha = 0.0;
                   ls = 0.0;
                } else {
-                  tmp=ac[0][3]/PREFILTER_WHITE;
+                  tmp=ac[3]/PREFILTER_WHITE;
                   alpha = flam3_calc_alpha(tmp,g,linrange);
                   ls = vibrancy * 256.0 * alpha / tmp;
                   if (alpha<0.0) alpha = 0.0;
                   if (alpha>1.0) alpha = 1.0;
                }
             
-               t[0] = (double)ac[0][0];
-               t[1] = (double)ac[0][1];
-               t[2] = (double)ac[0][2];
-               t[3] = (double)ac[0][3];
+			   t = ac;
             
-               flam3_calc_newrgb(t, ls, highpow, newrgb);
+               newrgb = flam3_calc_newrgb(t, ls, highpow);
                   
                for (rgbi=0;rgbi<3;rgbi++) {
                   a = newrgb[rgbi];
@@ -704,10 +665,12 @@ static int render_rectangle(flam3_frame *spec, void *out,
                   if (a<0) a = 0;
                
                   /* Replace values in accumulation buffer with these new ones */
-                  ac[0][rgbi] = a;
+                  ac[rgbi] = a;
                }
 
-               ac[0][3] = alpha;
+               ac[3] = alpha;
+
+               accumulate[i + j*fic.width] = ac;
 
             }
          }
@@ -726,13 +689,13 @@ static int render_rectangle(flam3_frame *spec, void *out,
             for (ii = 0; ii < filter_width; ii++) {
                for (jj = 0; jj < filter_width; jj++) {
                   double k = filter[ii + jj * filter_width];
-                  abucket *ac = accumulate + x+ii + (y+jj)*fic.width;
+                  double4 ac = accumulate[x+ii + (y+jj)*fic.width];
                   
 
-                  t[0] += k * ac[0][0];
-                  t[1] += k * ac[0][1];
-                  t[2] += k * ac[0][2];
-                  t[3] += k * ac[0][3];
+                  t[0] += k * ac[0];
+                  t[1] += k * ac[1];
+                  t[2] += k * ac[2];
+                  t[3] += k * ac[3];
 
 
                }
@@ -757,7 +720,7 @@ static int render_rectangle(flam3_frame *spec, void *out,
                   if (alpha>1.0) alpha = 1.0;
                }
               
-               flam3_calc_newrgb(t, ls, highpow, newrgb);
+               newrgb = flam3_calc_newrgb(t, ls, highpow);
 
                for (rgbi=0;rgbi<3;rgbi++) {
                   a = newrgb[rgbi];

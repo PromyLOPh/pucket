@@ -26,12 +26,13 @@ typedef struct {
     unsigned char colors[256][3];
 } lib_palette;
 
+#include "vector.h"
 
-void rgb2hsv(double *rgb, double *hsv);
-void hsv2rgb(double *hsv, double *rgb);
+double4 rgb2hsv(double4);
+double4 hsv2rgb(double4);
 
 double flam3_calc_alpha(double density, double gamma, double linrange);
-void flam3_calc_newrgb(double *cbuf, double ls, double highpow, double *newrgb);
+double4 flam3_calc_newrgb(double4 cbuf, double ls, double highpow);
 
 #endif
 

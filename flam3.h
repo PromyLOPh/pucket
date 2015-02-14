@@ -36,10 +36,12 @@ char *flam3_version();
 #define flam3_print_edits  (1)
 #define flam3_dont_print_edits  (0)
 
+#include "vector.h"
+
 //typedef double flam3_palette[256][3];
 typedef struct {
 	double index;
-	double color[4];
+	double4 color;
 } flam3_palette_entry;
 
 typedef flam3_palette_entry flam3_palette[256];

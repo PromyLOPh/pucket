@@ -62,7 +62,7 @@ typedef struct {
    double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */
    flam3_palette_entry *dmap; /* palette */
    double color_scalar; /* <1.0 if non-uniform motion blur is set */
-   void *buckets; /* Points to the first accumulator */
+   double4 *buckets; /* Points to the first accumulator */
    double badvals; /* accumulates all badvalue resets */
    double batch_size;
    int temporal_sample_num,ntemporal_samples;
