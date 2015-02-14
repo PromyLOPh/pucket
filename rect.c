@@ -808,12 +808,13 @@ int render_rectangle(flam3_frame *spec, void *out,
    free(batch_filter);
    free(filter);
    free(buckets);
-//   free(accumulate);
-//   free(points);
+   free(accumulate);
    /* We have to clear the cps in fth first */
    for (thi = 0; thi < spec->nthreads; thi++) {
       clear_cp(&(fth[thi].cp),0);
+	  free (iter_storage[thi]);
    }   
+   free (iter_storage);
    free(fth);
    clear_cp(&cp,0);
 
