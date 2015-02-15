@@ -40,7 +40,6 @@
 /* allow this many iterations for settling into attractor */
 #define FUSE_27 15
 #define FUSE_28 100
-#define WHITE_LEVEL 255
 
 static void iter_thread(void *fth) {
    double sub_batch;
@@ -444,7 +443,7 @@ int render_rectangle(flam3_frame *spec, void *out,
          for (j = 0; j < CMAP_SIZE; j++) {
             dmap[j].index = cp.palette[(j * 256) / CMAP_SIZE].index / 256.0;
             for (k = 0; k < 4; k++)
-               dmap[j].color[k] = (cp.palette[(j * 256) / CMAP_SIZE].color[k] * WHITE_LEVEL) * color_scalar;
+               dmap[j].color[k] = cp.palette[(j * 256) / CMAP_SIZE].color[k] * color_scalar;
          }
 
          /* compute camera */
@@ -583,11 +582,11 @@ int render_rectangle(flam3_frame *spec, void *out,
 
       }
 
-      k1 =(cp.contrast * cp.brightness *
-      PREFILTER_WHITE * 268.0 * batch_filter[batch_num]) / 256;
+	  /* XXX: the original formula has a factor 268/256 in here, not sure why */
+      k1 = cp.contrast * cp.brightness * batch_filter[batch_num];
       area = image_width * image_height / (ppux * ppuy);
       k2 = (oversample * oversample * nbatches) /
-             (cp.contrast * area * WHITE_LEVEL * sample_density * sumfilt);
+             (cp.contrast * area * sample_density * sumfilt);
 #if 0
       printf("iw=%d,ih=%d,ppux=%f,ppuy=%f\n",image_width,image_height,ppux,ppuy);
       printf("contrast=%f, brightness=%f, PREFILTER=%d, temporal_filter=%f\n",
@@ -630,9 +629,9 @@ int render_rectangle(flam3_frame *spec, void *out,
       double linrange = cp.gam_lin_thresh;
 
       vibrancy /= vib_gam_n;
-      background[0] /= vib_gam_n/256.0;
-      background[1] /= vib_gam_n/256.0;
-      background[2] /= vib_gam_n/256.0;
+      background[0] /= vib_gam_n;
+      background[1] /= vib_gam_n;
+      background[2] /= vib_gam_n;
       
       /* If we're in the early clip mode, perform this first step to  */
       /* apply the gamma correction and clipping before the spat filt */
@@ -647,9 +646,9 @@ int render_rectangle(flam3_frame *spec, void *out,
                   alpha = 0.0;
                   ls = 0.0;
                } else {
-                  tmp=ac[3]/PREFILTER_WHITE;
+                  tmp=ac[3];
                   alpha = flam3_calc_alpha(tmp,g,linrange);
-                  ls = vibrancy * 256.0 * alpha / tmp;
+                  ls = vibrancy * alpha / tmp;
                   if (alpha<0.0) alpha = 0.0;
                   if (alpha>1.0) alpha = 1.0;
                }
@@ -660,7 +659,7 @@ int render_rectangle(flam3_frame *spec, void *out,
                   
                for (rgbi=0;rgbi<3;rgbi++) {
                   a = newrgb[rgbi];
-                  a += (1.0-vibrancy) * 256.0 * pow( t[rgbi] / PREFILTER_WHITE, g);
+                  a += (1.0-vibrancy) * pow( t[rgbi], g);
                   if (nchan<=3 || transp==0)
                      a += ((1.0 - alpha) * background[rgbi]);
                   else {
@@ -671,7 +670,7 @@ int render_rectangle(flam3_frame *spec, void *out,
                   }
 
                   /* Clamp here to ensure proper filter functionality */
-                  if (a>255) a = 255;
+                  if (a>1.0) a = 1.0;
                   if (a<0) a = 0;
                
                   /* Replace values in accumulation buffer with these new ones */
@@ -718,14 +717,14 @@ int render_rectangle(flam3_frame *spec, void *out,
             /* The old way, spatial filter first and then clip after gamma */
             if (!spec->earlyclip) {
             
-               tmp=t[3]/PREFILTER_WHITE;
+               tmp=t[3];
                
                if (t[3]<=0) {
                   alpha = 0.0;
                   ls = 0.0;
                } else { 
                   alpha = flam3_calc_alpha(tmp,g,linrange);
-                  ls = vibrancy * 256.0 * alpha / tmp;
+                  ls = vibrancy * alpha / tmp;
                   if (alpha<0.0) alpha = 0.0;
                   if (alpha>1.0) alpha = 1.0;
                }
@@ -734,7 +733,7 @@ int render_rectangle(flam3_frame *spec, void *out,
 
                for (rgbi=0;rgbi<3;rgbi++) {
                   a = newrgb[rgbi];
-                  a += (1.0-vibrancy) * 256.0 * pow( t[rgbi] / PREFILTER_WHITE, g);
+                  a += (1.0-vibrancy) * pow( t[rgbi], g);
                   if (nchan<=3 || transp==0)
                      a += ((1.0 - alpha) * background[rgbi]);
                   else {
@@ -745,7 +744,7 @@ int render_rectangle(flam3_frame *spec, void *out,
                   }
 
                   /* Clamp here to ensure proper filter functionality */
-                  if (a>255) a = 255;
+                  if (a>1.0) a = 1.0;
                   if (a<0) a = 0;
                
                   /* Replace values in accumulation buffer with these new ones */
@@ -758,16 +757,15 @@ int render_rectangle(flam3_frame *spec, void *out,
 
                a = t[rgbi];
 
-               if (a > 255)
-                  a = 255;
+               if (a > 1.0)
+                  a = 1.0;
                if (a < 0)
                   a = 0;
                
                if (2==bytes_per_channel) {
-                  a *= 256.0; /* Scales to [0-65280] */
-                  p16[rgbi] = (unsigned short) a;
+                  p16[rgbi] = nearbyint (a * 65535.0);
                } else {
-                  p8[rgbi] = (unsigned char) a;
+                  p8[rgbi] = nearbyint (a * 255.0);
                }
             }
 
@@ -781,9 +779,9 @@ int render_rectangle(flam3_frame *spec, void *out,
             if (nchan>3) {
                if (transp==1) {
                   if (2==bytes_per_channel)
-                     p16[3] = (unsigned short) (t[3] * 65535);
+                     p16[3] = nearbyint (t[3] * 65535.0);
                   else
-                     p8[3] = (unsigned char) (t[3] * 255);
+                     p8[3] = nearbyint (t[3] * 255);
                } else {
                   if (2==bytes_per_channel)
                      p16[3] = 65535;

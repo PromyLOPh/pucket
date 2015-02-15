@@ -35,7 +35,6 @@
 
 #include <pthread.h>
 
-#define PREFILTER_WHITE 255
 #define EPS (1e-10)
 #define CMAP_SIZE 256
 #define CMAP_SIZE_M1 255

@@ -58,9 +58,9 @@ static void parse_palettes(xmlNode *node) {
                   while (isspace( (int)val[c_idx]))
                      c_idx++;
 
-                  pal->colors[col_count][0] = r;
-                  pal->colors[col_count][1] = g;
-                  pal->colors[col_count][2] = b;
+                  pal->colors[col_count][0] = (double)r/255.0;
+                  pal->colors[col_count][1] = (double)g/255.0;
+                  pal->colors[col_count][2] = (double)b/255.0;
                   
                   col_count++;
                } while (col_count<count);
@@ -169,9 +169,9 @@ int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * con
             double4 rgb, hsv;
             
              rgb = (double4) {
-			       the_palettes[idx].colors[ii][0] / 255.0,
-				   the_palettes[idx].colors[ii][1] / 255.0,
-				   the_palettes[idx].colors[ii][2] / 255.0,
+			       the_palettes[idx].colors[ii][0],
+				   the_palettes[idx].colors[ii][1],
+				   the_palettes[idx].colors[ii][2],
 				   1.0,
 				   };
 	       
@@ -296,39 +296,39 @@ double4 flam3_calc_newrgb(double4 cbuf, double ls, double highpow) {
    
    /* Identify the most saturated channel */
    for (rgbi=0;rgbi<3;rgbi++) {
-      a = ls * (cbuf[rgbi]/PREFILTER_WHITE);
+      a = ls * (cbuf[rgbi]);
       if (a>maxa) {
          maxa = a;
-         maxc = cbuf[rgbi]/PREFILTER_WHITE;
+         maxc = cbuf[rgbi];
       }
    }
       
    /* If a channel is saturated and we have a non-negative highlight power */
    /* modify the color to prevent hue shift                                */
-   if (maxa>255 && highpow>=0.0) {
-      newls = 255.0/maxc;
+   if (maxa > 1.0 && highpow>=0.0) {
+      newls = 1.0/maxc;
       lsratio = pow(newls/ls,highpow);
 
       /* Calculate the max-value color (ranged 0 - 1) */
-	  double4 newrgb = newls*(cbuf/PREFILTER_WHITE)/255.0;
+	  double4 newrgb = newls*(cbuf);
 
       /* Reduce saturation by the lsratio */
       double4 newhsv = rgb2hsv(newrgb);
       newhsv[1] *= lsratio;
 
-      return hsv2rgb(newhsv) * 255.0;
+      return hsv2rgb(newhsv);
    } else {
-      newls = 255.0/maxc;
+      newls = 1.0/maxc;
       adjhlp = -highpow;
       if (adjhlp>1)
          adjhlp=1;
-      if (maxa<=255)
+      if (maxa<=1.0)
          adjhlp=1.0;
 
 	  /* Calculate the max-value color (ranged 0 - 1) interpolated with the old
 	   * behaviour */
 		
-      return ((1.0-adjhlp)*newls + adjhlp*ls)*(cbuf/PREFILTER_WHITE);
+      return ((1.0-adjhlp)*newls + adjhlp*ls)*(cbuf);
    }
 }
 

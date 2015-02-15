@@ -23,7 +23,7 @@
 typedef struct {
     int number;
     char name[flam3_name_len];
-    unsigned char colors[256][3];
+    double colors[256][3];
 } lib_palette;
 
 #include "vector.h"
