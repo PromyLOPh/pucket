@@ -19,8 +19,5 @@ def configure(conf):
     conf.write_config_header ('config.h')
 
 def build(bld):
-    bld.stlib (features='c cstlib', source='flam3.c filters.c parser.c variations.c interpolation.c palettes.c png.c random.c docstring.c rect.c', target='libflam3', use='xml2 png pthread', includes='.')
-    bld.program (features='c cprogram', source='flam3-render.c', target='flam3-render', use='libflam3 xml2 png amdlibm pthread', includes='.')
-    bld.program (features='c cprogram', source='flam3-genome.c', target='flam3-genome', use='libflam3 xml2 png amdlibm pthread', includes='.')
-    bld.program (features='c cprogram', source='flam3-animate.c', target='flam3-animate', use='libflam3 xml2 png amdlibm pthread', includes='.')
+    bld.program (features='c cprogram', source='flam3.c filters.c parser.c variations.c interpolation.c palettes.c png.c random.c rect.c main.c', target='vlam3', use='xml2 png amdlibm pthread', includes='.')
 

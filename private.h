@@ -49,8 +49,6 @@
 #define argf(s,d)   ((ai = getenv(s)) ? atof(ai) : (d))
 #define args(s,d)   ((ai = getenv(s)) ? ai : (d))
 
-void docstring();
-
 /* Structures for passing parameters to iteration threads */
 typedef struct {
    unsigned short *xform_distrib;    /* Distribution of xforms based on weights */

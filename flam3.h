@@ -559,8 +559,8 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
 
 void add_to_action(char *action, char *addtoaction);
 
-void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, randctx *rc, char *action);
-void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc, char *action);
+void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, randctx *rc);
+void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc);
 
 /* return NULL in case of error */
 flam3_genome *flam3_parse_xml2(char *s, char *fn, int default_flag, int *ncps, randctx * const);
@@ -587,7 +587,6 @@ typedef struct {
    flam3_genome  *genomes;
    int            ngenomes;
    int            verbose;
-   int            bits;
    int            bytes_per_channel;
    int            earlyclip;
    double         time;

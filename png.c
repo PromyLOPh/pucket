@@ -95,8 +95,10 @@ void write_png(FILE *file, void *image, int width, int height, flam3_img_comment
 	       PNG_COMPRESSION_TYPE_BASE,
 	       PNG_FILTER_TYPE_BASE);
 	       
+#if 0
   if (pngcom_enable==1)
 	  png_set_text(png_ptr, info_ptr, text, FLAM3_PNG_COM);
+#endif
 
   png_write_info(png_ptr, info_ptr);
 

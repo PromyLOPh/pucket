@@ -376,7 +376,6 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     g->ntemporal_samples = 1;
 
 //    f.temporal_filter_radius = 0.0;
-    f.bits = 33;
     f.bytes_per_channel=1;
     f.verbose = 0;
     f.genomes = g;
