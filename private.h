@@ -44,11 +44,6 @@
 #define max_specified_vars     (100)
 #define vlen(x) (sizeof(x)/sizeof(*x))
 
-
-#define argi(s,d)   ((ai = getenv(s)) ? atoi(ai) : (d))
-#define argf(s,d)   ((ai = getenv(s)) ? atof(ai) : (d))
-#define args(s,d)   ((ai = getenv(s)) ? ai : (d))
-
 /* Structures for passing parameters to iteration threads */
 typedef struct {
    unsigned short *xform_distrib;    /* Distribution of xforms based on weights */

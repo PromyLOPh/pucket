@@ -150,8 +150,7 @@ int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * con
    }
 
    if (NULL == the_palettes) {   
-      char *d = getenv("flam3_palettes");
-      rcode = init_palettes(d ? d : ("flam3-palettes.xml"));
+      rcode = init_palettes("flam3-palettes.xml");
       if (rcode<0) {
          fprintf(stderr,"error reading xml palette file, setting to all white\n");
          return(-1);

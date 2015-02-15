@@ -32,47 +32,9 @@
 void write_png(FILE *file, void *image, int width, int height, flam3_img_comments *fpc, int bpc) {
   png_structp  png_ptr;
   png_infop    info_ptr;
-  png_text     text[FLAM3_PNG_COM];
   size_t i;
   unsigned short testbe = 1;
   void **rows = malloc(sizeof(void *) * height);
-  char *nick = getenv("nick");
-  char *url = getenv("url");
-  char *id = getenv("id");
-  char *ai; /* For argi */
-  int pngcom_enable = argi("enable_png_comments", 1);
-
-  text[0].compression = PNG_TEXT_COMPRESSION_NONE;
-  text[0].key = "flam3_version";
-  text[0].text = flam3_version();
-
-  text[1].compression = PNG_TEXT_COMPRESSION_NONE;
-  text[1].key = "flam3_nickname";
-  text[1].text = nick;
-
-  text[2].compression = PNG_TEXT_COMPRESSION_NONE;
-  text[2].key = "flam3_url";
-  text[2].text = url;
-  
-  text[3].compression = PNG_TEXT_COMPRESSION_NONE;
-  text[3].key = "flam3_id";
-  text[3].text = id;
-
-  text[4].compression = PNG_TEXT_COMPRESSION_NONE;
-  text[4].key = "flam3_error_rate";
-  text[4].text = fpc->badvals;
-
-  text[5].compression = PNG_TEXT_COMPRESSION_NONE;
-  text[5].key = "flam3_samples";
-  text[5].text = fpc->numiters;
-
-  text[6].compression = PNG_TEXT_COMPRESSION_NONE;
-  text[6].key = "flam3_time";
-  text[6].text = fpc->rtime;
-
-  text[7].compression = PNG_TEXT_COMPRESSION_zTXt;
-  text[7].key = "flam3_genome";
-  text[7].text = fpc->genome;
 
   for (i = 0; i < height; i++)
     rows[i] = (unsigned char *)image + i * width * 4 * bpc;
@@ -95,11 +57,6 @@ void write_png(FILE *file, void *image, int width, int height, flam3_img_comment
 	       PNG_COMPRESSION_TYPE_BASE,
 	       PNG_FILTER_TYPE_BASE);
 	       
-#if 0
-  if (pngcom_enable==1)
-	  png_set_text(png_ptr, info_ptr, text, FLAM3_PNG_COM);
-#endif
-
   png_write_info(png_ptr, info_ptr);
 
   /* Must set this after the write_info */

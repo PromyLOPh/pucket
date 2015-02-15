@@ -274,84 +274,6 @@ flam3_genome *sheep_loop(flam3_genome *cp, double blend) {
    return(result);
 }
 
-
-
-
-flam3_genome *sheep_edge(flam3_genome *cp, double blend, int seqflag, double stagger) {
-
-   flam3_genome spun[2];
-   flam3_genome prealign[2];
-   flam3_genome *result;
-   int i,si;
-   char *ai;
-
-   memset(spun, 0, 2*sizeof(flam3_genome));
-   memset(prealign, 0, 2*sizeof(flam3_genome));
-
-   /* Allocate the memory for the result */
-   result = calloc(1,sizeof(flam3_genome));
-
-   /*
-    * Insert motion magic here :
-    * if there are motion elements, we will modify the contents of
-    * the prealign genomes before we rotate and interpolate.
-    */
-  
-   for (si=0;si<2;si++) {
-      flam3_copy(&prealign[si], &cp[si]);
-      for (i=0;i<cp[si].num_xforms;i++) {
-         if (cp[si].xform[i].num_motion>0) {
-            /* Apply motion parameters to result.xform[i] using blend parameter */
-            apply_motion_parameters(&cp[si].xform[i], &prealign[si].xform[i], blend);
-         }
-      }
-   }
-
-   /* Use the un-padded original for blend=0 when creating a sequence */
-   /* This keeps the original interpolation type intact               */
-   if (seqflag && 0.0 == blend) {
-      flam3_copy(result, &prealign[0]);
-   } else {
-
-      /* Align what we're going to interpolate */
-      flam3_align(spun, prealign, 2);
-
-      spun[0].time = 0.0;
-      spun[1].time = 1.0;
-
-      /* Call this first to establish the asymmetric reference angles */
-      establish_asymmetric_refangles(spun,2);  
-
-      /* Rotate the aligned xforms */
-      flam3_rotate(&spun[0], blend*360.0, spun[0].interpolation_type);
-      flam3_rotate(&spun[1], blend*360.0, spun[0].interpolation_type);
-
-      /* Now call the interpolation */
-      if (argi("unsmoother",0) == 0)
-         flam3_interpolate(spun, 2, smoother(blend), stagger, result);
-      else
-         flam3_interpolate(spun, 2, blend, stagger, result);
-      
-
-     /* Interpolation type no longer needs to be forced to linear mode */
-//     if (!seqflag)
-//        result.interpolation_type = flam3_inttype_linear;
-   }
-   
-   /* Clear the genomes we used */
-   clear_cp(&spun[0],flam3_defaults_on);
-   clear_cp(&spun[1],flam3_defaults_on);
-   clear_cp(&prealign[0],flam3_defaults_on);
-   clear_cp(&prealign[1],flam3_defaults_on);
-
-   /* Make sure there are no motion elements in the result */
-   for (i=0;i<result->num_xforms;i++)
-      flam3_delete_motion_elements(&result->xform[i]);
-
-   return(result);
-}
-
-
 /* BY is angle in degrees */
 void flam3_rotate(flam3_genome *cp, double by, int interpolation_type) {
    int i;
@@ -1457,8 +1379,6 @@ char *flam3_print_to_string(flam3_genome *cp) {
 
 void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_edits) {
    int i,numstd;
-   int flam27_flag;
-   char *ai;
 
    // force use of "C" locale when writing reals.
    // first save away the current settings.
@@ -1476,8 +1396,6 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
       fprintf(stderr, "error: couldn't set C locale\n");
 
    
-   flam27_flag = argi("flam27",0);
-
    fprintf(f, "<flame version=\"FLAM3-%s\" time=\"%g\"", flam3_version(),cp->time);
    
    if (cp->flame_name[0]!=0)
@@ -1543,8 +1461,7 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
    fprintf(f, " brightness=\"%g\"", cp->brightness);
    fprintf(f, " gamma=\"%g\"", cp->gamma);
    
-   if (!flam27_flag)
-      fprintf(f, " highlight_power=\"%g\"", cp->highlight_power);
+   fprintf(f, " highlight_power=\"%g\"", cp->highlight_power);
       
    fprintf(f, " vibrancy=\"%g\"", cp->vibrancy);
    fprintf(f, " gamma_threshold=\"%g\"", cp->gam_lin_thresh);
@@ -1589,32 +1506,6 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
 
    }
 
-   int hexpalette = argi("hexpalette",0);
-
-   if (hexpalette) {
-
-      fprintf(f,"   <palette count=\"256\" format=\"RGB\">");
-
-      for (i=0; i < 256; i++) {
-
-         int r, g, b;
-         r = rint(cp->palette[i].color[0] * 255.0);
-         g = rint(cp->palette[i].color[1] * 255.0);
-         b = rint(cp->palette[i].color[2] * 255.0);
-
-         if (i % 8 == 0) {
-            fprintf(f,"\n");
-            fprintf(f,"      ");
-         }
-
-         fprintf(f,"%2x%2x%2x",r,g,b);
-
-      }
-
-      fprintf(f,"\n");
-      fprintf(f,"   </palette>\n");
-
-   } else {
    for (i = 0; i < 256; i++) {
       double r, g, b, a;
       r = (cp->palette[i].color[0] * 255.0);
@@ -1624,26 +1515,15 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
       
       fprintf(f, "   ");
       
-      if (flam27_flag || a==255.0) {
+      if (a==255.0) {
       
-         if (flam27_flag && a!=255.0)
-            fprintf(stderr,"alpha channel in palette cannot be stored in 2.7 compatibility mode; truncating\n");
-      
-         if (getenv("intpalette"))
-            fprintf(f, "<color index=\"%d\" rgb=\"%d %d %d\"/>", i, (int)rint(r), (int)rint(g), (int)rint(b));
-         else {
-            fprintf(f, "<color index=\"%d\" rgb=\"%.6g %.6g %.6g\"/>", i, r, g, b);
-         }
+	  	 fprintf(f, "<color index=\"%d\" rgb=\"%.6g %.6g %.6g\"/>", i, r, g, b);
       } else {
-         if (getenv("intpalette"))
-            fprintf(f, "   <color index=\"%d\" rgba=\"%d %d %d %d\"/>", i, (int)rint(r), (int)rint(g), (int)rint(b), (int)rint(a));
-         else
-            fprintf(f, "   <color index=\"%d\" rgba=\"%.6g %.6g %.6g %.6g\"/>", i, r, g, b, a);
+         fprintf(f, "   <color index=\"%d\" rgba=\"%.6g %.6g %.6g %.6g\"/>", i, r, g, b, a);
       }
 //      if (i%4 == 3)
          fprintf(f, "\n");
          
-   }
    }
 
    if (cp->edits != NULL && print_edits==flam3_print_edits) {
@@ -1680,12 +1560,6 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
    int j;
    int lnv;
 
-   int flam27_flag;
-   char *ai;
-   
-   flam27_flag = argi("flam27",0);
-
-   /* Motion flag will not be set if flam27_flag is set */
    if (motion_flag) {
       fprintf(f, "      <motion motion_frequency=\"%d\" ",x->motion_freq);
       if (x->motion_func == MOTION_SIN)
@@ -1704,15 +1578,13 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
    if (!motion_flag || x->color != 0.0)
       fprintf(f, "color=\"%g\" ", x->color);
    
-   if (flam27_flag)
-      fprintf(f, "symmetry=\"%g\" ", 1.0-2.0*x->color_speed);
-   else if (!motion_flag)   
+   if (!motion_flag)   
       fprintf(f, "color_speed=\"%g\" ", x->color_speed);
    
-   if (!final_flag && !motion_flag && !flam27_flag)
+   if (!final_flag && !motion_flag)
       fprintf(f, "animate=\"%g\" ", x->animate);
 
-   lnv = flam27_flag ? 54:flam3_nvariations;
+   lnv = flam3_nvariations;
 
    for (j = 0; j < lnv; j++) {
       double v = x->var[j];
@@ -2209,7 +2081,7 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
       }
    }   
       
-   if (!final_flag && !motion_flag && !flam27_flag) {
+   if (!final_flag && !motion_flag) {
       
       /* Print out the chaos row for this xform */
       int numcols = numstd;
@@ -2227,11 +2099,11 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
                
    }
 
-   if (!flam27_flag && !motion_flag) {
+   if (!motion_flag) {
       fprintf(f, " opacity=\"%g\"",x->opacity);
    }
 
-   if (!motion_flag && x->num_motion>0 && !flam27_flag) {
+   if (!motion_flag && x->num_motion>0) {
       int nm;
       
       fprintf(f,">\n");
@@ -2751,9 +2623,7 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
    int i, nxforms, var, samed, multid, samepost, postid, addfinal=0;
    int finum = -1;
    int n;
-   char *ai;
-   int f27 = argi("flam27",0);
-   int mvar = f27 ? 54 : flam3_nvariations;
+   int mvar = flam3_nvariations;
    double sum;
 
    static int xform_distrib[] = {

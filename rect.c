@@ -287,7 +287,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    int thi;
    time_t tstart,tend;   
    double sumfilt;
-   char *ai;
    int cmap_size;
    
    /* Per-render progress timers */
@@ -304,7 +303,7 @@ int render_rectangle(flam3_frame *spec, void *out,
    stats->num_iters = 0;
 
    /* correct for apophysis's use of 255 colors in the palette rather than all 256 */
-   cmap_size = 256 - argi("apo_palette",0);
+   cmap_size = 256;
 
    memset(&cp,0, sizeof(flam3_genome));
 
@@ -817,20 +816,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    free (iter_storage);
    free(fth);
    clear_cp(&cp,0);
-
-   if (getenv("insert_palette")) {
-     int ph = 100;
-     if (ph >= image_height) ph = image_height;
-     /* insert the palette into the image */
-     for (j = 0; j < ph; j++) {
-       for (i = 0; i < image_width; i++) {
-	 unsigned char *p = (unsigned char *)out + nchan * (i + j * out_width);
-	 p[0] = (unsigned char)dmap[i * 256 / image_width].color[0];
-	 p[1] = (unsigned char)dmap[i * 256 / image_width].color[1];
-	 p[2] = (unsigned char)dmap[i * 256 / image_width].color[2];
-       }
-     }
-   }
 
    tend = time(NULL);
    stats->render_seconds = (int)(tend-tstart);

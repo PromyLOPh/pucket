@@ -1247,13 +1247,8 @@ void flam3_edit_print(FILE *f, xmlNodePtr editNode, int tabs, int formatting) {
    xmlAttrPtr att_ptr=NULL,cur_att=NULL;
    xmlNodePtr chld_ptr=NULL, cur_chld=NULL;
    int indent_printed = 0;
-   char *ai;
-   int tablim = argi("print_edit_depth",0);
 
    char *att_str,*cont_str,*cpy_string;
-
-   if (tablim>0 && tabs>tablim)
-   return;
 
    /* If this node is an XML_ELEMENT_NODE, print it and it's attributes */
    if (editNode->type==XML_ELEMENT_NODE) {
@@ -1283,7 +1278,7 @@ void flam3_edit_print(FILE *f, xmlNodePtr editNode, int tabs, int formatting) {
       }
 
       /* Does this node have children? */
-      if (!editNode->children || (tablim>0 && tabs>tablim)) {
+      if (!editNode->children) {
          /* Close the tag and subtract the tab */
          fprintf(f,"/>");
          if (formatting)
