@@ -35,7 +35,6 @@ typedef struct {
 	bool verbose;
 	unsigned int threads, bpc, quality, oversample;
 	float scale;
-	bool transparent;
 } render_arguments;
 
 static error_t parse_render_opt (int key, char *arg,
@@ -147,8 +146,7 @@ static void do_render (const render_arguments * const arguments) {
 	void *image = (void *) calloc(this_size, sizeof(char));
 
 	stat_struct stats;
-	if (flam3_render (&f, image, flam3_field_both, channels,
-			arguments->transparent, &stats)) {
+	if (flam3_render (&f, image, flam3_field_both, &stats)) {
 		fprintf(stderr,"error rendering image: aborting.\n");
 		exit(1);
 	}
@@ -423,15 +421,16 @@ int main (int argc, char **argv) {
 		const char doc[] = "vlame3-render -- a fractal flame renderer";
 		const struct argp argp = {
 				.options = options, .parser = parse_render_opt,
-				.args_doc = NULL, .doc = doc, .children = NULL
+				.args_doc = NULL, .doc = doc, .children = NULL,
 				};
 
 		render_arguments arguments = {
 				.threads = flam3_count_nthreads(),
 				.bpc = 8,
 				.scale = 1.0,
-				.transparent = false,
 				.quality = 100,
+				.verbose = true,
+				.oversample = 1,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);

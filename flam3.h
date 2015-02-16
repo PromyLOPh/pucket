@@ -601,9 +601,9 @@ typedef struct {
 #define flam3_field_even  1
 #define flam3_field_odd   2
 
-/* out is pixel array.
-   pixels are rgb or rgba if nchan is 3 or 4. */
-int flam3_render(flam3_frame *f, void *out, int field, int nchan, int transp, stat_struct *stats);
+/* out is pixel array.  pixels are rgba */
+int flam3_render(flam3_frame *spec, void *out,
+        int field, stat_struct *stats);
 
 void rotate_by(double *p, double *center, double by);
 

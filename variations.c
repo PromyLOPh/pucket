@@ -18,11 +18,7 @@
 
 #include "variations.h"
 #include "interpolation.h" 
-
-#ifdef HAVE_AMDLIBM
-#define REPLACE_WITH_AMDLIBM
-#include <amdlibm.h>
-#endif
+#include "math.h" 
 
 #define badvalue(x) (((x)!=(x))||((x)>1e10)||((x)<-1e10))
 

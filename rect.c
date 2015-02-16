@@ -23,6 +23,7 @@
 #include "filters.h"
 #include "variations.h"
 #include "palettes.h"
+#include "math.h"
 
 /*
  * for batch
@@ -254,8 +255,36 @@ static void iter_thread(void *fth) {
      pthread_exit((void *)0);
 }
 
+/*	Perform clipping
+ */
+static double4 clip (const double4 in, const double g, const double linrange,
+		const double highpow, const double vibrancy) {
+	double alpha, ls;
+
+	if (in[3] <= 0.0) {
+		alpha = 0.0;
+		ls = 0.0;
+	} else {
+		alpha = flam3_calc_alpha (in[3], g, linrange);
+		ls = vibrancy * alpha / in[3];
+		alpha = clamp (alpha, 0.0, 1.0);
+	}
+
+	double4 newrgb = flam3_calc_newrgb (in, ls, highpow);
+	newrgb += (1.0-vibrancy) * pow_d4 (in, g);
+	if (alpha > 0.0) {
+		newrgb /= alpha;
+	} else {
+		newrgb = (double4) {0, 0, 0, 0};
+	}
+	newrgb[3] = alpha;
+	newrgb = clamp_d4 (newrgb, 0.0, 1.0);
+
+	return newrgb;
+}
+
 int render_rectangle(flam3_frame *spec, void *out,
-			     int field, int nchan, int transp, stat_struct *stats) {
+			     int field, stat_struct *stats) {
    long nbuckets;
    int i, j, k, batch_num, temporal_sample_num;
    double nsamples, batch_size;
@@ -273,7 +302,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    int gutter_width;
    double vibrancy = 0.0;
    double gamma = 0.0;
-   double background[3];
    int vib_gam_n = 0;
    time_t progress_began=0;
    int verbose = spec->verbose;
@@ -329,13 +357,14 @@ int render_rectangle(flam3_frame *spec, void *out,
       fth[i].cp.final_xform_index=-1;
       
    /* Set up the output image dimensions, adjusted for scanline */   
+   const unsigned int channels = 4;
    image_width = cp.width;
    out_width = image_width;
    if (field) {
       image_height = cp.height / 2;
       
       if (field == flam3_field_odd)
-         out = (unsigned char *)out + nchan * bytes_per_channel * out_width;
+         out = (unsigned char *)out + channels * bytes_per_channel * out_width;
          
       out_width *= 2;
    } else
@@ -404,7 +433,6 @@ int render_rectangle(flam3_frame *spec, void *out,
       progress_began = time(NULL);
    }
 
-   background[0] = background[1] = background[2] = 0.0;
    memset(accumulate, 0, sizeof(*accumulate) * nbuckets);
 
 
@@ -575,9 +603,6 @@ int render_rectangle(flam3_frame *spec, void *out,
 
          vibrancy += cp.vibrancy;
          gamma += cp.gamma;
-         background[0] += cp.background[0];
-         background[1] += cp.background[1];
-         background[2] += cp.background[2];
          vib_gam_n++;
 
       }
@@ -620,67 +645,21 @@ int render_rectangle(flam3_frame *spec, void *out,
    /* filter the accumulation buffer down into the image */
    if (1) {
       int x, y;
-      double4 t,newrgb;
-      double g = 1.0 / (gamma / vib_gam_n);
-      double tmp,a;
-      double alpha,ls;
-      int rgbi;
+      const double g = 1.0 / (gamma / vib_gam_n);
 
       double linrange = cp.gam_lin_thresh;
 
       vibrancy /= vib_gam_n;
-      background[0] /= vib_gam_n;
-      background[1] /= vib_gam_n;
-      background[2] /= vib_gam_n;
       
       /* If we're in the early clip mode, perform this first step to  */
       /* apply the gamma correction and clipping before the spat filt */
       
       if (spec->earlyclip) {
-
          for (j = 0; j < fic.height; j++) {
             for (i = 0; i < fic.width; i++) {
-               double4 ac = accumulate[i + j*fic.width];
-               
-               if (ac[3]<=0) {
-                  alpha = 0.0;
-                  ls = 0.0;
-               } else {
-                  tmp=ac[3];
-                  alpha = flam3_calc_alpha(tmp,g,linrange);
-                  ls = vibrancy * alpha / tmp;
-                  if (alpha<0.0) alpha = 0.0;
-                  if (alpha>1.0) alpha = 1.0;
-               }
-            
-			   t = ac;
-            
-               newrgb = flam3_calc_newrgb(t, ls, highpow);
-                  
-               for (rgbi=0;rgbi<3;rgbi++) {
-                  a = newrgb[rgbi];
-                  a += (1.0-vibrancy) * pow( t[rgbi], g);
-                  if (nchan<=3 || transp==0)
-                     a += ((1.0 - alpha) * background[rgbi]);
-                  else {
-                     if (alpha>0)
-                        a /= alpha;
-                     else
-                        a = 0;
-                  }
-
-                  /* Clamp here to ensure proper filter functionality */
-                  if (a>1.0) a = 1.0;
-                  if (a<0) a = 0;
-               
-                  /* Replace values in accumulation buffer with these new ones */
-                  ac[rgbi] = a;
-               }
-
-               ac[3] = alpha;
-
-               accumulate[i + j*fic.width] = ac;
-
+               const double4 in = accumulate[i + j*fic.width];
+			   accumulate[i + j*fic.width] = clip (in, g, linrange, highpow,
+					   vibrancy);
             }
          }
       }
@@ -690,105 +669,41 @@ int render_rectangle(flam3_frame *spec, void *out,
       for (j = 0; j < image_height; j++) {
          x = 0;
          for (i = 0; i < image_width; i++) {
-            int ii, jj,rgbi;
-            void *p;
-            unsigned short *p16;
-            unsigned char *p8;
-            t[0] = t[1] = t[2] = t[3] = 0.0;
+            int ii, jj;
+			double4 t = (double4) { 0.0, 0.0, 0.0, 0.0 };
+
             for (ii = 0; ii < filter_width; ii++) {
                for (jj = 0; jj < filter_width; jj++) {
-                  double k = filter[ii + jj * filter_width];
-                  double4 ac = accumulate[x+ii + (y+jj)*fic.width];
+                  const double k = filter[ii + jj * filter_width];
+                  const double4 ac = accumulate[x+ii + (y+jj)*fic.width];
                   
-
-                  t[0] += k * ac[0];
-                  t[1] += k * ac[1];
-                  t[2] += k * ac[2];
-                  t[3] += k * ac[3];
-
-
+				  t += k * ac;
                }
             }
 
-            p = (unsigned char *)out + nchan * bytes_per_channel * (i + j * out_width);
-            p8 = (unsigned char *)p;
-            p16 = (unsigned short *)p;
-            
             /* The old way, spatial filter first and then clip after gamma */
             if (!spec->earlyclip) {
-            
-               tmp=t[3];
-               
-               if (t[3]<=0) {
-                  alpha = 0.0;
-                  ls = 0.0;
-               } else { 
-                  alpha = flam3_calc_alpha(tmp,g,linrange);
-                  ls = vibrancy * alpha / tmp;
-                  if (alpha<0.0) alpha = 0.0;
-                  if (alpha>1.0) alpha = 1.0;
-               }
-              
-               newrgb = flam3_calc_newrgb(t, ls, highpow);
-
-               for (rgbi=0;rgbi<3;rgbi++) {
-                  a = newrgb[rgbi];
-                  a += (1.0-vibrancy) * pow( t[rgbi], g);
-                  if (nchan<=3 || transp==0)
-                     a += ((1.0 - alpha) * background[rgbi]);
-                  else {
-                     if (alpha>0)
-                        a /= alpha;
-                     else
-                        a = 0;
-                  }
-
-                  /* Clamp here to ensure proper filter functionality */
-                  if (a>1.0) a = 1.0;
-                  if (a<0) a = 0;
-               
-                  /* Replace values in accumulation buffer with these new ones */
-                  t[rgbi] = a;
-               }
-               t[3] = alpha;
+			   t = clip (t, g, linrange, highpow, vibrancy);
             }
 
-            for (rgbi=0;rgbi<3;rgbi++) {
+			const double maxval = (1 << (bytes_per_channel*8)) - 1;
+			t = nearbyint_d4 (t * maxval);
 
-               a = t[rgbi];
-
-               if (a > 1.0)
-                  a = 1.0;
-               if (a < 0)
-                  a = 0;
-               
-               if (2==bytes_per_channel) {
-                  p16[rgbi] = nearbyint (a * 65535.0);
-               } else {
-                  p8[rgbi] = nearbyint (a * 255.0);
-               }
-            }
-
-
-            if (t[3]>1)
-               t[3]=1;
-            if (t[3]<0)
-               t[3]=0;
-
-            /* alpha */
-            if (nchan>3) {
-               if (transp==1) {
-                  if (2==bytes_per_channel)
-                     p16[3] = nearbyint (t[3] * 65535.0);
-                  else
-                     p8[3] = nearbyint (t[3] * 255);
-               } else {
-                  if (2==bytes_per_channel)
-                     p16[3] = 65535;
-                  else
-                     p8[3] = 255;
-               }
-            }
+			if (bytes_per_channel == 2) {
+				uint16_t * const p = &((uint16_t *) out)[channels * (i + j * out_width)];
+				p[0] = t[0];
+				p[1] = t[1];
+				p[2] = t[2];
+				p[3] = t[3];
+			} else if (bytes_per_channel == 1) {
+				uint8_t * const p = &((uint8_t *) out)[channels * (i + j * out_width)];
+				p[0] = t[0];
+				p[1] = t[1];
+				p[2] = t[2];
+				p[3] = t[3];
+			} else {
+				assert (0);
+			}
 
             x += oversample;
          }

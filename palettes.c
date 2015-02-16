@@ -386,7 +386,7 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     f.sub_batch_size = 10000;
         
     image = (unsigned char *) calloc(g->width * g->height, 3);
-    if (flam3_render(&f, image, flam3_field_both, 3, 0, &stats)) {
+    if (flam3_render(&f, image, flam3_field_both, &stats)) {
        fprintf(stderr,"Error rendering test image for trycolors.  Aborting.\n");
        return(-1);
     }

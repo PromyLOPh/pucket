@@ -20,7 +20,7 @@
 #define private_included
 
 #include "flam3.h"
-#include "config.h"
+#include "build/config.h"
 #include <stdlib.h>
 
 #include <ctype.h>

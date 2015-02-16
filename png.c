@@ -22,7 +22,7 @@
 #include <png.h>
 #include <setjmp.h>
 
-#include "config.h"
+#include "build/config.h"
 #include "img.h"
 #include "flam3.h"
 #include "private.h"
