@@ -73,8 +73,10 @@ extern char *flam3_variation_names[];
 
 #define flam3_max_action_length 10000
 
-#define flam3_palette_mode_step   0
-#define flam3_palette_mode_linear 1
+typedef enum {
+	PALETTE_MODE_STEP = 0,
+	PALETTE_MODE_LINEAR = 1,
+} color_palette_mode;
 
 #define VAR_LINEAR   0
 #define VAR_SINUSOIDAL  1

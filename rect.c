@@ -42,6 +42,41 @@
 #define FUSE_27 15
 #define FUSE_28 100
 
+/*	Lookup color [0,1]
+ */
+static double4 color_palette_lookup (const double color,
+		const color_palette_mode mode, const flam3_palette map,
+		const unsigned int map_count) {
+	assert (color >= 0.0 && color <= 1.0);
+
+	switch (mode) {
+		case PALETTE_MODE_LINEAR: {
+			const double ix = color * map_count;
+			const double bottomix = floor (ix);
+			const double frac = ix - bottomix;
+			const unsigned int intix = bottomix;
+
+			if (intix == map_count-1) {
+				return map[intix].color;
+			} else {
+				return map[intix].color * (1.0-frac) +
+					map[intix+1].color * frac;
+			}
+			break;
+		}
+
+		case PALETTE_MODE_STEP: {
+			const unsigned int intix = nearbyint (color * map_count);
+			return map[intix].color;
+			break;
+		}
+
+		default:
+			assert (0);
+			break;
+	}
+}
+
 static void iter_thread(void *fth) {
    double sub_batch;
    int j;
@@ -51,7 +86,6 @@ static void iter_thread(void *fth) {
    int SBS = ficp->spec->sub_batch_size;
    int fuse;
    int cmap_size = ficp->cmap_size;
-   int cmap_size_m1 = ficp->cmap_size-1;
 
    double eta = 0.0;
    
@@ -186,9 +220,6 @@ static void iter_thread(void *fth) {
       /* Put them in the bucket accumulator */
       for (j = 0; j < sub_batch_size; j++) {
          double p0, p1, p00, p11;
-         double dbl_index0,dbl_frac;
-         double4 interpcolor;
-         int color_index0;
          const double4 p = fthp->iter_storage[j];
 
          if (fthp->cp.rotate != 0.0) {
@@ -210,34 +241,9 @@ static void iter_thread(void *fth) {
                continue;
             else
                logvis = p[3];
-            
-            dbl_index0 = p[2] * cmap_size;
-            color_index0 = (int) (dbl_index0);
-            
-            if (flam3_palette_mode_linear == fthp->cp.palette_mode) {
-               if (color_index0 < 0) {
-                  color_index0 = 0;
-                  dbl_frac = 0;
-               } else if (color_index0 >= cmap_size_m1) {
-                  color_index0 = cmap_size_m1-1;
-                  dbl_frac = 1.0;
-               } else {
-                  /* interpolate between color_index0 and color_index0+1 */
-                  dbl_frac = dbl_index0 - (double)color_index0;
-               }
-                        
-               interpcolor = ficp->dmap[color_index0].color * (1.0-dbl_frac) + 
-                                    ficp->dmap[color_index0+1].color * dbl_frac;
-            } else { /* Palette mode step */
-            
-               if (color_index0 < 0) {
-                  color_index0 = 0;
-               } else if (color_index0 >= cmap_size_m1) {
-                  color_index0 = cmap_size_m1;
-               }
-                        
-               interpcolor = ficp->dmap[color_index0].color;
-            }
+
+			double4 interpcolor = color_palette_lookup (p[2],
+					fthp->cp.palette_mode, ficp->dmap, cmap_size);
 
             if (p[3]!=1.0) {
 			   interpcolor *= logvis;

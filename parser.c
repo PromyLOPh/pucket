@@ -442,9 +442,9 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
          cp->temporal_filter_exp = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"palette_mode")) {
          if (!strcmp("step", att_str))
-            cp->palette_mode = flam3_palette_mode_step;
+            cp->palette_mode = PALETTE_MODE_STEP;
          else if (!strcmp("linear", att_str))
-            cp->palette_mode = flam3_palette_mode_linear;
+            cp->palette_mode = PALETTE_MODE_LINEAR;
          else
             fprintf(stderr,"warning: unrecognized palette mode %s.  Using step.\n",att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"quality")) {

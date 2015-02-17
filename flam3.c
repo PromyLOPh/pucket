@@ -1074,7 +1074,7 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->temporal_filter_type = flam3_temporal_box;
        cp->temporal_filter_width = 1.0;
        cp->temporal_filter_exp = 0.0;
-       cp->palette_mode = flam3_palette_mode_step;
+       cp->palette_mode = PALETTE_MODE_STEP;
 
     } else {
        /* Defaults are off, so set to UN-reasonable values. */
@@ -1467,9 +1467,9 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
    fprintf(f, " vibrancy=\"%g\"", cp->vibrancy);
    fprintf(f, " gamma_threshold=\"%g\"", cp->gam_lin_thresh);
    
-   if (flam3_palette_mode_step == cp->palette_mode)
+   if (PALETTE_MODE_STEP == cp->palette_mode)
       fprintf(f, " palette_mode=\"step\"");
-   else if (flam3_palette_mode_linear == cp->palette_mode)
+   else if (PALETTE_MODE_LINEAR == cp->palette_mode)
       fprintf(f, " palette_mode=\"linear\"");
 
    if (flam3_interpolation_linear != cp->interpolation)

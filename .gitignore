@@ -1,6 +1,4 @@
-*.o
 *.sw?
-*.lo
 waf
 build/
 .lock-*
