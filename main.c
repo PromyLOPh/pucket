@@ -33,7 +33,7 @@ const char *argp_program_version =
 
 typedef struct {
 	bool verbose;
-	unsigned int threads, bpc, quality, oversample;
+	unsigned int threads, bpc, quality, oversample, width, height;
 	float scale;
 } render_arguments;
 
@@ -47,6 +47,16 @@ static error_t parse_render_opt (int key, char *arg,
 				arguments->bpc = i;
 			} else {
 				argp_error (state, "Bits per channel must be 8 or 16");
+			}
+			break;
+		}
+
+		case 'h': {
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "Height must be > 0");
+			} else {
+				arguments->height = i;
 			}
 			break;
 		}
@@ -74,16 +84,26 @@ static error_t parse_render_opt (int key, char *arg,
 		case 's':
 			arguments->scale = atof (arg);
 			if (arguments->scale <= 0.0) {
-				argp_error (state, "Scale must be >= 0");
+				argp_error (state, "Scale must be > 0");
 			}
 			break;
 
 		case 't': {
 			int i = atoi (arg);
 			if (i <= 0) {
-				argp_error (state, "Threads must be >= 0");
+				argp_error (state, "Threads must be > 0");
 			} else {
 				arguments->threads = i;
+			}
+			break;
+		}
+
+		case 'w': {
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "Width must be > 0");
+			} else {
+				arguments->width = i;
 			}
 			break;
 		}
@@ -123,6 +143,12 @@ static void do_render (const render_arguments * const arguments) {
 	/* Force ntemporal_samples to 1 for -render */
 	genome->ntemporal_samples = 1;
 	genome->sample_density = arguments->quality;
+	if (arguments->height != 0) {
+		genome->height = arguments->height;
+	}
+	if (arguments->width != 0) {
+		genome->width = arguments->width;
+	}
 	genome->height *= arguments->scale;
 	genome->width *= arguments->scale;
 	genome->pixels_per_unit *= arguments->scale;
@@ -416,6 +442,8 @@ int main (int argc, char **argv) {
 				{"bpc", 'b', "8|16", 0, "Bits per channel of output image (8)" },
 				{"quality", 'q', "num", 0, "Average samples per pixel (100)" },
 				{"oversample", 'o', "num", 0, "Super-/Oversample image (1)" },
+				{"width", 'w', "pixels", 0, "Output image width" },
+				{"height", 'h', "pixels", 0, "Output image height" },
 				{ 0 },
 				};
 		const char doc[] = "vlame3-render -- a fractal flame renderer";
@@ -431,6 +459,8 @@ int main (int argc, char **argv) {
 				.quality = 100,
 				.verbose = true,
 				.oversample = 1,
+				.width = 0,
+				.height = 0,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
