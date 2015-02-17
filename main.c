@@ -187,6 +187,39 @@ typedef struct {
 	const char *palette;
 } random_arguments;
 
+#define GOLDEN_RATIO (1.618033988749894848204586834)
+#define GOLDEN_RATIO_M1 (GOLDEN_RATIO-1.0)
+#define GOLDEN_RATIO_DIV (GOLDEN_RATIO_M1/GOLDEN_RATIO)
+static double golden_bit (randctx * const rc) {
+	return rand_bool (rc) ? GOLDEN_RATIO_DIV : GOLDEN_RATIO_M1;
+}
+
+static void adjust_bounding_box (flam3_genome * const genome, randctx * const rc) {
+	double bmin[2], bmax[2];
+	flam3_estimate_bounding_box(genome, 0.01, 100000, bmin, bmax, rc);
+	if (rand_d01(rc) < 0.3) {
+		genome->center[0] = (bmin[0] + bmax[0]) / 2.0;
+		genome->center[1] = (bmin[1] + bmax[1]) / 2.0;
+	} else {
+		double mix0, mix1;
+		if (rand_bool(rc)) {
+			mix0 = golden_bit(rc) + rand_d11(rc)/5;
+			mix1 = golden_bit(rc);
+		} else if (rand_bool(rc)) {
+			mix0 = golden_bit(rc);
+			mix1 = golden_bit(rc) + rand_d11(rc)/5;
+		} else {
+			mix0 = golden_bit(rc) + rand_d11(rc)/5;
+			mix1 = golden_bit(rc) + rand_d11(rc)/5;
+		}
+		genome->center[0] = mix0 * bmin[0] + (1-mix0)*bmax[0];
+		genome->center[1] = mix1 * bmin[1] + (1-mix1)*bmax[1];
+	}
+	genome->rot_center[0] = genome->center[0];
+	genome->rot_center[1] = genome->center[1];
+	genome->pixels_per_unit = genome->width / (bmax[0] - bmin[0]);
+}
+
 static void do_random (const random_arguments * const arguments) {
 	randctx rc;
 	rand_seed(&rc);
@@ -194,6 +227,7 @@ static void do_random (const random_arguments * const arguments) {
 	flam3_genome genome = { .edits = NULL };
 	int ivars = flam3_variation_random;
 	flam3_random (&genome, &ivars, 1, arguments->symmetry, 0, &rc);
+	adjust_bounding_box (&genome, &rc);
 
 	flam3_print (stdout, &genome, NULL, flam3_dont_print_edits);
 	fflush(stdout);
