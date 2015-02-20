@@ -33,7 +33,7 @@ const char *argp_program_version =
 
 typedef struct {
 	bool verbose;
-	unsigned int threads, bpc, quality, oversample, width, height;
+	unsigned int threads, bpc, quality, oversample;
 	float scale;
 } render_arguments;
 
@@ -47,16 +47,6 @@ static error_t parse_render_opt (int key, char *arg,
 				arguments->bpc = i;
 			} else {
 				argp_error (state, "Bits per channel must be 8 or 16");
-			}
-			break;
-		}
-
-		case 'h': {
-			int i = atoi (arg);
-			if (i <= 0) {
-				argp_error (state, "Height must be > 0");
-			} else {
-				arguments->height = i;
 			}
 			break;
 		}
@@ -98,16 +88,6 @@ static error_t parse_render_opt (int key, char *arg,
 			break;
 		}
 
-		case 'w': {
-			int i = atoi (arg);
-			if (i <= 0) {
-				argp_error (state, "Width must be > 0");
-			} else {
-				arguments->width = i;
-			}
-			break;
-		}
-			
 		case ARGP_KEY_ARG:
 			if (state->arg_num > 0) {
 				return ARGP_ERR_UNKNOWN;
@@ -143,12 +123,6 @@ static void do_render (const render_arguments * const arguments) {
 	/* Force ntemporal_samples to 1 for -render */
 	genome->ntemporal_samples = 1;
 	genome->sample_density = arguments->quality;
-	if (arguments->height != 0) {
-		genome->height = arguments->height;
-	}
-	if (arguments->width != 0) {
-		genome->width = arguments->width;
-	}
 	genome->height *= arguments->scale;
 	genome->width *= arguments->scale;
 	genome->pixels_per_unit *= arguments->scale;
@@ -185,7 +159,49 @@ static void do_render (const render_arguments * const arguments) {
 typedef struct {
 	int symmetry;
 	const char *palette;
+	unsigned int width, height;
 } random_arguments;
+
+static error_t parse_random_opt (int key, char *arg,
+		struct argp_state * const state) {
+	random_arguments * const arguments = state->input;
+	switch (key) {
+		case 'h': {
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "Height must be > 0");
+			} else {
+				arguments->height = i;
+			}
+			break;
+		}
+
+		case 'w': {
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "Width must be > 0");
+			} else {
+				arguments->width = i;
+			}
+			break;
+		}
+
+		case ARGP_KEY_ARG:
+			if (state->arg_num > 0) {
+				return ARGP_ERR_UNKNOWN;
+			}
+			break;
+
+		case ARGP_KEY_END:
+			break;
+
+		default:
+			return ARGP_ERR_UNKNOWN;
+			break;
+	}
+
+	return 0;
+}
 
 #define GOLDEN_RATIO (1.618033988749894848204586834)
 #define GOLDEN_RATIO_M1 (GOLDEN_RATIO-1.0)
@@ -227,6 +243,11 @@ static void do_random (const random_arguments * const arguments) {
 	flam3_genome genome = { .edits = NULL };
 	int ivars = flam3_variation_random;
 	flam3_random (&genome, &ivars, 1, arguments->symmetry, 0, &rc);
+
+	/* random resets genome, adjust before finding appropriate bbox */
+	genome.width = arguments->width;
+	genome.height = arguments->height;
+
 	adjust_bounding_box (&genome, &rc);
 
 	flam3_print (stdout, &genome, NULL, flam3_dont_print_edits);
@@ -463,10 +484,25 @@ int main (int argc, char **argv) {
 		do_mutate (&arguments);
 	} else if (streq (command, "random")) {
 		/* generate random genome */
+		const struct argp_option options[] = {
+				{"height", 'h', "pixels", 0, "Output flame height" },
+				{"width", 'w', "pixels", 0, "Output flame width" },
+				{ 0 },
+				};
+		const char doc[] = "vlame3-random -- a fractal flame generator";
+		const struct argp argp = {
+				.options = options, .parser = parse_random_opt,
+				.args_doc = NULL, .doc = doc, .children = NULL
+				};
+
 		random_arguments arguments = {
 				.symmetry = 0,
 				.palette = "flam3-palettes.xml",
+				.width = 1000,
+				.height = 1000,
 				};
+
+		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
 		do_random (&arguments);
 	} else if (streq (command, "render")) {
 		/* render flame to image file */
@@ -493,8 +529,6 @@ int main (int argc, char **argv) {
 				.quality = 100,
 				.verbose = true,
 				.oversample = 1,
-				.width = 0,
-				.height = 0,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
