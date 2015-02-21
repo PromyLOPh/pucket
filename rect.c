@@ -219,20 +219,17 @@ static void iter_thread(void *fth) {
 
       /* Put them in the bucket accumulator */
       for (j = 0; j < sub_batch_size; j++) {
-         double p0, p1, p00, p11;
-         const double4 p = fthp->iter_storage[j];
+         double4 p = fthp->iter_storage[j];
 
          if (fthp->cp.rotate != 0.0) {
-            p00 = p[0] - fthp->cp.rot_center[0];
-            p11 = p[1] - fthp->cp.rot_center[1];
-            p0 = p00 * ficp->rot[0][0] + p11 * ficp->rot[0][1] + fthp->cp.rot_center[0];
-            p1 = p00 * ficp->rot[1][0] + p11 * ficp->rot[1][1] + fthp->cp.rot_center[1];
-         } else {
-            p0 = p[0];
-            p1 = p[1];
+		 	const double2 p01 = (double2) { p[0], p[1] };
+		 	const double2 rotatedp = apply_affine (p01, ficp->rot);
+		 	p[0] = rotatedp[0];
+		 	p[1] = rotatedp[1];
          }
 
-         if (p0 >= ficp->bounds[0] && p1 >= ficp->bounds[1] && p0 <= ficp->bounds[2] && p1 <= ficp->bounds[3]) {
+         if (p[0] >= ficp->bounds[0] && p[1] >= ficp->bounds[1] &&
+		     p[0] <= ficp->bounds[2] && p[1] <= ficp->bounds[3]) {
 
             double logvis=1.0;
 
@@ -249,7 +246,7 @@ static void iter_thread(void *fth) {
 			   interpcolor *= logvis;
             }
 
-            ficp->buckets[(int)(ficp->ws0 * p0 - ficp->wb0s0) + ficp->width * (int)(ficp->hs1 * p1 - ficp->hb1s1)] += interpcolor;
+            ficp->buckets[(int)(ficp->ws0 * p[0] - ficp->wb0s0) + ficp->width * (int)(ficp->hs1 * p[1] - ficp->hb1s1)] += interpcolor;
 
          }
       }
@@ -514,10 +511,8 @@ int render_rectangle(flam3_frame *spec, void *out,
             fic.bounds[3] = corner1 + image_height / ppuy + t1 + shift;
             fic.size[0] = 1.0 / (fic.bounds[2] - fic.bounds[0]);
             fic.size[1] = 1.0 / (fic.bounds[3] - fic.bounds[1]);
-            fic.rot[0][0] = cos(cp.rotate * 2 * M_PI / 360.0);
-            fic.rot[0][1] = -sin(cp.rotate * 2 * M_PI / 360.0);
-            fic.rot[1][0] = -fic.rot[0][1];
-            fic.rot[1][1] = fic.rot[0][0];
+			rotate_center ((double2) { cp.rot_center[0], cp.rot_center[1] },
+						   cp.rotate, fic.rot);
             fic.ws0 = fic.width * fic.size[0];
             fic.wb0s0 = fic.ws0 * fic.bounds[0];
             fic.hs1 = fic.height * fic.size[1];

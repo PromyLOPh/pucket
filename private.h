@@ -48,7 +48,7 @@ typedef struct {
    unsigned short *xform_distrib;    /* Distribution of xforms based on weights */
    flam3_frame *spec; /* Frame contains timing information */
    double bounds[4]; /* Corner coords of viewable area */
-   double rot[2][2]; /* Rotation transformation */
+   double2 rot[3]; /* Rotation transformation */
    double size[2];
    int width, height; /* buffer width/height */
    double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */

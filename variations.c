@@ -2025,16 +2025,6 @@ int prepare_precalc_flags(flam3_genome *cp) {
    return(0);
 }
 
-/*	Apply affine coordinate transformation
- */
-static double2 apply_affine (const double2 in, const double2 matrix[3]) {
-	return matrix[0] * in[0] + matrix[1] * in[1] + matrix[2];
-}
-
-static double sum(const double2 in) {
-	return in[0] + in[1];
-}
-
 int apply_xform(flam3_genome *cp, int fn, const double4 p, double4 *q_ret, randctx *rc)
 {
    flam3_iter_helper f;
