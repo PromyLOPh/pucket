@@ -156,6 +156,12 @@ static void do_render (const render_arguments * const arguments) {
 			f.bytes_per_channel);
 }
 
+static void print_genome (flam3_genome * const genome) {
+	printf("<pick version=\"FLAM3-%s\">\n", flam3_version());
+	flam3_print (stdout, genome, NULL, flam3_dont_print_edits);
+	printf("</pick>\n");
+}
+
 typedef struct {
 	int symmetry;
 	const char *palette;
@@ -250,8 +256,7 @@ static void do_random (const random_arguments * const arguments) {
 
 	adjust_bounding_box (&genome, &rc);
 
-	flam3_print (stdout, &genome, NULL, flam3_dont_print_edits);
-	fflush(stdout);
+	print_genome (&genome);
 }
 
 typedef struct {
@@ -323,10 +328,7 @@ static void do_mutate (const mutate_arguments * const arguments) {
 	flam3_mutate (genome, arguments->method, &ivars, 1, arguments->symmetry,
 			speed, &rc);
 
-	printf("<pick version=\"FLAM3-%s\">\n", flam3_version());
-	flam3_print (stdout, genome, NULL, flam3_dont_print_edits);
-	printf("</pick>\n");
-	fflush(stdout);
+	print_genome (genome);
 }
 
 typedef struct {
@@ -387,10 +389,7 @@ static void do_cross (const cross_arguments * const arguments) {
 
 	flam3_cross (genome_a, genome_b, &genome_out, arguments->method, &rc);
 
-	printf("<pick version=\"FLAM3-%s\">\n", flam3_version());
-	flam3_print (stdout, &genome_out, NULL, flam3_dont_print_edits);
-	printf("</pick>\n");
-	fflush(stdout);
+	print_genome (&genome_out);
 }
 
 #if 0
