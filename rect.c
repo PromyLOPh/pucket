@@ -77,7 +77,7 @@ static double4 color_palette_lookup (const double color,
 	}
 }
 
-static void iter_thread(void *fth) {
+static void *iter_thread(void *fth) {
    double sub_batch;
    int j;
    flam3_thread_helper *fthp = (flam3_thread_helper *)fth;
@@ -86,9 +86,17 @@ static void iter_thread(void *fth) {
    int SBS = ficp->spec->sub_batch_size;
    int fuse;
    int cmap_size = ficp->cmap_size;
-
    double eta = 0.0;
-   
+   double4 *iter_storage;
+   randctx rc;
+
+   rand_seed (&rc);
+
+   int ret = posix_memalign ((void **) &iter_storage, sizeof (*iter_storage),
+		   SBS * sizeof (*iter_storage));
+   assert (ret == 0);
+   assert (iter_storage != NULL);  
+
    fuse = (ficp->spec->earlyclip) ? FUSE_28 : FUSE_27;
 
    pauset.tv_sec = 0;
@@ -187,7 +195,7 @@ static void iter_thread(void *fth) {
                   
             if (rv==1) { /* ABORT */
 				   ficp->aborted = 1;
-               pthread_exit((void *)0);
+               goto done;
             }
          } else {
             if (ficp->aborted<0) {
@@ -196,20 +204,20 @@ static void iter_thread(void *fth) {
                nanosleep(&pauset,NULL);
             } while (ficp->aborted==-1);
             }
-            if (ficp->aborted>0) pthread_exit((void *)0);
+            if (ficp->aborted>0) goto done;
          }
       }
 
       /* Seed iterations */
       const double4 start = (double4) {
-	                        rand_d11(&(fthp->rc)),
-                            rand_d11(&(fthp->rc)),
-                            rand_d01(&(fthp->rc)),
-                            rand_d01(&(fthp->rc)),
+	                        rand_d11(&rc),
+                            rand_d11(&rc),
+                            rand_d01(&rc),
+                            rand_d01(&rc),
 							};
 
       /* Execute iterations */
-      badcount = flam3_iterate(&(fthp->cp), sub_batch_size, fuse, start, fthp->iter_storage, ficp->xform_distrib, &(fthp->rc));
+      badcount = flam3_iterate(&(fthp->cp), sub_batch_size, fuse, start, iter_storage, ficp->xform_distrib, &rc);
 
       /* Lock mutex for access to accumulator */
       pthread_mutex_lock(&ficp->bucket_mutex);
@@ -219,7 +227,7 @@ static void iter_thread(void *fth) {
 
       /* Put them in the bucket accumulator */
       for (j = 0; j < sub_batch_size; j++) {
-         double4 p = fthp->iter_storage[j];
+         double4 p = iter_storage[j];
 
          if (fthp->cp.rotate != 0.0) {
 		 	const double2 p01 = (double2) { p[0], p[1] };
@@ -257,7 +265,10 @@ static void iter_thread(void *fth) {
       pthread_mutex_unlock(&ficp->bucket_mutex);
 
    }
-     pthread_exit((void *)0);
+
+done:
+   free (iter_storage);
+   return NULL;
 }
 
 /*	Perform clipping
@@ -423,15 +434,7 @@ int render_rectangle(flam3_frame *spec, void *out,
                          nbuckets * sizeof (*accumulate));
    assert (ret == 0);
    assert (accumulate != NULL);
-   double4 ** const iter_storage = malloc (spec->nthreads * sizeof (*iter_storage));
-   assert (iter_storage != NULL);
-   for (size_t i = 0; i < spec->nthreads; i++) {
-      ret = posix_memalign ((void **) &iter_storage[i],
-	                        sizeof (*iter_storage[i]),
-							spec->sub_batch_size * sizeof (*iter_storage[i]));
-	  assert (ret == 0);
-	  assert (iter_storage[i] != NULL);
-   }
+
 
    if (verbose) {
       fprintf(stderr, "chaos: ");
@@ -553,8 +556,6 @@ int render_rectangle(flam3_frame *spec, void *out,
          /* Initialize the thread helper structures */
          for (thi = 0; thi < spec->nthreads; thi++) {
 
-            /* Create a new state for this thread */
-			rand_seed (&fth[thi].rc);
 
             if (0==thi) {
 
@@ -569,7 +570,6 @@ int render_rectangle(flam3_frame *spec, void *out,
 	         	fth[thi].timer_initialize = 0;
             }
 
-            fth[thi].iter_storage = iter_storage[thi];
             fth[thi].fic = &fic;
             flam3_copy(&(fth[thi].cp),&cp);
 
@@ -727,9 +727,7 @@ int render_rectangle(flam3_frame *spec, void *out,
    /* We have to clear the cps in fth first */
    for (thi = 0; thi < spec->nthreads; thi++) {
       clear_cp(&(fth[thi].cp),0);
-	  free (iter_storage[thi]);
    }   
-   free (iter_storage);
    free(fth);
    clear_cp(&cp,0);
 
