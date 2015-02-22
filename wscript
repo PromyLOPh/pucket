@@ -15,7 +15,7 @@ def configure(conf):
     conf.check_cc (lib='amdlibm', header_name='amdlibm.h', mandatory=False, define_name='HAVE_AMDLIBM', uselib_store='amdlibm')
 
     # does not work
-    #conf.check_cc (function_name='__builtin_ia32_rdrand64_step', define_name='HAVE_RDRAND64')
+    conf.check_cc (function_name='__builtin_prefetch', define_name='HAVE_BUILTIN_PREFETCH')
     conf.write_config_header ('config.h')
 
 def build(bld):

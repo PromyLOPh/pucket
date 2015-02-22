@@ -228,25 +228,27 @@ static void iter_thread(void *fth) {
 		 	p[1] = rotatedp[1];
          }
 
+		 /* Skip if out of bounding box or invisible */
          if (p[0] >= ficp->bounds[0] && p[1] >= ficp->bounds[1] &&
-		     p[0] <= ficp->bounds[2] && p[1] <= ficp->bounds[3]) {
-
-            double logvis=1.0;
-
-            /* Skip if invisible */
-            if (p[3]==0)
-               continue;
-            else
-               logvis = p[3];
+		     p[0] <= ficp->bounds[2] && p[1] <= ficp->bounds[3] &&
+			 p[3] > 0) {
+			const size_t ix = (int)(ficp->ws0 * p[0] - ficp->wb0s0) + ficp->width * (int)(ficp->hs1 * p[1] - ficp->hb1s1);
+#if HAVE_BUILTIN_PREFETCH
+			/* prefetch for reading (0) with no locality (0). This (partially)
+			 * hides the load latency for the += operation at the end of this
+			 * block */
+			__builtin_prefetch (&ficp->buckets[ix], 0, 0);
+#endif
 
 			double4 interpcolor = color_palette_lookup (p[2],
 					fthp->cp.palette_mode, ficp->dmap, cmap_size);
 
-            if (p[3]!=1.0) {
+            const double logvis = p[3];
+            if (logvis != 1.0) {
 			   interpcolor *= logvis;
             }
 
-            ficp->buckets[(int)(ficp->ws0 * p[0] - ficp->wb0s0) + ficp->width * (int)(ficp->hs1 * p[1] - ficp->hb1s1)] += interpcolor;
+            ficp->buckets[ix] += interpcolor;
 
          }
       }
