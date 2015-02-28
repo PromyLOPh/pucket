@@ -370,10 +370,7 @@ static double try_colors(flam3_genome *g, int color_resolution) {
 //    g->width = 100; // XXX keep aspect ratio
 //    g->height = 100;
 //    g->pixels_per_unit = 50;
-    g->nbatches = 1;
-    g->ntemporal_samples = 1;
 
-//    f.temporal_filter_radius = 0.0;
     f.bytes_per_channel=1;
     f.verbose = 0;
     f.genomes = g;
@@ -424,8 +421,6 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     g->width = saved.width;
     g->height = saved.height;
     g->pixels_per_unit = saved.pixels_per_unit;
-    g->nbatches = saved.nbatches;
-    g->ntemporal_samples = saved.ntemporal_samples;
 
     /* Free xform storage */
     clear_cp(&saved,flam3_defaults_on);

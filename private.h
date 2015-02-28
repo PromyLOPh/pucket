@@ -57,8 +57,7 @@ typedef struct {
    double4 *buckets; /* Points to the first accumulator */
    double badvals; /* accumulates all badvalue resets */
    double batch_size;
-   int temporal_sample_num,ntemporal_samples;
-   int batch_num, nbatches, aborted, cmap_size;
+   int aborted, cmap_size;
    time_t *progress_timer;
    time_t *progress_timer_history;
    double *progress_history;
@@ -78,24 +77,6 @@ typedef struct {
 } flam3_thread_helper;
 
 double flam3_sinc(double x);
-
-#define flam3_num_spatialfilters 14
-double flam3_gaussian_filter(double x);
-double flam3_hermite_filter(double t);
-double flam3_box_filter(double t);
-double flam3_triangle_filter(double t);
-double flam3_bell_filter(double t);
-double flam3_b_spline_filter(double t);
-double flam3_lanczos3_filter(double t);
-double flam3_lanczos2_filter(double t);
-double flam3_mitchell_filter(double t);
-double flam3_blackman_filter(double x);
-double flam3_catrom_filter(double x);
-double flam3_hamming_filter(double x);
-double flam3_hanning_filter(double x);
-double flam3_quadratic_filter(double x);
-
-double flam3_spatial_filter(int knum, double x);
 
 #define  flam3_mitchell_b   (1.0 / 3.0)
 #define  flam3_mitchell_c   (1.0 / 3.0)

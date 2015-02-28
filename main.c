@@ -110,8 +110,6 @@ static void do_render (const render_arguments * const arguments) {
 
 	flam3_genome * const genome = &cps[0];
 
-	/* Force ntemporal_samples to 1 for -render */
-	genome->ntemporal_samples = 1;
 	genome->sample_density = arguments->quality;
 	genome->height *= arguments->scale;
 	genome->width *= arguments->scale;

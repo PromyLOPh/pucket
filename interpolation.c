@@ -411,8 +411,6 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
 
    result->palette_index = flam3_palette_random;
    result->symmetry = 0;
-   result->spatial_filter_select = cpi[0].spatial_filter_select;
-   result->temporal_filter_type = cpi[0].temporal_filter_type;
    result->palette_mode = cpi[0].palette_mode;
 
    result->interpolation_type = cpi[0].interpolation_type;
@@ -432,14 +430,9 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
    INTERP(background[1]);
    INTERP(background[2]);
    INTERP(pixels_per_unit);
-   INTERP(spatial_filter_radius);
-   INTERP(temporal_filter_exp);
-   INTERP(temporal_filter_width);
    INTERP(sample_density);
    INTERP(zoom);
    INTERP(rotate);
-   INTERI(nbatches);
-   INTERI(ntemporal_samples);
    INTERP(gam_lin_thresh);
    
    /* Interpolate the chaos array */

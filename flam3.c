@@ -23,7 +23,6 @@
 #include "variations.h"
 #include "interpolation.h"
 #include "parser.h"
-#include "filters.h"
 #include "palettes.h"
 #include "random.h"
 #include <limits.h>
@@ -1061,18 +1060,11 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->background[2] = 0.0;
        cp->width = 100;
        cp->height = 100;
-       cp->spatial_filter_radius = 0.5;
        cp->zoom = 0.0;
        cp->sample_density = 1;
        cp->gam_lin_thresh = 0.01;
 //       cp->motion_exp = 0.0;
-       cp->nbatches = 1;
-       cp->ntemporal_samples = 1000;
-       cp->spatial_filter_select = flam3_gaussian_kernel;
        cp->interpolation_type = flam3_inttype_log;
-       cp->temporal_filter_type = flam3_temporal_box;
-       cp->temporal_filter_width = 1.0;
-       cp->temporal_filter_exp = 0.0;
        cp->palette_mode = PALETTE_MODE_STEP;
 
     } else {
@@ -1082,21 +1074,12 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->background[1] = -1.0;
        cp->background[2] = -1.0;
        cp->zoom = 999999999;
-       cp->spatial_filter_radius = -1;
-       cp->nbatches = -1;
-       cp->ntemporal_samples = -1;
        cp->width = -1;
        cp->height = -1;
        cp->sample_density = -1;
        cp->gam_lin_thresh = -1;
 //       cp->motion_exp = -999;
-       cp->nbatches = 0;
-       cp->ntemporal_samples = 0;
-       cp->spatial_filter_select = -1;
        cp->interpolation_type = -1;
-       cp->temporal_filter_type = -1;
-       cp->temporal_filter_width = -1;
-       cp->temporal_filter_exp = -999;
        cp->palette_mode = -1;
     }
 
@@ -1302,14 +1285,8 @@ void flam3_apply_template(flam3_genome *cp, flam3_genome *templ) {
       cp->background[2] = templ->background[2];
    if (templ->zoom < 999999998)
       cp->zoom = templ->zoom;
-   if (templ->spatial_filter_radius >= 0)
-      cp->spatial_filter_radius = templ->spatial_filter_radius;
    if (templ->sample_density > 0)
       cp->sample_density = templ->sample_density;
-   if (templ->nbatches > 0)
-      cp->nbatches = templ->nbatches;
-   if (templ->ntemporal_samples > 0)
-      cp->ntemporal_samples = templ->ntemporal_samples;
    if (templ->width > 0) {
       /* preserving scale should be an option */
       cp->pixels_per_unit = cp->pixels_per_unit * templ->width / cp->width;
@@ -1319,22 +1296,10 @@ void flam3_apply_template(flam3_genome *cp, flam3_genome *templ) {
       cp->height = templ->height;
    if (templ->gam_lin_thresh >= 0)
       cp->gam_lin_thresh = templ->gam_lin_thresh;
-   if (templ->nbatches>0)
-      cp->nbatches = templ->nbatches;
-   if (templ->ntemporal_samples>0)
-      cp->ntemporal_samples = templ->ntemporal_samples;
-   if (templ->spatial_filter_select>0)
-      cp->spatial_filter_select = templ->spatial_filter_select;
    if (templ->interpolation >= 0)
       cp->interpolation = templ->interpolation;
    if (templ->interpolation_type >= 0)
       cp->interpolation_type = templ->interpolation_type;
-   if (templ->temporal_filter_type >= 0)
-      cp->temporal_filter_type = templ->temporal_filter_type;
-   if (templ->temporal_filter_width > 0)
-      cp->temporal_filter_width = templ->temporal_filter_width;
-   if (templ->temporal_filter_exp > -900)
-      cp->temporal_filter_exp = templ->temporal_filter_exp;
    if (templ->highlight_power >=0)
       cp->highlight_power = templ->highlight_power;
    if (templ->palette_mode >= 0)
@@ -1406,52 +1371,8 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
       fprintf(f, " zoom=\"%g\"", cp->zoom);
 
    fprintf(f, " rotate=\"%g\"", cp->rotate);
-   fprintf(f, " filter=\"%g\"", cp->spatial_filter_radius);
-
-   /* Need to print the correct kernel to use */
-   if (cp->spatial_filter_select == flam3_gaussian_kernel)
-      fprintf(f, " filter_shape=\"gaussian\"");
-   else if (cp->spatial_filter_select == flam3_hermite_kernel)
-      fprintf(f, " filter_shape=\"hermite\"");
-   else if (cp->spatial_filter_select == flam3_box_kernel)
-      fprintf(f, " filter_shape=\"box\"");
-   else if (cp->spatial_filter_select == flam3_triangle_kernel)
-      fprintf(f, " filter_shape=\"triangle\"");
-   else if (cp->spatial_filter_select == flam3_bell_kernel)
-      fprintf(f, " filter_shape=\"bell\"");
-   else if (cp->spatial_filter_select == flam3_b_spline_kernel)
-      fprintf(f, " filter_shape=\"bspline\"");
-   else if (cp->spatial_filter_select == flam3_mitchell_kernel)
-      fprintf(f, " filter_shape=\"mitchell\"");
-   else if (cp->spatial_filter_select == flam3_blackman_kernel)
-      fprintf(f, " filter_shape=\"blackman\"");
-   else if (cp->spatial_filter_select == flam3_catrom_kernel)
-      fprintf(f, " filter_shape=\"catrom\"");
-   else if (cp->spatial_filter_select == flam3_hanning_kernel)
-      fprintf(f, " filter_shape=\"hanning\"");
-   else if (cp->spatial_filter_select == flam3_hamming_kernel)
-      fprintf(f, " filter_shape=\"hamming\"");
-   else if (cp->spatial_filter_select == flam3_lanczos3_kernel)
-      fprintf(f, " filter_shape=\"lanczos3\"");
-   else if (cp->spatial_filter_select == flam3_lanczos2_kernel)
-      fprintf(f, " filter_shape=\"lanczos2\"");
-   else if (cp->spatial_filter_select == flam3_quadratic_kernel)
-      fprintf(f, " filter_shape=\"quadratic\"");
-
-   if (cp->temporal_filter_type == flam3_temporal_box)
-      fprintf(f, " temporal_filter_type=\"box\"");
-   else if (cp->temporal_filter_type == flam3_temporal_gaussian)
-      fprintf(f, " temporal_filter_type=\"gaussian\"");
-   else if (cp->temporal_filter_type == flam3_temporal_exp)
-      fprintf(f, " temporal_filter_type=\"exp\" temporal_filter_exp=\"%g\"",cp->temporal_filter_exp);
-
-   fprintf(f, " temporal_filter_width=\"%g\"",cp->temporal_filter_width);
-   
-
 
    fprintf(f, " quality=\"%g\"", cp->sample_density);
-   fprintf(f, " passes=\"%d\"", cp->nbatches);
-   fprintf(f, " temporal_samples=\"%d\"", cp->ntemporal_samples);
    fprintf(f, " background=\"%g %g %g\"",
       cp->background[0], cp->background[1], cp->background[2]);
    fprintf(f, " brightness=\"%g\"", cp->brightness);

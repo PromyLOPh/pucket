@@ -477,19 +477,7 @@ typedef struct {
    double background[3];
    double zoom;                  /* effects ppu, sample density, scale */
    double pixels_per_unit;       /* vertically */
-   double spatial_filter_radius; /* radius of spatial filter */
-   int spatial_filter_select; /* selected spatial filter */
-//   double (*spatial_filter_func)(double); /* spatial filter kernel function */
-//   double spatial_filter_support; /* size of standard kernel for specific function */
    double sample_density;        /* samples per pixel (not bucket) */
-   /* in order to motion blur more accurately we compute the logs of the
-   sample density many times and average the results. */
-   /* nbatches is the number of times the buckets are filtered into
-   the abucket log accumulator */
-   /* ntemporal_samples is the number of time steps per batch.  this many
-   interpolated control points are used per batch and accumulated */
-   int nbatches;
-   int ntemporal_samples;
 
    /* XML Edit structure */
    xmlDocPtr edits;
@@ -504,9 +492,6 @@ typedef struct {
    double hue_rotation1;
    double palette_blend;
 
-   int temporal_filter_type; /* Temporal filters */
-   double temporal_filter_width, temporal_filter_exp;
-   
    int palette_mode;
 
 
@@ -583,7 +568,6 @@ void flam3_apply_template(flam3_genome *cp, flam3_genome *templ);
 int flam3_count_nthreads(void);
 
 typedef struct {
-//   double         temporal_filter_radius;
    double         pixel_aspect_ratio;    /* width over height of each pixel */
    flam3_genome  *genomes;
    int            ngenomes;
@@ -634,28 +618,5 @@ flam3_genome *sheep_edge(flam3_genome *cp, double blend, int seqflag, double sta
 #define CROSS_UNION           0
 #define CROSS_INTERPOLATE     1  
 #define CROSS_ALTERNATE       2
-
-/* Filters */
-/* Spatial filter kernels */
-#define flam3_gaussian_kernel 0
-#define flam3_hermite_kernel 1
-#define flam3_box_kernel 2
-#define flam3_triangle_kernel 3
-#define flam3_bell_kernel 4
-#define flam3_b_spline_kernel 5
-#define flam3_lanczos3_kernel 6
-#define flam3_lanczos2_kernel 7
-#define flam3_mitchell_kernel 8
-#define flam3_blackman_kernel 9
-#define flam3_catrom_kernel 10
-#define flam3_hamming_kernel 11
-#define flam3_hanning_kernel 12
-#define flam3_quadratic_kernel 13
-
-/* Temporal filters */
-#define flam3_temporal_box 0
-#define flam3_temporal_gaussian 1
-#define flam3_temporal_exp 2
-
 
 #endif

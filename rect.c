@@ -20,23 +20,9 @@
 #include <stdlib.h>
 
 #include "private.h"
-#include "filters.h"
 #include "variations.h"
 #include "palettes.h"
 #include "math.h"
-
-/*
- * for batch
- *   generate de filters
- *   for temporal_sample_batch
- *     interpolate
- *     compute colormap
- *     for subbatch
- *       compute samples
- *       buckets += cmap[samples]
- *   accum += time_filter[temporal_sample_batch] * log[buckets] * de_filter
- * image = filter(accum)
- */
 
 /* allow this many iterations for settling into attractor */
 #define FUSE_27 15
@@ -119,8 +105,7 @@ static void *iter_thread(void *fth) {
                            
       if (fthp->first_thread && newt != *(ficp->progress_timer)) {
          double percent = 100.0 *
-             ((((sub_batch / (double) ficp->batch_size) + ficp->temporal_sample_num)
-             / ficp->ntemporal_samples) + ficp->batch_num)/ficp->nbatches;
+             ((((sub_batch / (double) ficp->batch_size))));
          int old_mark = 0;
          int ticker;
 
@@ -162,8 +147,7 @@ static void *iter_thread(void *fth) {
          
             /* Recalculate % done, as the other calculation only updates once per second */
             double percent = 100.0 *
-                ((((sub_batch / (double) ficp->batch_size) + ficp->temporal_sample_num)
-                / ficp->ntemporal_samples) + ficp->batch_num)/ficp->nbatches;
+                (((sub_batch / (double) ficp->batch_size)));
                 
             rv = (*ficp->spec->progress)(ficp->spec->progress_parameter, percent, 0, eta);
             
@@ -302,16 +286,12 @@ static double4 clip (const double4 in, const double g, const double linrange,
 int render_rectangle(flam3_frame *spec, void *out,
 			     int field, stat_struct *stats) {
    long nbuckets;
-   int i, j, k, batch_num, temporal_sample_num;
-   double nsamples, batch_size;
-   double *temporal_filter, *temporal_deltas, *batch_filter;
+   int i, j, k;
    double ppux=0, ppuy=0;
    int image_width, image_height;    /* size of the image to produce */
    int out_width;
    int bytes_per_channel = spec->bytes_per_channel;
    double highpow;
-   int nbatches;
-   int ntemporal_samples;
    flam3_palette dmap;
    double vibrancy = 0.0;
    double gamma = 0.0;
@@ -326,7 +306,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    pthread_t *myThreads=NULL;
    int thi;
    time_t tstart,tend;   
-   double sumfilt;
    int cmap_size;
    
    /* Per-render progress timers */
@@ -350,13 +329,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    /* interpolate and get a control point                      */
    flam3_interpolate(spec->genomes, spec->ngenomes, spec->time, 0, &cp);
    highpow = cp.highlight_power;
-   nbatches = cp.nbatches;
-   ntemporal_samples = cp.ntemporal_samples;
-
-   if (nbatches < 1) {
-       fprintf(stderr, "nbatches must be positive, not %d.\n", nbatches);
-       return(1);
-   }
 
    /* Initialize the thread helper structures */
    fth = (flam3_thread_helper *)calloc(spec->nthreads,sizeof(flam3_thread_helper));
@@ -376,21 +348,6 @@ int render_rectangle(flam3_frame *spec, void *out,
       out_width *= 2;
    } else
       image_height = cp.height;
-
-
-   /* batch filter */
-   /* may want to revisit this at some point */
-   batch_filter = (double *) malloc(sizeof(double) * nbatches);
-   for (i=0; i<nbatches; i++)
-      batch_filter[i]=1.0/(double)nbatches;
-
-   /* temporal filter - we must free temporal_filter and temporal_deltas at the end */
-   sumfilt = flam3_create_temporal_filter(nbatches*ntemporal_samples, 
-                                          cp.temporal_filter_type,
-                                          cp.temporal_filter_exp,
-                                          cp.temporal_filter_width,
-                                          &temporal_filter, &temporal_deltas);
-                                                                                    
 
    /* Allocate the space required to render the image */
    fic.height = image_height;
@@ -419,23 +376,13 @@ int render_rectangle(flam3_frame *spec, void *out,
 
 
    /* Batch loop - outermost */
-   for (batch_num = 0; batch_num < nbatches; batch_num++) {
+   {
       double sample_density=0.0;
       double k1, area, k2;
 
       memset(buckets, 0, sizeof(*buckets) * nbuckets);
 
-      /* Temporal sample loop */
-      for (temporal_sample_num = 0; temporal_sample_num < ntemporal_samples; temporal_sample_num++) {
-
-         double temporal_sample_time;
-         double color_scalar = temporal_filter[batch_num*ntemporal_samples + temporal_sample_num];
-
-         temporal_sample_time = spec->time +
-            temporal_deltas[batch_num*ntemporal_samples + temporal_sample_num];
-
-         /* Interpolate and get a control point */
-         flam3_interpolate(spec->genomes, spec->ngenomes, temporal_sample_time, 0, &cp);
+      {
 
          /* Get the xforms ready to render */
          if (prepare_precalc_flags(&cp)) {
@@ -453,11 +400,11 @@ int render_rectangle(flam3_frame *spec, void *out,
          for (j = 0; j < CMAP_SIZE; j++) {
             dmap[j].index = cp.palette[(j * 256) / CMAP_SIZE].index / 256.0;
             for (k = 0; k < 4; k++)
-               dmap[j].color[k] = cp.palette[(j * 256) / CMAP_SIZE].color[k] * color_scalar;
+               dmap[j].color[k] = cp.palette[(j * 256) / CMAP_SIZE].color[k];
          }
 
          /* compute camera */
-         if (1) {
+         {
             double shift=0.0, corner0, corner1;
             double scale;
 
@@ -498,10 +445,10 @@ int render_rectangle(flam3_frame *spec, void *out,
          }
 
          /* number of samples is based only on the output image size */
-         nsamples = sample_density * image_width * image_height;
+         double nsamples = sample_density * image_width * image_height;
          
          /* how many of these samples are rendered in this loop? */
-         batch_size = nsamples / (nbatches * ntemporal_samples);
+         double batch_size = nsamples;
 
          stats->num_iters += batch_size;
                   
@@ -509,14 +456,9 @@ int render_rectangle(flam3_frame *spec, void *out,
          fic.xform_distrib = xform_distrib;
          fic.spec = spec;
          fic.batch_size = batch_size / (double)spec->nthreads;
-         fic.temporal_sample_num = temporal_sample_num;
-         fic.ntemporal_samples = ntemporal_samples;
-         fic.batch_num = batch_num;
-         fic.nbatches = nbatches;
          fic.cmap_size = cmap_size;
 
          fic.dmap = (flam3_palette_entry *)dmap;
-         fic.color_scalar = color_scalar;
          fic.buckets = (void *)buckets;
          
          /* Need a timer per job */
@@ -532,10 +474,7 @@ int render_rectangle(flam3_frame *spec, void *out,
             if (0==thi) {
 
                fth[thi].first_thread=1;
-               if (0==batch_num && 0==temporal_sample_num)
-               	fth[thi].timer_initialize = 1;
-               else
-               	fth[thi].timer_initialize = 0;
+               fth[thi].timer_initialize = 1;
                	
             } else {
                fth[thi].first_thread=0;
@@ -583,15 +522,15 @@ int render_rectangle(flam3_frame *spec, void *out,
       }
 
 	  /* XXX: the original formula has a factor 268/256 in here, not sure why */
-      k1 = cp.contrast * cp.brightness * batch_filter[batch_num];
+      k1 = cp.contrast * cp.brightness;
       area = image_width * image_height / (ppux * ppuy);
-      k2 = nbatches / (cp.contrast * area * sample_density * sumfilt);
+      k2 = 1.0 / (cp.contrast * area * sample_density);
 #if 0
       printf("iw=%d,ih=%d,ppux=%f,ppuy=%f\n",image_width,image_height,ppux,ppuy);
-      printf("contrast=%f, brightness=%f, PREFILTER=%d, temporal_filter=%f\n",
-        cp.contrast, cp.brightness, PREFILTER_WHITE, temporal_filter[batch_num]);
-      printf("nbatches=%d, area = %f, WHITE_LEVEL=%d, sample_density=%f\n",
-        nbatches, area, WHITE_LEVEL, sample_density);
+      printf("contrast=%f, brightness=%f, PREFILTER=%d\n",
+        cp.contrast, cp.brightness, PREFILTER_WHITE);
+      printf("area = %f, WHITE_LEVEL=%d, sample_density=%f\n",
+        area, WHITE_LEVEL, sample_density);
       printf("k1=%f,k2=%15.12f\n",k1,k2);
 #endif
 
@@ -679,9 +618,6 @@ int render_rectangle(flam3_frame *spec, void *out,
 
    stats->badvals = fic.badvals;
 
-   free(temporal_filter);
-   free(temporal_deltas);
-   free(batch_filter);
    free(buckets);
    free(accumulate);
    /* We have to clear the cps in fth first */

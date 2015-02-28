@@ -18,7 +18,6 @@
 
 #include "parser.h"
 #include "interpolation.h"
-#include "filters.h"
 #include <errno.h>
 
 static int flam3_conversion_failed;
@@ -389,53 +388,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
          cp->rotate = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"zoom")) {
          cp->zoom = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"filter")) {
-         cp->spatial_filter_radius = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"filter_shape")) {
-         if (!strcmp("gaussian", att_str))
-            cp->spatial_filter_select = flam3_gaussian_kernel;
-         else if (!strcmp("hermite", att_str))
-            cp->spatial_filter_select = flam3_hermite_kernel;
-         else if (!strcmp("box", att_str))
-            cp->spatial_filter_select = flam3_box_kernel;
-         else if (!strcmp("triangle", att_str))
-            cp->spatial_filter_select = flam3_triangle_kernel;
-         else if (!strcmp("bell", att_str))
-            cp->spatial_filter_select = flam3_bell_kernel;
-         else if (!strcmp("bspline", att_str))
-            cp->spatial_filter_select = flam3_b_spline_kernel;
-         else if (!strcmp("mitchell", att_str))
-            cp->spatial_filter_select = flam3_mitchell_kernel;
-         else if (!strcmp("blackman", att_str))
-            cp->spatial_filter_select = flam3_blackman_kernel;
-         else if (!strcmp("catrom", att_str))
-            cp->spatial_filter_select = flam3_catrom_kernel;
-         else if (!strcmp("hanning", att_str))
-            cp->spatial_filter_select = flam3_hanning_kernel;
-         else if (!strcmp("hamming", att_str))
-            cp->spatial_filter_select = flam3_hamming_kernel;
-         else if (!strcmp("lanczos3", att_str))
-            cp->spatial_filter_select = flam3_lanczos3_kernel;
-         else if (!strcmp("lanczos2", att_str))
-            cp->spatial_filter_select = flam3_lanczos2_kernel;
-         else if (!strcmp("quadratic", att_str))
-            cp->spatial_filter_select = flam3_quadratic_kernel;
-         else
-            fprintf(stderr, "warning: unrecognized kernel shape %s.  Using gaussian.\n", att_str);
-
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"temporal_filter_type")) {
-         if (!strcmp("box", att_str))
-            cp->temporal_filter_type = flam3_temporal_box;
-         else if (!strcmp("gaussian", att_str))
-            cp->temporal_filter_type = flam3_temporal_gaussian;
-         else if (!strcmp("exp",att_str))
-            cp->temporal_filter_type = flam3_temporal_exp;
-         else
-            fprintf(stderr, "warning: unrecognized temporal filter %s.  Using box.\n",att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"temporal_filter_width")) {
-         cp->temporal_filter_width = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"temporal_filter_exp")) {
-         cp->temporal_filter_exp = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"palette_mode")) {
          if (!strcmp("step", att_str))
             cp->palette_mode = PALETTE_MODE_STEP;
@@ -445,10 +397,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
             fprintf(stderr,"warning: unrecognized palette mode %s.  Using step.\n",att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"quality")) {
          cp->sample_density = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"passes")) {
-         cp->nbatches = flam3_atoi(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"temporal_samples")) {
-         cp->ntemporal_samples = flam3_atoi(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"background")) {
          if (sscanf(att_str, "%lf %lf %lf%1s", &cp->background[0], &cp->background[1], &cp->background[2], tmps) != 3) {
             fprintf(stderr,"error: invalid background attribute '%s'\n",att_str);
