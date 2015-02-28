@@ -18,6 +18,7 @@
 
 #include "private.h"
 #include "palettes.h"
+#include "rect.h"
 
 lib_palette *the_palettes = NULL;
 int npalettes;
@@ -372,7 +373,6 @@ static double try_colors(flam3_genome *g, int color_resolution) {
 //    g->pixels_per_unit = 50;
 
     f.bytes_per_channel=1;
-    f.verbose = 0;
     f.genomes = g;
     f.ngenomes = 1;
     f.earlyclip = 1;
@@ -382,7 +382,7 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     f.sub_batch_size = 10000;
         
     image = (unsigned char *) calloc(g->width * g->height, 3);
-    if (flam3_render(&f, image, &stats)) {
+    if (render_parallel (&f, image, &stats)) {
        fprintf(stderr,"Error rendering test image for trycolors.  Aborting.\n");
        return(-1);
     }

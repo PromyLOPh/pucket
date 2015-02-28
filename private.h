@@ -43,39 +43,6 @@
 #define max_specified_vars     (100)
 #define vlen(x) (sizeof(x)/sizeof(*x))
 
-/* Structures for passing parameters to iteration threads */
-typedef struct {
-   unsigned short *xform_distrib;    /* Distribution of xforms based on weights */
-   flam3_frame *spec; /* Frame contains timing information */
-   double bounds[4]; /* Corner coords of viewable area */
-   double2 rot[3]; /* Rotation transformation */
-   double size[2];
-   int width, height; /* buffer width/height */
-   double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */
-   flam3_palette_entry *dmap; /* palette */
-   double color_scalar; /* <1.0 if non-uniform motion blur is set */
-   double4 *buckets; /* Points to the first accumulator */
-   double badvals; /* accumulates all badvalue resets */
-   double batch_size;
-   int aborted, cmap_size;
-   time_t *progress_timer;
-   time_t *progress_timer_history;
-   double *progress_history;
-   int *progress_history_mark;
-   /* mutex for bucket accumulator */
-   pthread_mutex_t bucket_mutex;
-   
-} flam3_iter_constants;
-
-
-
-typedef struct {
-   flam3_genome cp; /* Full copy of genome for use by the thread */
-   int first_thread;
-   int timer_initialize;
-   flam3_iter_constants *fic; /* Constants for render */
-} flam3_thread_helper;
-
 double flam3_sinc(double x);
 
 #define  flam3_mitchell_b   (1.0 / 3.0)

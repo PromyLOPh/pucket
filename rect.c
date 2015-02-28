@@ -23,10 +23,37 @@
 #include "variations.h"
 #include "palettes.h"
 #include "math.h"
+#include "rect.h"
 
 /* allow this many iterations for settling into attractor */
 #define FUSE_27 15
 #define FUSE_28 100
+
+/* Structures for passing parameters to iteration threads */
+typedef struct {
+   unsigned short *xform_distrib;    /* Distribution of xforms based on weights */
+   flam3_frame *spec; /* Frame contains timing information */
+   double bounds[4]; /* Corner coords of viewable area */
+   double2 rot[3]; /* Rotation transformation */
+   double size[2];
+   int width, height; /* buffer width/height */
+   double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */
+   flam3_palette_entry *dmap; /* palette */
+   double color_scalar; /* <1.0 if non-uniform motion blur is set */
+   double4 *buckets; /* Points to the first accumulator */
+   double badvals; /* accumulates all badvalue resets */
+   double batch_size;
+   int aborted, cmap_size;
+   /* mutex for bucket accumulator */
+   pthread_mutex_t bucket_mutex;
+} flam3_iter_constants;
+
+typedef struct {
+   flam3_genome cp; /* Full copy of genome for use by the thread */
+   flam3_iter_constants *fic; /* Constants for render */
+   /* thread number */
+   size_t i;
+} flam3_thread_helper;
 
 /*	Lookup color [0,1]
  */
@@ -68,11 +95,9 @@ static void *iter_thread(void *fth) {
    int j;
    flam3_thread_helper *fthp = (flam3_thread_helper *)fth;
    flam3_iter_constants *ficp = fthp->fic;
-   struct timespec pauset;
    int SBS = ficp->spec->sub_batch_size;
    int fuse;
    int cmap_size = ficp->cmap_size;
-   double eta = 0.0;
    double4 *iter_storage;
    randctx rc;
 
@@ -85,112 +110,11 @@ static void *iter_thread(void *fth) {
 
    fuse = (ficp->spec->earlyclip) ? FUSE_28 : FUSE_27;
 
-   pauset.tv_sec = 0;
-   pauset.tv_nsec = 100000000;
-
-
-   if (fthp->timer_initialize) {
-   	*(ficp->progress_timer) = 0;
-   	memset(ficp->progress_timer_history,0,64*sizeof(time_t));
-   	memset(ficp->progress_history,0,64*sizeof(double));
-   	*(ficp->progress_history_mark) = 0;
-   }
-   
    for (sub_batch = 0; sub_batch < ficp->batch_size; sub_batch+=SBS) {
       int sub_batch_size, badcount;
-      time_t newt = time(NULL);
       /* sub_batch is double so this is sketchy */
       sub_batch_size = (sub_batch + SBS > ficp->batch_size) ?
                            (ficp->batch_size - sub_batch) : SBS;
-                           
-      if (fthp->first_thread && newt != *(ficp->progress_timer)) {
-         double percent = 100.0 *
-             ((((sub_batch / (double) ficp->batch_size))));
-         int old_mark = 0;
-         int ticker;
-
-         if (ficp->spec->verbose)
-            fprintf(stderr, "\rchaos: %5.1f%%", percent);
-            
-         *(ficp->progress_timer) = newt;
-         if (ficp->progress_timer_history[*(ficp->progress_history_mark)] &&
-                ficp->progress_history[*(ficp->progress_history_mark)] < percent)
-            old_mark = *(ficp->progress_history_mark);
-
-         if (percent > 0) {
-            eta = (100 - percent) * (*(ficp->progress_timer) - ficp->progress_timer_history[old_mark])
-                  / (percent - ficp->progress_history[old_mark]);
-
-            if (ficp->spec->verbose) {
-               ticker = (*(ficp->progress_timer)&1)?':':'.';
-               if (eta < 1000)
-                  ticker = ':';
-               if (eta > 100)
-                  fprintf(stderr, "  ETA%c %.1f minutes", ticker, eta / 60);
-               else
-                  fprintf(stderr, "  ETA%c %ld seconds ", ticker, (long) ceil(eta));
-               fprintf(stderr, "              \r");
-               fflush(stderr);
-            }
-         }
-
-         ficp->progress_timer_history[*(ficp->progress_history_mark)] = *(ficp->progress_timer);
-         ficp->progress_history[*(ficp->progress_history_mark)] = percent;
-         *(ficp->progress_history_mark) = (*(ficp->progress_history_mark) + 1) % 64;
-      }
-
-      /* Custom progress function */
-      if (ficp->spec->progress) {
-         if (fthp->first_thread) {
-         
-            int rv;
-         
-            /* Recalculate % done, as the other calculation only updates once per second */
-            double percent = 100.0 *
-                (((sub_batch / (double) ficp->batch_size)));
-                
-            rv = (*ficp->spec->progress)(ficp->spec->progress_parameter, percent, 0, eta);
-            
-            if (rv==2) { /* PAUSE */
-               
-               time_t tnow = time(NULL);
-               time_t tend;
-               int lastpt;
-               
-               ficp->aborted = -1;
-               
-               do {
-				   nanosleep(&pauset,NULL);
-                  rv = (*ficp->spec->progress)(ficp->spec->progress_parameter, percent, 0, eta);
-               } while (rv==2);
-               
-               /* modify the timer history to compensate for the pause */
-               tend = time(NULL)-tnow;
-               
-               ficp->aborted = 0;
-
-               for (lastpt=0;lastpt<64;lastpt++) {
-                  if (ficp->progress_timer_history[lastpt]) {
-                      ficp->progress_timer_history[lastpt] += tend;
-                  }
-               }
-               
-            }
-                  
-            if (rv==1) { /* ABORT */
-				   ficp->aborted = 1;
-               goto done;
-            }
-         } else {
-            if (ficp->aborted<0) {
-
-            do {
-               nanosleep(&pauset,NULL);
-            } while (ficp->aborted==-1);
-            }
-            if (ficp->aborted>0) goto done;
-         }
-      }
 
       /* Seed iterations */
       const double4 start = (double4) {
@@ -250,7 +174,6 @@ static void *iter_thread(void *fth) {
 
    }
 
-done:
    free (iter_storage);
    return NULL;
 }
@@ -283,8 +206,7 @@ static double4 clip (const double4 in, const double g, const double linrange,
 	return newrgb;
 }
 
-int render_rectangle(flam3_frame *spec, void *out,
-			     stat_struct *stats) {
+int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
    long nbuckets;
    int i, j, k;
    double ppux=0, ppuy=0;
@@ -296,8 +218,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    double vibrancy = 0.0;
    double gamma = 0.0;
    int vib_gam_n = 0;
-   time_t progress_began=0;
-   int verbose = spec->verbose;
    flam3_genome cp;
    unsigned short *xform_distrib;
    flam3_iter_constants fic;
@@ -305,17 +225,8 @@ int render_rectangle(flam3_frame *spec, void *out,
    pthread_attr_t pt_attr;
    pthread_t *myThreads=NULL;
    int thi;
-   time_t tstart,tend;   
    int cmap_size;
    
-   /* Per-render progress timers */
-   time_t progress_timer=0;
-   time_t progress_timer_history[64];
-   double progress_history[64];
-   int progress_history_mark = 0;
-
-   tstart = time(NULL);
-
    fic.badvals = 0;
    fic.aborted = 0;
 
@@ -357,12 +268,6 @@ int render_rectangle(flam3_frame *spec, void *out,
                          nbuckets * sizeof (*accumulate));
    assert (ret == 0);
    assert (accumulate != NULL);
-
-
-   if (verbose) {
-      fprintf(stderr, "chaos: ");
-      progress_began = time(NULL);
-   }
 
    memset(accumulate, 0, sizeof(*accumulate) * nbuckets);
 
@@ -447,29 +352,11 @@ int render_rectangle(flam3_frame *spec, void *out,
          fic.dmap = (flam3_palette_entry *)dmap;
          fic.buckets = (void *)buckets;
          
-         /* Need a timer per job */
-         fic.progress_timer = &progress_timer;
-         fic.progress_timer_history = &(progress_timer_history[0]);
-         fic.progress_history = &(progress_history[0]);
-         fic.progress_history_mark = &progress_history_mark;
-
          /* Initialize the thread helper structures */
          for (thi = 0; thi < spec->nthreads; thi++) {
-
-
-            if (0==thi) {
-
-               fth[thi].first_thread=1;
-               fth[thi].timer_initialize = 1;
-               	
-            } else {
-               fth[thi].first_thread=0;
-	         	fth[thi].timer_initialize = 0;
-            }
-
             fth[thi].fic = &fic;
+            fth[thi].i = thi;
             flam3_copy(&(fth[thi].cp),&cp);
-
          }
 
          /* Let's make some threads */
@@ -497,7 +384,6 @@ int render_rectangle(flam3_frame *spec, void *out,
          free(xform_distrib);
              
          if (fic.aborted) {
-            if (verbose) fprintf(stderr, "\naborted!\n");
             goto done;
          }
 
@@ -534,12 +420,6 @@ int render_rectangle(flam3_frame *spec, void *out,
       }
 
    }
-
-   if (verbose) {
-     fprintf(stderr, "\rchaos: 100.0%%  took: %ld seconds   \n", time(NULL) - progress_began);
-     fprintf(stderr, "filtering...");
-   }
-   
 
    /* filter the accumulation buffer down into the image */
    if (1) {
@@ -613,9 +493,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    free(fth);
    clear_cp(&cp,0);
 
-   tend = time(NULL);
-   stats->render_seconds = (int)(tend-tstart);
-   
    return(0);
 
 }

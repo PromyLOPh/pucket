@@ -25,6 +25,7 @@
 #include "random.h"
 #include "private.h"
 #include "img.h"
+#include "rect.h"
 
 #define streq(a,b) (strcmp (a, b) == 0)
 
@@ -32,7 +33,6 @@ const char *argp_program_version =
   "vlam3-pre";
 
 typedef struct {
-	bool verbose;
 	unsigned int threads, bpc, quality;
 	float scale;
 } render_arguments;
@@ -118,7 +118,6 @@ static void do_render (const render_arguments * const arguments) {
 	flam3_frame f;
 	f.genomes = genome;
 	f.ngenomes = 1;
-	f.verbose = arguments->verbose;
 	f.time = 0.0;
 	f.pixel_aspect_ratio = 1.0;
 	f.progress = 0;
@@ -133,7 +132,7 @@ static void do_render (const render_arguments * const arguments) {
 	void *image = (void *) calloc(this_size, sizeof(char));
 
 	stat_struct stats;
-	if (flam3_render (&f, image, &stats)) {
+	if (render_parallel (&f, image, &stats)) {
 		fprintf(stderr,"error rendering image: aborting.\n");
 		exit(1);
 	}
@@ -512,7 +511,6 @@ int main (int argc, char **argv) {
 				.bpc = 8,
 				.scale = 1.0,
 				.quality = 100,
-				.verbose = true,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);

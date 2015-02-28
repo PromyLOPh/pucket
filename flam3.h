@@ -182,7 +182,6 @@ typedef struct {
 
    double badvals;
    long int num_iters;
-   int render_seconds;
    
 } stat_struct;
 
@@ -571,7 +570,6 @@ typedef struct {
    double         pixel_aspect_ratio;    /* width over height of each pixel */
    flam3_genome  *genomes;
    int            ngenomes;
-   int            verbose;
    int            bytes_per_channel;
    int            earlyclip;
    double         time;
