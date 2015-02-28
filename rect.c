@@ -208,7 +208,6 @@ static double4 clip (const double4 in, const double g, const double linrange,
 
 int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
    long nbuckets;
-   int i, j, k;
    double ppux=0, ppuy=0;
    int image_width, image_height;    /* size of the image to produce */
    int out_width;
@@ -243,7 +242,7 @@ int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
 
    /* Initialize the thread helper structures */
    fth = (flam3_thread_helper *)calloc(spec->nthreads,sizeof(flam3_thread_helper));
-   for (i=0;i<spec->nthreads;i++)
+   for (unsigned int i=0;i<spec->nthreads;i++)
       fth[i].cp.final_xform_index=-1;
       
    /* Set up the output image dimensions, adjusted for scanline */   
@@ -263,21 +262,13 @@ int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
                              nbuckets * sizeof (*buckets));
    assert (ret == 0);
    assert (buckets != NULL);
-   double4 *accumulate;
-   ret = posix_memalign ((void **) &accumulate, sizeof (*accumulate),
-                         nbuckets * sizeof (*accumulate));
-   assert (ret == 0);
-   assert (accumulate != NULL);
+   memset (buckets, 0, nbuckets * sizeof (*buckets));
 
-   memset(accumulate, 0, sizeof(*accumulate) * nbuckets);
-
+   double sample_density=0.0;
 
    /* Batch loop - outermost */
    {
-      double sample_density=0.0;
-      double k1, area, k2;
 
-      memset(buckets, 0, sizeof(*buckets) * nbuckets);
 
       {
 
@@ -294,9 +285,9 @@ int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
 
          /* compute the colormap entries.                             */
          /* the input colormap is 256 long with entries from 0 to 1.0 */
-         for (j = 0; j < CMAP_SIZE; j++) {
+         for (unsigned int j = 0; j < CMAP_SIZE; j++) {
             dmap[j].index = cp.palette[(j * 256) / CMAP_SIZE].index / 256.0;
-            for (k = 0; k < 4; k++)
+            for (unsigned int k = 0; k < 4; k++)
                dmap[j].color[k] = cp.palette[(j * 256) / CMAP_SIZE].color[k];
          }
 
@@ -393,10 +384,7 @@ int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
 
       }
 
-	  /* XXX: the original formula has a factor 268/256 in here, not sure why */
-      k1 = cp.contrast * cp.brightness;
-      area = image_width * image_height / (ppux * ppuy);
-      k2 = 1.0 / (cp.contrast * area * sample_density);
+
 #if 0
       printf("iw=%d,ih=%d,ppux=%f,ppuy=%f\n",image_width,image_height,ppux,ppuy);
       printf("contrast=%f, brightness=%f, PREFILTER=%d\n",
@@ -406,66 +394,41 @@ int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
       printf("k1=%f,k2=%15.12f\n",k1,k2);
 #endif
 
-      for (j = 0; j < fic.height; j++) {
-         for (i = 0; i < fic.width; i++) {
-			const double4 c = buckets[i + j * fic.width];
-
-            if (0.0 == c[3])
-               continue;
-
-            const double ls = (k1 * log(1.0 + c[3] * k2))/c[3];
-
-            accumulate[i + j * fic.width] += c * ls;
-         }
-      }
-
    }
 
    /* filter the accumulation buffer down into the image */
    if (1) {
-      int x, y;
       const double g = 1.0 / (gamma / vib_gam_n);
 
       double linrange = cp.gam_lin_thresh;
 
       vibrancy /= vib_gam_n;
       
-      /* If we're in the early clip mode, perform this first step to  */
-      /* apply the gamma correction and clipping before the spat filt */
-      
-      if (spec->earlyclip) {
-         for (j = 0; j < fic.height; j++) {
-            for (i = 0; i < fic.width; i++) {
-               const double4 in = accumulate[i + j*fic.width];
-			   accumulate[i + j*fic.width] = clip (in, g, linrange, highpow,
-					   vibrancy);
-            }
-         }
-      }
+	  /* XXX: the original formula has a factor 268/256 in here, not sure why */
+      const double k1 = cp.contrast * cp.brightness;
+      const double area = image_width * image_height / (ppux * ppuy);
+      const double k2 = 1.0 / (cp.contrast * area * sample_density);
 
-      /* Apply the spatial filter */
-      y = 0;
-      for (j = 0; j < image_height; j++) {
-         x = 0;
-         for (i = 0; i < image_width; i++) {
-			double4 t = accumulate[x + y * fic.width];
+      for (unsigned int y = 0; y < image_height; y++) {
+         for (unsigned int x = 0; x < image_width; x++) {
+			double4 t = buckets[x + y * fic.width];
 
-            /* The old way, spatial filter first and then clip after gamma */
-            if (!spec->earlyclip) {
-			   t = clip (t, g, linrange, highpow, vibrancy);
-            }
+            const double ls = (k1 * log(1.0 + t[3] * k2))/t[3];
+
+            t = t * ls;
+		    t = clip (t, g, linrange, highpow, vibrancy);
 
 			const double maxval = (1 << (bytes_per_channel*8)) - 1;
 			t = nearbyint_d4 (t * maxval);
 
 			if (bytes_per_channel == 2) {
-				uint16_t * const p = &((uint16_t *) out)[channels * (i + j * out_width)];
+				uint16_t * const p = &((uint16_t *) out)[channels * (x + y * out_width)];
 				p[0] = t[0];
 				p[1] = t[1];
 				p[2] = t[2];
 				p[3] = t[3];
 			} else if (bytes_per_channel == 1) {
-				uint8_t * const p = &((uint8_t *) out)[channels * (i + j * out_width)];
+				uint8_t * const p = &((uint8_t *) out)[channels * (x + y * out_width)];
 				p[0] = t[0];
 				p[1] = t[1];
 				p[2] = t[2];
@@ -473,10 +436,7 @@ int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
 			} else {
 				assert (0);
 			}
-
-            x += 1;
          }
-         y += 1;
       }
    }
 
@@ -485,7 +445,6 @@ int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
    stats->badvals = fic.badvals;
 
    free(buckets);
-   free(accumulate);
    /* We have to clear the cps in fth first */
    for (thi = 0; thi < spec->nthreads; thi++) {
       clear_cp(&(fth[thi].cp),0);
