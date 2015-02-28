@@ -304,18 +304,15 @@ int render_rectangle(flam3_frame *spec, void *out,
    long nbuckets;
    int i, j, k, batch_num, temporal_sample_num;
    double nsamples, batch_size;
-   double *filter, *temporal_filter, *temporal_deltas, *batch_filter;
+   double *temporal_filter, *temporal_deltas, *batch_filter;
    double ppux=0, ppuy=0;
    int image_width, image_height;    /* size of the image to produce */
    int out_width;
-   int filter_width=0;
    int bytes_per_channel = spec->bytes_per_channel;
-   int oversample;
    double highpow;
    int nbatches;
    int ntemporal_samples;
    flam3_palette dmap;
-   int gutter_width;
    double vibrancy = 0.0;
    double gamma = 0.0;
    int vib_gam_n = 0;
@@ -352,18 +349,12 @@ int render_rectangle(flam3_frame *spec, void *out,
 
    /* interpolate and get a control point                      */
    flam3_interpolate(spec->genomes, spec->ngenomes, spec->time, 0, &cp);
-   oversample = cp.spatial_oversample;
    highpow = cp.highlight_power;
    nbatches = cp.nbatches;
    ntemporal_samples = cp.ntemporal_samples;
 
    if (nbatches < 1) {
        fprintf(stderr, "nbatches must be positive, not %d.\n", nbatches);
-       return(1);
-   }
-
-   if (oversample < 1) {
-       fprintf(stderr, "oversample must be positive, not %d.\n", oversample);
        return(1);
    }
 
@@ -387,17 +378,6 @@ int render_rectangle(flam3_frame *spec, void *out,
       image_height = cp.height;
 
 
-   /* Spatial Filter kernel creation */
-   filter_width = flam3_create_spatial_filter(spec, field, &filter);
-   
-   /* handle error */
-   if (filter_width<0) {
-      fprintf(stderr,"flam3_create_spatial_filter returned error: aborting\n");
-      return(1);
-   }
-      
-   /* note we must free 'filter' at the end */
-
    /* batch filter */
    /* may want to revisit this at some point */
    batch_filter = (double *) malloc(sizeof(double) * nbatches);
@@ -412,15 +392,9 @@ int render_rectangle(flam3_frame *spec, void *out,
                                           &temporal_filter, &temporal_deltas);
                                                                                     
 
-   /*
-      the number of additional rows of buckets we put at the edge so
-      that the filter doesn't go off the edge
-   */
-   gutter_width = (filter_width - oversample) / 2;
-
    /* Allocate the space required to render the image */
-   fic.height = oversample * image_height + 2 * gutter_width;
-   fic.width  = oversample * image_width  + 2 * gutter_width;
+   fic.height = image_height;
+   fic.width  = image_width;
 
    nbuckets = (long)fic.width * (long)fic.height;
 
@@ -484,7 +458,7 @@ int render_rectangle(flam3_frame *spec, void *out,
 
          /* compute camera */
          if (1) {
-            double t0, t1, shift=0.0, corner0, corner1;
+            double shift=0.0, corner0, corner1;
             double scale;
 
             if (cp.sample_density <= 0.0) {
@@ -506,14 +480,12 @@ int render_rectangle(flam3_frame *spec, void *out,
                case flam3_field_odd:  shift =  0.5; break;
             }
             shift = shift / ppux;
-            t0 = (double) gutter_width / (oversample * ppux);
-            t1 = (double) gutter_width / (oversample * ppuy);
             corner0 = cp.center[0] - image_width / ppux / 2.0;
             corner1 = cp.center[1] - image_height / ppuy / 2.0;
-            fic.bounds[0] = corner0 - t0;
-            fic.bounds[1] = corner1 - t1 + shift;
-            fic.bounds[2] = corner0 + image_width  / ppux + t0;
-            fic.bounds[3] = corner1 + image_height / ppuy + t1 + shift;
+            fic.bounds[0] = corner0;
+            fic.bounds[1] = corner1 + shift;
+            fic.bounds[2] = corner0 + image_width  / ppux;
+            fic.bounds[3] = corner1 + image_height / ppuy + shift;
             fic.size[0] = 1.0 / (fic.bounds[2] - fic.bounds[0]);
             fic.size[1] = 1.0 / (fic.bounds[3] - fic.bounds[1]);
 			rotate_center ((double2) { cp.rot_center[0], cp.rot_center[1] },
@@ -613,14 +585,13 @@ int render_rectangle(flam3_frame *spec, void *out,
 	  /* XXX: the original formula has a factor 268/256 in here, not sure why */
       k1 = cp.contrast * cp.brightness * batch_filter[batch_num];
       area = image_width * image_height / (ppux * ppuy);
-      k2 = (oversample * oversample * nbatches) /
-             (cp.contrast * area * sample_density * sumfilt);
+      k2 = nbatches / (cp.contrast * area * sample_density * sumfilt);
 #if 0
       printf("iw=%d,ih=%d,ppux=%f,ppuy=%f\n",image_width,image_height,ppux,ppuy);
       printf("contrast=%f, brightness=%f, PREFILTER=%d, temporal_filter=%f\n",
         cp.contrast, cp.brightness, PREFILTER_WHITE, temporal_filter[batch_num]);
-      printf("oversample=%d, nbatches=%d, area = %f, WHITE_LEVEL=%d, sample_density=%f\n",
-        oversample, nbatches, area, WHITE_LEVEL, sample_density);
+      printf("nbatches=%d, area = %f, WHITE_LEVEL=%d, sample_density=%f\n",
+        nbatches, area, WHITE_LEVEL, sample_density);
       printf("k1=%f,k2=%15.12f\n",k1,k2);
 #endif
 
@@ -672,17 +643,7 @@ int render_rectangle(flam3_frame *spec, void *out,
       for (j = 0; j < image_height; j++) {
          x = 0;
          for (i = 0; i < image_width; i++) {
-            int ii, jj;
-			double4 t = (double4) { 0.0, 0.0, 0.0, 0.0 };
-
-            for (ii = 0; ii < filter_width; ii++) {
-               for (jj = 0; jj < filter_width; jj++) {
-                  const double k = filter[ii + jj * filter_width];
-                  const double4 ac = accumulate[x+ii + (y+jj)*fic.width];
-                  
-				  t += k * ac;
-               }
-            }
+			double4 t = accumulate[x + y * fic.width];
 
             /* The old way, spatial filter first and then clip after gamma */
             if (!spec->earlyclip) {
@@ -708,9 +669,9 @@ int render_rectangle(flam3_frame *spec, void *out,
 				assert (0);
 			}
 
-            x += oversample;
+            x += 1;
          }
-         y += oversample;
+         y += 1;
       }
    }
 
@@ -721,7 +682,6 @@ int render_rectangle(flam3_frame *spec, void *out,
    free(temporal_filter);
    free(temporal_deltas);
    free(batch_filter);
-   free(filter);
    free(buckets);
    free(accumulate);
    /* We have to clear the cps in fth first */

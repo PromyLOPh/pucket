@@ -1061,7 +1061,6 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->background[2] = 0.0;
        cp->width = 100;
        cp->height = 100;
-       cp->spatial_oversample = 1;
        cp->spatial_filter_radius = 0.5;
        cp->zoom = 0.0;
        cp->sample_density = 1;
@@ -1083,7 +1082,6 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->background[1] = -1.0;
        cp->background[2] = -1.0;
        cp->zoom = 999999999;
-       cp->spatial_oversample = -1;
        cp->spatial_filter_radius = -1;
        cp->nbatches = -1;
        cp->ntemporal_samples = -1;
@@ -1304,8 +1302,6 @@ void flam3_apply_template(flam3_genome *cp, flam3_genome *templ) {
       cp->background[2] = templ->background[2];
    if (templ->zoom < 999999998)
       cp->zoom = templ->zoom;
-   if (templ->spatial_oversample > 0)
-      cp->spatial_oversample = templ->spatial_oversample;
    if (templ->spatial_filter_radius >= 0)
       cp->spatial_filter_radius = templ->spatial_filter_radius;
    if (templ->sample_density > 0)
@@ -1410,7 +1406,6 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
       fprintf(f, " zoom=\"%g\"", cp->zoom);
 
    fprintf(f, " rotate=\"%g\"", cp->rotate);
-   fprintf(f, " supersample=\"%d\"", cp->spatial_oversample);
    fprintf(f, " filter=\"%g\"", cp->spatial_filter_radius);
 
    /* Need to print the correct kernel to use */

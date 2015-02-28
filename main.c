@@ -33,7 +33,7 @@ const char *argp_program_version =
 
 typedef struct {
 	bool verbose;
-	unsigned int threads, bpc, quality, oversample;
+	unsigned int threads, bpc, quality;
 	float scale;
 } render_arguments;
 
@@ -47,16 +47,6 @@ static error_t parse_render_opt (int key, char *arg,
 				arguments->bpc = i;
 			} else {
 				argp_error (state, "Bits per channel must be 8 or 16");
-			}
-			break;
-		}
-
-		case 'o': {
-			int i = atoi (arg);
-			if (i < 1) {
-				argp_error (state, "Oversample must be >= 1");
-			} else {
-				arguments->oversample = i;
 			}
 			break;
 		}
@@ -126,7 +116,6 @@ static void do_render (const render_arguments * const arguments) {
 	genome->height *= arguments->scale;
 	genome->width *= arguments->scale;
 	genome->pixels_per_unit *= arguments->scale;
-	genome->spatial_oversample = arguments->oversample;
 
 	flam3_frame f;
 	f.genomes = genome;
@@ -510,7 +499,6 @@ int main (int argc, char **argv) {
 				{"scale", 's', "factor", 0, "Scale image dimensions by factor (1.0)" },
 				{"bpc", 'b', "8|16", 0, "Bits per channel of output image (8)" },
 				{"quality", 'q', "num", 0, "Average samples per pixel (100)" },
-				{"oversample", 'o', "num", 0, "Super-/Oversample image (1)" },
 				{"width", 'w', "pixels", 0, "Output image width" },
 				{"height", 'h', "pixels", 0, "Output image height" },
 				{ 0 },
@@ -527,7 +515,6 @@ int main (int argc, char **argv) {
 				.scale = 1.0,
 				.quality = 100,
 				.verbose = true,
-				.oversample = 1,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);

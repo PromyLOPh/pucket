@@ -424,7 +424,6 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
    INTERP(hue_rotation);
    INTERI(width);
    INTERI(height);
-   INTERI(spatial_oversample);
    INTERP(center[0]);
    INTERP(center[1]);
    INTERP(rot_center[0]);

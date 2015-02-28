@@ -469,7 +469,6 @@ typedef struct {
    double gamma;
    double highlight_power;
    int  width, height;          /* of the final image */
-   int  spatial_oversample;
    double center[2];             /* of camera */
    double rot_center[2];         /* really the center */
    double rotate;                /* camera */

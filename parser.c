@@ -389,10 +389,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
          cp->rotate = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"zoom")) {
          cp->zoom = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"oversample")) {
-         cp->spatial_oversample = flam3_atoi(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"supersample")) {
-         cp->spatial_oversample = flam3_atoi(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"filter")) {
          cp->spatial_filter_radius = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"filter_shape")) {

@@ -217,62 +217,6 @@ int normalize_vector(double *v, int n) {
    return 0;
 }
 
-
-int flam3_create_spatial_filter(flam3_frame *spec, int field, double **filter) {
-
-   int sf_kernel = spec->genomes[0].spatial_filter_select;
-   int supersample = spec->genomes[0].spatial_oversample;
-   double sf_radius = spec->genomes[0].spatial_filter_radius;
-   double aspect_ratio = spec->pixel_aspect_ratio;   
-   double sf_supp = flam3_spatial_support[sf_kernel];
-   
-   double fw = 2.0 * sf_supp * supersample * sf_radius / aspect_ratio;
-   double adjust, ii, jj;
-   
-   int fwidth = ((int) fw) + 1;
-   int i,j;
-   
-   
-   /* Make sure the filter kernel has same parity as oversample */
-   if ((fwidth ^ supersample) & 1)
-      fwidth++;
-
-   /* Calculate the coordinate scaling factor for the kernel values */
-   if (fw > 0.0)
-      adjust = sf_supp * fwidth / fw;
-   else
-      adjust = 1.0;
-
-   /* Calling function MUST FREE THE RETURNED KERNEL, lest ye leak memory */
-   (*filter) = (double *)calloc(fwidth * fwidth,sizeof(double));
-
-   /* fill in the coefs */
-   for (i = 0; i < fwidth; i++)
-      for (j = 0; j < fwidth; j++) {
-      
-         /* Calculate the function inputs for the kernel function */
-         ii = ((2.0 * i + 1.0) / (double)fwidth - 1.0)*adjust;
-         jj = ((2.0 * j + 1.0) / (double)fwidth - 1.0)*adjust;
-
-         /* Scale for scanlines */
-         if (field) jj *= 2.0;
-
-         /* Adjust for aspect ratio */
-         jj /= aspect_ratio;
-
-         (*filter)[i + j * fwidth] = 
-               flam3_spatial_filter(sf_kernel,ii) * flam3_spatial_filter(sf_kernel,jj);
-      }
-
-
-   if (normalize_vector((*filter), fwidth * fwidth)) {
-      fprintf(stderr, "Spatial filter value is too small: %g.  Terminating.\n",sf_radius);
-      return(-1);
-   }   
-   
-   return (fwidth);
-}
-
 double flam3_create_temporal_filter(int numsteps, int filter_type, double filter_exp, double filter_width,
                                     double **temporal_filter, double **temporal_deltas) {
 
