@@ -3081,11 +3081,11 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
 }
 
 int flam3_render(flam3_frame *spec, void *out,
-        int field, stat_struct *stats) {
+        stat_struct *stats) {
          
   int retval;
   
-  retval = render_rectangle (spec, out, field, stats);
+  retval = render_rectangle (spec, out, stats);
   return(retval);
 }
 

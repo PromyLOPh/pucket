@@ -582,13 +582,9 @@ typedef struct {
 } flam3_frame;
 
 
-#define flam3_field_both  0
-#define flam3_field_even  1
-#define flam3_field_odd   2
-
 /* out is pixel array.  pixels are rgba */
 int flam3_render(flam3_frame *spec, void *out,
-        int field, stat_struct *stats);
+        stat_struct *stats);
 
 void rotate_by(double *p, double *center, double by);
 

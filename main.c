@@ -133,7 +133,7 @@ static void do_render (const render_arguments * const arguments) {
 	void *image = (void *) calloc(this_size, sizeof(char));
 
 	stat_struct stats;
-	if (flam3_render (&f, image, flam3_field_both, &stats)) {
+	if (flam3_render (&f, image, &stats)) {
 		fprintf(stderr,"error rendering image: aborting.\n");
 		exit(1);
 	}

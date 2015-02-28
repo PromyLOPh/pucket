@@ -284,7 +284,7 @@ static double4 clip (const double4 in, const double g, const double linrange,
 }
 
 int render_rectangle(flam3_frame *spec, void *out,
-			     int field, stat_struct *stats) {
+			     stat_struct *stats) {
    long nbuckets;
    int i, j, k;
    double ppux=0, ppuy=0;
@@ -339,15 +339,7 @@ int render_rectangle(flam3_frame *spec, void *out,
    const unsigned int channels = 4;
    image_width = cp.width;
    out_width = image_width;
-   if (field) {
-      image_height = cp.height / 2;
-      
-      if (field == flam3_field_odd)
-         out = (unsigned char *)out + channels * bytes_per_channel * out_width;
-         
-      out_width *= 2;
-   } else
-      image_height = cp.height;
+   image_height = cp.height;
 
    /* Allocate the space required to render the image */
    fic.height = image_height;
@@ -405,7 +397,7 @@ int render_rectangle(flam3_frame *spec, void *out,
 
          /* compute camera */
          {
-            double shift=0.0, corner0, corner1;
+            double corner0, corner1;
             double scale;
 
             if (cp.sample_density <= 0.0) {
@@ -419,20 +411,14 @@ int render_rectangle(flam3_frame *spec, void *out,
             sample_density = cp.sample_density * scale * scale;
 
             ppux = cp.pixels_per_unit * scale;
-            ppuy = field ? (ppux / 2.0) : ppux;
+            ppuy = ppux;
             ppux /=  spec->pixel_aspect_ratio;
-            switch (field) {
-               case flam3_field_both: shift =  0.0; break;
-               case flam3_field_even: shift = -0.5; break;
-               case flam3_field_odd:  shift =  0.5; break;
-            }
-            shift = shift / ppux;
             corner0 = cp.center[0] - image_width / ppux / 2.0;
             corner1 = cp.center[1] - image_height / ppuy / 2.0;
             fic.bounds[0] = corner0;
-            fic.bounds[1] = corner1 + shift;
+            fic.bounds[1] = corner1;
             fic.bounds[2] = corner0 + image_width  / ppux;
-            fic.bounds[3] = corner1 + image_height / ppuy + shift;
+            fic.bounds[3] = corner1 + image_height / ppuy;
             fic.size[0] = 1.0 / (fic.bounds[2] - fic.bounds[0]);
             fic.size[1] = 1.0 / (fic.bounds[3] - fic.bounds[1]);
 			rotate_center ((double2) { cp.rot_center[0], cp.rot_center[1] },
