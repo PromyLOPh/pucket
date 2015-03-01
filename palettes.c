@@ -184,8 +184,9 @@ int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * con
 	         
 	         c[i].index = i;
 	       
-		     c[i].color = rgb;
-		         
+		     c[i].color[0] = rgb[0];
+		     c[i].color[1] = rgb[1];
+		     c[i].color[2] = rgb[2];
 		     c[i].color[3] = 1.0;
          }
 	   

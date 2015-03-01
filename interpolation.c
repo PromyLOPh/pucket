@@ -159,8 +159,8 @@ void interpolate_cmap(flam3_palette cmap, double blend,
       double4 t, s;
 	  double t4, s4;
     
-      s = rgb2hsv(p0[i].color);
-      t = rgb2hsv(p1[i].color);
+      s = rgb2hsv(vector_d4 (p0[i].color));
+      t = rgb2hsv(vector_d4 (p1[i].color));
       
       s[3] = p0[i].color[3];
       t[3] = p1[i].color[3];
@@ -172,7 +172,10 @@ void interpolate_cmap(flam3_palette cmap, double blend,
          t[j] = ((1.0-blend) * s[j]) + (blend * t[j]);
       t4 = ((1.0-blend) * s4) + (blend * t4);
          
-      cmap[i].color = hsv2rgb(t);
+	  const double4 c = hsv2rgb(t);
+      cmap[i].color[0] = c[0];
+      cmap[i].color[1] = c[1];
+      cmap[i].color[2] = c[2];
       cmap[i].color[3] = t[3];
       cmap[i].index = t4;
    }
@@ -371,7 +374,7 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
          s[0] = s[1] = s[2] = s[3] = s4 = 0.0;
          
          for (k = 0; k < ncp; k++) {
-            t = rgb2hsv(cpi[k].palette[i].color);
+            t = rgb2hsv(vector_d4 (cpi[k].palette[i].color));
             for (j = 0; j < 3; j++)
                s[j] += c[k] * t[j];
             
@@ -385,7 +388,10 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
          if (alpha1 == 1)
             s[3] = 1.0;
        
-         result->palette[i].color = hsv2rgb(s);
+		 const double4 ret_color = hsv2rgb(s);
+         result->palette[i].color[0] = ret_color[0];
+         result->palette[i].color[1] = ret_color[1];
+         result->palette[i].color[2] = ret_color[2];
          result->palette[i].color[3] = s[3];
          result->palette[i].index = s4;
        

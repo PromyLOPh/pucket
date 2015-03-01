@@ -31,9 +31,6 @@ typedef struct {
 	unsigned int sub_batch_size, fuse;
 	unsigned short *xform_distrib;
 
-	flam3_palette dmap;
-	unsigned int cmap_size;
-
 	/* camera stuff */
 	double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */
 	double bounds[4]; /* Corner coords of viewable area */
@@ -44,7 +41,7 @@ typedef struct {
 /*	Lookup color [0,1]
  */
 static double4 color_palette_lookup (const double color,
-		const color_palette_mode mode, const flam3_palette map,
+		const color_palette_mode mode, const flam3_palette_entry * const map,
 		const unsigned int map_count) {
 	assert (color >= 0.0 && color <= 1.0);
 
@@ -56,17 +53,18 @@ static double4 color_palette_lookup (const double color,
 			const unsigned int intix = bottomix;
 
 			if (intix == map_count-1) {
-				return map[intix].color;
+				return vector_d4 (map[intix].color);
 			} else {
-				return map[intix].color * (1.0-frac) +
-					map[intix+1].color * frac;
+				const double4 c1 = vector_d4 (map[intix].color);
+				const double4 c2 = vector_d4 (map[intix+1].color);
+				return c1 * (1.0-frac) + c2 * frac;
 			}
 			break;
 		}
 
 		case PALETTE_MODE_STEP: {
-			const unsigned int intix = nearbyint (color * map_count);
-			return map[intix].color;
+			const unsigned int intix = nearbyint (color * (map_count-1));
+			return vector_d4 (map[intix].color);
 			break;
 		}
 
@@ -137,7 +135,8 @@ static void iter_thread (flam3_genome * const input_genome,
 #endif
 
 					double4 interpcolor = color_palette_lookup (p[2],
-							genome.palette_mode, c->dmap, c->cmap_size);
+							genome.palette_mode, input_genome->palette,
+							256);
 
 					const double logvis = p[3];
 					if (logvis != 1.0) {
@@ -242,16 +241,6 @@ bool render_bucket (flam3_genome * const genome, bucket * const bucket,
 			.timelimit = timelimit,
 			};
 	assert (c.xform_distrib != NULL);
-
-	/* compute the colormap entries.                             */
-	/* the input colormap is 256 long with entries from 0 to 1.0 */
-	for (unsigned int j = 0; j < CMAP_SIZE; j++) {
-		c.dmap[j].index = genome->palette[(j * 256) / CMAP_SIZE].index / 256.0;
-		for (unsigned int k = 0; k < 4; k++) {
-			c.dmap[j].color[k] = genome->palette[(j * 256) / CMAP_SIZE].color[k];
-		}
-	}
-	c.cmap_size = 256;
 
 	/* compute camera */
 	compute_camera (genome, bucket, &c);

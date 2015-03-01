@@ -41,7 +41,7 @@ char *flam3_version();
 //typedef double flam3_palette[256][3];
 typedef struct {
 	double index;
-	double4 color;
+	double color[4];
 } flam3_palette_entry;
 
 typedef flam3_palette_entry flam3_palette[256];
