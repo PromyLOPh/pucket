@@ -16,6 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
+
 #include "private.h"
 #include "palettes.h"
 #include "rect.h"
@@ -353,7 +355,6 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     flam3_genome saved;
     double scalar;
     int pixtotal;
-    stat_struct stats;
 
     memset(&saved, 0, sizeof(flam3_genome));
 
@@ -382,10 +383,11 @@ static double try_colors(flam3_genome *g, int color_resolution) {
     f.sub_batch_size = 10000;
         
     image = (unsigned char *) calloc(g->width * g->height, 3);
-    if (render_parallel (&f, image, &stats)) {
-       fprintf(stderr,"Error rendering test image for trycolors.  Aborting.\n");
-       return(-1);
-    }
+
+	bucket bucket;
+	bucket_init (&bucket, (uint2) { g->width, g->height });
+	render_bucket (g, &bucket, 0.2);
+	render_image (g, &bucket, image, f.bytes_per_channel);
 
     hist = calloc(sizeof(int), res3);
     p = image;

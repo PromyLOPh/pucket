@@ -33,8 +33,8 @@ const char *argp_program_version =
   "vlam3-pre";
 
 typedef struct {
-	unsigned int threads, bpc, quality;
-	float scale;
+	unsigned int bpc;
+	float scale, time;
 } render_arguments;
 
 static error_t parse_render_opt (int key, char *arg,
@@ -51,12 +51,12 @@ static error_t parse_render_opt (int key, char *arg,
 			break;
 		}
 
-		case 'q': {
-			int i = atoi (arg);
-			if (i < 1) {
-				argp_error (state, "Quality must be >= 1");
+		case 't': {
+			float i = atof (arg);
+			if (i <= 0) {
+				argp_error (state, "Time must be > 0");
 			} else {
-				arguments->quality = i;
+				arguments->time = i;
 			}
 			break;
 		}
@@ -67,16 +67,6 @@ static error_t parse_render_opt (int key, char *arg,
 				argp_error (state, "Scale must be > 0");
 			}
 			break;
-
-		case 't': {
-			int i = atoi (arg);
-			if (i <= 0) {
-				argp_error (state, "Threads must be > 0");
-			} else {
-				arguments->threads = i;
-			}
-			break;
-		}
 
 		case ARGP_KEY_ARG:
 			if (state->arg_num > 0) {
@@ -110,36 +100,27 @@ static void do_render (const render_arguments * const arguments) {
 
 	flam3_genome * const genome = &cps[0];
 
-	genome->sample_density = arguments->quality;
 	genome->height *= arguments->scale;
 	genome->width *= arguments->scale;
 	genome->pixels_per_unit *= arguments->scale;
 
-	flam3_frame f;
-	f.genomes = genome;
-	f.ngenomes = 1;
-	f.time = 0.0;
-	f.pixel_aspect_ratio = 1.0;
-	f.progress = 0;
-	f.nthreads = arguments->threads;
-	f.earlyclip = 0;
-	f.sub_batch_size = 10000;
-	f.bytes_per_channel = arguments->bpc / 8;
-
+	const unsigned int bytes_per_channel = arguments->bpc/8;
 	const unsigned int channels = 4;
 	const size_t this_size = channels * genome->width * genome->height *
-			f.bytes_per_channel;
+			bytes_per_channel;
 	void *image = (void *) calloc(this_size, sizeof(char));
 
-	stat_struct stats;
-	if (render_parallel (&f, image, &stats)) {
-		fprintf(stderr,"error rendering image: aborting.\n");
-		exit(1);
-	}
+	bucket bucket;
+	bucket_init (&bucket, (uint2) { genome->width, genome->height });
+
+	render_bucket (genome, &bucket, arguments->time);
+	fprintf (stderr, "%lu samples, %lu bad\n",
+			bucket.samples, bucket.badvals);
+	render_image (genome, &bucket, image, bytes_per_channel);
 
 	flam3_img_comments fpc;
 	write_png (stdout, image, genome->width, genome->height, &fpc,
-			f.bytes_per_channel);
+			bytes_per_channel);
 }
 
 static void print_genome (flam3_genome * const genome) {
@@ -492,10 +473,9 @@ int main (int argc, char **argv) {
 	} else if (streq (command, "render")) {
 		/* render flame to image file */
 		const struct argp_option options[] = {
-				{"threads", 't', "num", 0, "Number of threads (auto)" },
 				{"scale", 's', "factor", 0, "Scale image dimensions by factor (1.0)" },
 				{"bpc", 'b', "8|16", 0, "Bits per channel of output image (8)" },
-				{"quality", 'q', "num", 0, "Average samples per pixel (100)" },
+				{"time", 't', "seconds", 0, "Rendering time" },
 				{"width", 'w', "pixels", 0, "Output image width" },
 				{"height", 'h', "pixels", 0, "Output image height" },
 				{ 0 },
@@ -507,10 +487,9 @@ int main (int argc, char **argv) {
 				};
 
 		render_arguments arguments = {
-				.threads = flam3_count_nthreads(),
 				.bpc = 8,
 				.scale = 1.0,
-				.quality = 100,
+				.time = 1.0,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);

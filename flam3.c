@@ -37,8 +37,6 @@
 #include <errno.h>
 #include <assert.h>
 
-#include <pthread.h>
-
 char *flam3_version() {
   return VERSION;
 }
@@ -182,7 +180,7 @@ int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_d
  */
 
 
-int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, unsigned short *xform_distrib, randctx *rc) {
+int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, const unsigned short *xform_distrib, randctx *rc) {
    int i;
    double4 p, q;
    int consec = 0;
@@ -933,7 +931,7 @@ void flam3_copy_xform(flam3_xform *dest, flam3_xform *src) {
 }
 
 /* Copy one control point to another */
-void flam3_copy(flam3_genome *dest, flam3_genome *src) {
+void flam3_copy(flam3_genome *dest, const flam3_genome * const src) {
    
    int i,ii;
    int numstd;
@@ -1105,32 +1103,6 @@ void clear_cp(flam3_genome *cp, int default_flag) {
     cp->final_xform_enable = 0;
     cp->final_xform_index = -1;
 
-}
-
-
-int flam3_count_nthreads(void) {
-   int nthreads;
-
-#ifndef _SC_NPROCESSORS_ONLN
-   char line[MAXBUF];
-   FILE *f = fopen("/proc/cpuinfo", "r");
-   if (NULL == f) goto def;
-   nthreads = 0;
-   while (fgets(line, MAXBUF, f)) {
-      if (!strncmp("processor\t:", line, 11))
-         nthreads++;
-   }
-   fclose(f);
-   if (nthreads < 1) goto def;
-   return (nthreads);
-def:
-   fprintf(stderr, "could not read /proc/cpuinfo, using one render thread.\n");
-   nthreads = 1;
-#else
-   nthreads = sysconf(_SC_NPROCESSORS_ONLN);
-   if (nthreads < 1) nthreads = 1;
-#endif
-   return (nthreads);
 }
 
 flam3_genome *flam3_parse_xml2(char *xmldata, char *xmlfilename, int default_flag, int *ncps, randctx * const rc) {

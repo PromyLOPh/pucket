@@ -508,7 +508,7 @@ void flam3_add_motion_element(flam3_xform *xf);
 void flam3_add_xforms(flam3_genome *cp, int num_to_add, int interp_padding, int final_flag);
 void flam3_delete_xform(flam3_genome *thiscp, int idx_to_delete);
 void flam3_copy_xform(flam3_xform *dest, flam3_xform *src);
-void flam3_copy(flam3_genome *dest, flam3_genome *src);
+void flam3_copy(flam3_genome *dest, const flam3_genome * const src);
 void flam3_copyx(flam3_genome *dest, flam3_genome *src, int num_std, int num_final);
 void flam3_copy_params(flam3_xform *dest, flam3_xform *src, int varn);
 void flam3_delete_motion_elements(flam3_xform *xf);
@@ -523,7 +523,7 @@ void clear_cp(flam3_genome *cp, int def_flag);
    (samples[2], samples[3]) as starting color coordinate,
    perform fuse iterations and throw them away, then perform
    nsamples iterations and save them in the samples array */
-int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, unsigned short *xform_distrib, randctx *rc);
+int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, const unsigned short *xform_distrib, randctx *rc);
 
 void apply_motion_parameters(flam3_xform *xf, flam3_xform *addto, double blend);
 
@@ -563,8 +563,6 @@ double flam3_dimension(flam3_genome *g, int ntries, int clip_to_camera);
 double flam3_lyapunov(flam3_genome *g, int ntries);
 
 void flam3_apply_template(flam3_genome *cp, flam3_genome *templ);
-
-int flam3_count_nthreads(void);
 
 typedef struct {
    double         pixel_aspect_ratio;    /* width over height of each pixel */

@@ -18,6 +18,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <omp.h>
 
 #include "private.h"
 #include "variations.h"
@@ -25,35 +26,20 @@
 #include "math.h"
 #include "rect.h"
 
-/* allow this many iterations for settling into attractor */
-#define FUSE_27 15
-#define FUSE_28 100
-
-/* Structures for passing parameters to iteration threads */
 typedef struct {
-   unsigned short *xform_distrib;    /* Distribution of xforms based on weights */
-   flam3_frame *spec; /* Frame contains timing information */
-   double bounds[4]; /* Corner coords of viewable area */
-   double2 rot[3]; /* Rotation transformation */
-   double size[2];
-   int width, height; /* buffer width/height */
-   double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */
-   flam3_palette_entry *dmap; /* palette */
-   double color_scalar; /* <1.0 if non-uniform motion blur is set */
-   double4 *buckets; /* Points to the first accumulator */
-   double badvals; /* accumulates all badvalue resets */
-   double batch_size;
-   int aborted, cmap_size;
-   /* mutex for bucket accumulator */
-   pthread_mutex_t bucket_mutex;
-} flam3_iter_constants;
+	double timelimit;
+	unsigned int sub_batch_size, fuse;
+	unsigned short *xform_distrib;
 
-typedef struct {
-   flam3_genome cp; /* Full copy of genome for use by the thread */
-   flam3_iter_constants *fic; /* Constants for render */
-   /* thread number */
-   size_t i;
-} flam3_thread_helper;
+	flam3_palette dmap;
+	unsigned int cmap_size;
+
+	/* camera stuff */
+	double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */
+	double bounds[4]; /* Corner coords of viewable area */
+	double2 rot[3]; /* Rotation transformation */
+	double ppux, ppuy;
+} render_constants;
 
 /*	Lookup color [0,1]
  */
@@ -90,92 +76,87 @@ static double4 color_palette_lookup (const double color,
 	}
 }
 
-static void *iter_thread(void *fth) {
-   double sub_batch;
-   int j;
-   flam3_thread_helper *fthp = (flam3_thread_helper *)fth;
-   flam3_iter_constants *ficp = fthp->fic;
-   int SBS = ficp->spec->sub_batch_size;
-   int fuse;
-   int cmap_size = ficp->cmap_size;
-   double4 *iter_storage;
-   randctx rc;
+static void iter_thread (flam3_genome * const input_genome,
+		bucket * const bucket, const render_constants * const c,
+		volatile bool * const stopped) {
+	randctx rc;
+	rand_seed (&rc);
 
-   rand_seed (&rc);
+	flam3_genome genome;
+	flam3_copy (&genome, input_genome);
 
-   int ret = posix_memalign ((void **) &iter_storage, sizeof (*iter_storage),
-		   SBS * sizeof (*iter_storage));
-   assert (ret == 0);
-   assert (iter_storage != NULL);  
+	double4 *iter_storage;
+	int ret = posix_memalign ((void **) &iter_storage, sizeof (*iter_storage),
+			c->sub_batch_size * sizeof (*iter_storage));
+	assert (ret == 0);
+	assert (iter_storage != NULL);  
 
-   fuse = (ficp->spec->earlyclip) ? FUSE_28 : FUSE_27;
+	const double starttime = omp_get_wtime ();
 
-   for (sub_batch = 0; sub_batch < ficp->batch_size; sub_batch+=SBS) {
-      int sub_batch_size, badcount;
-      /* sub_batch is double so this is sketchy */
-      sub_batch_size = (sub_batch + SBS > ficp->batch_size) ?
-                           (ficp->batch_size - sub_batch) : SBS;
+	do {
+		/* Seed iterations */
+		const double4 start = (double4) {
+				rand_d11(&rc),
+				rand_d11(&rc),
+				rand_d01(&rc),
+				rand_d01(&rc),
+				};
 
-      /* Seed iterations */
-      const double4 start = (double4) {
-	                        rand_d11(&rc),
-                            rand_d11(&rc),
-                            rand_d01(&rc),
-                            rand_d01(&rc),
-							};
+		/* Execute iterations */
+		const unsigned long badcount = flam3_iterate(&genome,
+				c->sub_batch_size, c->fuse, start, iter_storage,
+				c->xform_distrib, &rc);
 
-      /* Execute iterations */
-      badcount = flam3_iterate(&(fthp->cp), sub_batch_size, fuse, start, iter_storage, ficp->xform_distrib, &rc);
+#pragma omp critical
+		{
+			/* Add the badcount to the counter */
+			bucket->badvals += badcount;
+			bucket->samples += c->sub_batch_size;
 
-      /* Lock mutex for access to accumulator */
-      pthread_mutex_lock(&ficp->bucket_mutex);
+			/* Put them in the bucket accumulator */
+			for (unsigned int j = 0; j < c->sub_batch_size; j++) {
+				double4 p = iter_storage[j];
 
-      /* Add the badcount to the counter */
-      ficp->badvals += badcount;
+				if (genome.rotate != 0.0) {
+					const double2 p01 = (double2) { p[0], p[1] };
+					const double2 rotatedp = apply_affine (p01, c->rot);
+					p[0] = rotatedp[0];
+					p[1] = rotatedp[1];
+				}
 
-      /* Put them in the bucket accumulator */
-      for (j = 0; j < sub_batch_size; j++) {
-         double4 p = iter_storage[j];
-
-         if (fthp->cp.rotate != 0.0) {
-		 	const double2 p01 = (double2) { p[0], p[1] };
-		 	const double2 rotatedp = apply_affine (p01, ficp->rot);
-		 	p[0] = rotatedp[0];
-		 	p[1] = rotatedp[1];
-         }
-
-		 /* Skip if out of bounding box or invisible */
-         if (p[0] >= ficp->bounds[0] && p[1] >= ficp->bounds[1] &&
-		     p[0] <= ficp->bounds[2] && p[1] <= ficp->bounds[3] &&
-			 p[3] > 0) {
-			const size_t ix = (int)(ficp->ws0 * p[0] - ficp->wb0s0) + ficp->width * (int)(ficp->hs1 * p[1] - ficp->hb1s1);
+				/* Skip if out of bounding box or invisible */
+				if (p[0] >= c->bounds[0] && p[1] >= c->bounds[1] &&
+						p[0] <= c->bounds[2] && p[1] <= c->bounds[3] &&
+						p[3] > 0) {
+					const size_t ix = (int)(c->ws0 * p[0] - c->wb0s0) + bucket->dim[0] * (int)(c->hs1 * p[1] - c->hb1s1);
 #if HAVE_BUILTIN_PREFETCH
-			/* prefetch for reading (0) with no locality (0). This (partially)
-			 * hides the load latency for the += operation at the end of this
-			 * block */
-			__builtin_prefetch (&ficp->buckets[ix], 0, 0);
+					/* prefetch for reading (0) with no locality (0). This (partially)
+					 * hides the load latency for the += operation at the end of this
+					 * block */
+					__builtin_prefetch (&bucket->data[ix], 0, 0);
 #endif
 
-			double4 interpcolor = color_palette_lookup (p[2],
-					fthp->cp.palette_mode, ficp->dmap, cmap_size);
+					double4 interpcolor = color_palette_lookup (p[2],
+							genome.palette_mode, c->dmap, c->cmap_size);
 
-            const double logvis = p[3];
-            if (logvis != 1.0) {
-			   interpcolor *= logvis;
-            }
+					const double logvis = p[3];
+					if (logvis != 1.0) {
+						interpcolor *= logvis;
+					}
 
-            ficp->buckets[ix] += interpcolor;
+					bucket->data[ix] += interpcolor;
+				}
+			}
+		}
+#pragma omp master
+		{
+			if (omp_get_wtime () - starttime > c->timelimit) {
+				*stopped = true;
+			}
+		}
+	} while (!(*stopped));
 
-         }
-      }
-      
-      /* Release mutex */
-      pthread_mutex_unlock(&ficp->bucket_mutex);
-
-   }
-
-   free (iter_storage);
-   return NULL;
+	free (iter_storage);
 }
 
 /*	Perform clipping
@@ -206,252 +187,142 @@ static double4 clip (const double4 in, const double g, const double linrange,
 	return newrgb;
 }
 
-int render_parallel (flam3_frame *spec, void *out, stat_struct *stats) {
-   long nbuckets;
-   double ppux=0, ppuy=0;
-   int image_width, image_height;    /* size of the image to produce */
-   int out_width;
-   int bytes_per_channel = spec->bytes_per_channel;
-   double highpow;
-   flam3_palette dmap;
-   double vibrancy = 0.0;
-   double gamma = 0.0;
-   int vib_gam_n = 0;
-   flam3_genome cp;
-   unsigned short *xform_distrib;
-   flam3_iter_constants fic;
-   flam3_thread_helper *fth;
-   pthread_attr_t pt_attr;
-   pthread_t *myThreads=NULL;
-   int thi;
-   int cmap_size;
-   
-   fic.badvals = 0;
-   fic.aborted = 0;
+void bucket_init (bucket * const b, const uint2 dim) {
+	memset (b, 0, sizeof (*b));
+	b->dim = dim;
 
-   stats->num_iters = 0;
+	size_t size = dim[0] * dim[1] * sizeof (*b->data);
+	int ret = posix_memalign ((void **) &b->data, sizeof (*b->data), size);
+	assert (ret == 0);
+	assert (b->data != NULL);
+	memset (b->data, 0, size);
+}
 
-   /* correct for apophysis's use of 255 colors in the palette rather than all 256 */
-   cmap_size = 256;
+static void compute_camera (const flam3_genome * const genome,
+		const bucket * const bucket, render_constants * const c) {
+	assert (genome != NULL);
+	assert (bucket != NULL);
+	assert (c != NULL);
 
-   memset(&cp,0, sizeof(flam3_genome));
+	double corner0, corner1;
 
-   /* interpolate and get a control point                      */
-   flam3_interpolate(spec->genomes, spec->ngenomes, spec->time, 0, &cp);
-   highpow = cp.highlight_power;
+	const double scale = pow(2.0, genome->zoom);
 
-   /* Initialize the thread helper structures */
-   fth = (flam3_thread_helper *)calloc(spec->nthreads,sizeof(flam3_thread_helper));
-   for (unsigned int i=0;i<spec->nthreads;i++)
-      fth[i].cp.final_xform_index=-1;
-      
-   /* Set up the output image dimensions, adjusted for scanline */   
-   const unsigned int channels = 4;
-   image_width = cp.width;
-   out_width = image_width;
-   image_height = cp.height;
+	c->ppux = genome->pixels_per_unit * scale;
+	c->ppuy = c->ppux;
+	//ppux /=  spec->pixel_aspect_ratio;
+	corner0 = genome->center[0] - bucket->dim[0] / c->ppux / 2.0;
+	corner1 = genome->center[1] - bucket->dim[1] / c->ppuy / 2.0;
+	c->bounds[0] = corner0;
+	c->bounds[1] = corner1;
+	c->bounds[2] = corner0 + bucket->dim[0] / c->ppux;
+	c->bounds[3] = corner1 + bucket->dim[1] / c->ppuy;
+	const double size[2] = {1.0 / (c->bounds[2] - c->bounds[0]),
+							1.0 / (c->bounds[3] - c->bounds[1])};
+	rotate_center ((double2) { genome->rot_center[0], genome->rot_center[1] },
+			genome->rotate, c->rot);
+	c->ws0 = bucket->dim[0] * size[0];
+	c->wb0s0 = c->ws0 * c->bounds[0];
+	c->hs1 = bucket->dim[1] * size[1];
+	c->hb1s1 = c->hs1 * c->bounds[1];
+}
 
-   /* Allocate the space required to render the image */
-   fic.height = image_height;
-   fic.width  = image_width;
+bool render_bucket (flam3_genome * const genome, bucket * const bucket,
+		const double timelimit) {
+	assert (bucket != NULL);
+	assert (genome != NULL);
 
-   nbuckets = (long)fic.width * (long)fic.height;
+	int ret = prepare_precalc_flags(genome);
+	assert (ret == 0);
 
-   double4 *buckets;
-   int ret = posix_memalign ((void **) &buckets, sizeof (*buckets),
-                             nbuckets * sizeof (*buckets));
-   assert (ret == 0);
-   assert (buckets != NULL);
-   memset (buckets, 0, nbuckets * sizeof (*buckets));
+	render_constants c = {
+			.fuse = 100,
+			.sub_batch_size = 10000,
+			.xform_distrib = flam3_create_xform_distrib(genome),
+			.timelimit = timelimit,
+			};
+	assert (c.xform_distrib != NULL);
 
-   double sample_density=0.0;
+	/* compute the colormap entries.                             */
+	/* the input colormap is 256 long with entries from 0 to 1.0 */
+	for (unsigned int j = 0; j < CMAP_SIZE; j++) {
+		c.dmap[j].index = genome->palette[(j * 256) / CMAP_SIZE].index / 256.0;
+		for (unsigned int k = 0; k < 4; k++) {
+			c.dmap[j].color[k] = genome->palette[(j * 256) / CMAP_SIZE].color[k];
+		}
+	}
+	c.cmap_size = 256;
 
-   /* Batch loop - outermost */
-   {
+	/* compute camera */
+	compute_camera (genome, bucket, &c);
 
+	bool stopped = false;
+#pragma omp parallel shared(stopped)
+	iter_thread (genome, bucket, &c, &stopped);
 
-      {
+	free (c.xform_distrib);
 
-         /* Get the xforms ready to render */
-         if (prepare_precalc_flags(&cp)) {
-            fprintf(stderr,"prepare xform pointers returned error: aborting.\n");
-            return(1);
-         }
-         xform_distrib = flam3_create_xform_distrib(&cp);
-         if (xform_distrib==NULL) {
-            fprintf(stderr,"create xform distrib returned error: aborting.\n");
-            return(1);
-         }
+	return true;
+}
 
-         /* compute the colormap entries.                             */
-         /* the input colormap is 256 long with entries from 0 to 1.0 */
-         for (unsigned int j = 0; j < CMAP_SIZE; j++) {
-            dmap[j].index = cp.palette[(j * 256) / CMAP_SIZE].index / 256.0;
-            for (unsigned int k = 0; k < 4; k++)
-               dmap[j].color[k] = cp.palette[(j * 256) / CMAP_SIZE].color[k];
-         }
+void render_image (const flam3_genome * const genome, const bucket * const bucket,
+		void * const out, const unsigned int bytes_per_channel) {
+	assert (genome != NULL);
+	assert (bucket != NULL);
+	assert (bucket->data != NULL);
 
-         /* compute camera */
-         {
-            double corner0, corner1;
-            double scale;
+	const unsigned int pixels = bucket->dim[0] * bucket->dim[1];
+	const unsigned int channels = 4;
 
-            if (cp.sample_density <= 0.0) {
-              fprintf(stderr,
-                 "sample density (quality) must be greater than zero,"
-                 " not %g.\n", cp.sample_density);
-              return(1);
-            }
+	/* XXX: copied from above */
+	const double scale = pow(2.0, genome->zoom);
+	const double ppux = genome->pixels_per_unit * scale;
+	const double ppuy = ppux;
 
-            scale = pow(2.0, cp.zoom);
-            sample_density = cp.sample_density * scale * scale;
+	const double sample_density = (double) bucket->samples / (double) pixels;
+	const double g = 1.0 / genome->gamma;
+	const double linrange = genome->gam_lin_thresh;
+	const double vibrancy = genome->vibrancy;
+	/* XXX: the original formula has a factor 268/256 in here, not sure why */
+	const double k1 = genome->contrast * genome->brightness;
+	const double area = (double) pixels / (ppux * ppuy);
+	const double k2 = 1.0 / (genome->contrast * area * sample_density);
+	const double highpow = genome->highlight_power;
 
-            ppux = cp.pixels_per_unit * scale;
-            ppuy = ppux;
-            ppux /=  spec->pixel_aspect_ratio;
-            corner0 = cp.center[0] - image_width / ppux / 2.0;
-            corner1 = cp.center[1] - image_height / ppuy / 2.0;
-            fic.bounds[0] = corner0;
-            fic.bounds[1] = corner1;
-            fic.bounds[2] = corner0 + image_width  / ppux;
-            fic.bounds[3] = corner1 + image_height / ppuy;
-            fic.size[0] = 1.0 / (fic.bounds[2] - fic.bounds[0]);
-            fic.size[1] = 1.0 / (fic.bounds[3] - fic.bounds[1]);
-			rotate_center ((double2) { cp.rot_center[0], cp.rot_center[1] },
-						   cp.rotate, fic.rot);
-            fic.ws0 = fic.width * fic.size[0];
-            fic.wb0s0 = fic.ws0 * fic.bounds[0];
-            fic.hs1 = fic.height * fic.size[1];
-            fic.hb1s1 = fic.hs1 * fic.bounds[1];
+#pragma omp parallel for
+	for (unsigned int i = 0; i < pixels; i++) {
+		double4 t = bucket->data[i];
 
-         }
+		const double ls = (k1 * log(1.0 + t[3] * k2))/t[3];
 
-         /* number of samples is based only on the output image size */
-         double nsamples = sample_density * image_width * image_height;
-         
-         /* how many of these samples are rendered in this loop? */
-         double batch_size = nsamples;
+		t = t * ls;
+		t = clip (t, g, linrange, highpow, vibrancy);
 
-         stats->num_iters += batch_size;
-                  
-         /* Fill in the iter constants */
-         fic.xform_distrib = xform_distrib;
-         fic.spec = spec;
-         fic.batch_size = batch_size / (double)spec->nthreads;
-         fic.cmap_size = cmap_size;
+		const double maxval = (1 << (bytes_per_channel*8)) - 1;
+		t = nearbyint_d4 (t * maxval);
 
-         fic.dmap = (flam3_palette_entry *)dmap;
-         fic.buckets = (void *)buckets;
-         
-         /* Initialize the thread helper structures */
-         for (thi = 0; thi < spec->nthreads; thi++) {
-            fth[thi].fic = &fic;
-            fth[thi].i = thi;
-            flam3_copy(&(fth[thi].cp),&cp);
-         }
-
-         /* Let's make some threads */
-         myThreads = (pthread_t *)malloc(spec->nthreads * sizeof(pthread_t));
-
-         pthread_mutex_init(&fic.bucket_mutex, NULL);
-
-         pthread_attr_init(&pt_attr);
-         pthread_attr_setdetachstate(&pt_attr,PTHREAD_CREATE_JOINABLE);
-
-         for (thi=0; thi <spec->nthreads; thi ++)
-            pthread_create(&myThreads[thi], &pt_attr, (void *)iter_thread, (void *)(&(fth[thi])));
-
-         pthread_attr_destroy(&pt_attr);
-
-         /* Wait for them to return */
-         for (thi=0; thi < spec->nthreads; thi++)
-            pthread_join(myThreads[thi], NULL);
-
-         pthread_mutex_destroy(&fic.bucket_mutex);
-         
-         free(myThreads);
-         
-         /* Free the xform_distrib array */
-         free(xform_distrib);
-             
-         if (fic.aborted) {
-            goto done;
-         }
-
-         vibrancy += cp.vibrancy;
-         gamma += cp.gamma;
-         vib_gam_n++;
-
-      }
-
-
-#if 0
-      printf("iw=%d,ih=%d,ppux=%f,ppuy=%f\n",image_width,image_height,ppux,ppuy);
-      printf("contrast=%f, brightness=%f, PREFILTER=%d\n",
-        cp.contrast, cp.brightness, PREFILTER_WHITE);
-      printf("area = %f, WHITE_LEVEL=%d, sample_density=%f\n",
-        area, WHITE_LEVEL, sample_density);
-      printf("k1=%f,k2=%15.12f\n",k1,k2);
-#endif
-
-   }
-
-   /* filter the accumulation buffer down into the image */
-   if (1) {
-      const double g = 1.0 / (gamma / vib_gam_n);
-
-      double linrange = cp.gam_lin_thresh;
-
-      vibrancy /= vib_gam_n;
-      
-	  /* XXX: the original formula has a factor 268/256 in here, not sure why */
-      const double k1 = cp.contrast * cp.brightness;
-      const double area = image_width * image_height / (ppux * ppuy);
-      const double k2 = 1.0 / (cp.contrast * area * sample_density);
-
-      for (unsigned int y = 0; y < image_height; y++) {
-         for (unsigned int x = 0; x < image_width; x++) {
-			double4 t = buckets[x + y * fic.width];
-
-            const double ls = (k1 * log(1.0 + t[3] * k2))/t[3];
-
-            t = t * ls;
-		    t = clip (t, g, linrange, highpow, vibrancy);
-
-			const double maxval = (1 << (bytes_per_channel*8)) - 1;
-			t = nearbyint_d4 (t * maxval);
-
-			if (bytes_per_channel == 2) {
-				uint16_t * const p = &((uint16_t *) out)[channels * (x + y * out_width)];
+		switch (bytes_per_channel) {
+			case 2: {
+				uint16_t * const p = &((uint16_t *) out)[channels * i];
 				p[0] = t[0];
 				p[1] = t[1];
 				p[2] = t[2];
 				p[3] = t[3];
-			} else if (bytes_per_channel == 1) {
-				uint8_t * const p = &((uint8_t *) out)[channels * (x + y * out_width)];
-				p[0] = t[0];
-				p[1] = t[1];
-				p[2] = t[2];
-				p[3] = t[3];
-			} else {
-				assert (0);
+				break;
 			}
-         }
-      }
-   }
 
- done:
+			case 1: {
+				uint8_t * const p = &((uint8_t *) out)[channels * i];
+				p[0] = t[0];
+				p[1] = t[1];
+				p[2] = t[2];
+				p[3] = t[3];
+				break;
+			}
 
-   stats->badvals = fic.badvals;
-
-   free(buckets);
-   /* We have to clear the cps in fth first */
-   for (thi = 0; thi < spec->nthreads; thi++) {
-      clear_cp(&(fth[thi].cp),0);
-   }   
-   free(fth);
-   clear_cp(&cp,0);
-
-   return(0);
-
+			default:
+				assert (0);
+				break;
+		}
+	}
 }

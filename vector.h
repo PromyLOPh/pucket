@@ -5,10 +5,12 @@
 /* LLVM/clang */
 typedef double double2 __attribute__ ((ext_vector_type (2)));
 typedef double double4 __attribute__ ((ext_vector_type (4)));
+typedef unsigned int uint2 __attribute__ ((ext_vector_type (2)));
 #endif
 #else
 /* GCC */
 typedef double double2 __attribute__ ((vector_size (sizeof (double)*2)));
 typedef double double4 __attribute__ ((vector_size (sizeof (double)*4)));
+typedef unsigned int uint2 __attribute__ ((vector_size (sizeof (unsigned int)*2)));
 #endif
 

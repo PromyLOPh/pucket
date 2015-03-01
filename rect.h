@@ -1,6 +1,18 @@
 #pragma once
 #include <stdbool.h>
 
-int render_parallel (flam3_frame *spec, void *out, stat_struct *stats);
+#include "vector.h"
 
+typedef struct {
+	/* bucket width/height */
+	uint2 dim;
+	double4 *data;
+	unsigned long int badvals, samples;
+} bucket;
+
+void bucket_init (bucket * const b, const uint2 dim);
+bool render_bucket (flam3_genome * const genome, bucket * const bucket,
+		const double timelimit);
+void render_image (const flam3_genome * const genome, const bucket * const b,
+		void * const out, const unsigned int bytes_per_channel);
 
