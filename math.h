@@ -26,6 +26,7 @@
 #ifdef HAVE_AMDLIBM
 #define REPLACE_WITH_AMDLIBM
 #include <amdlibm.h>
+#undef nearbyint
 #endif
 
 #define clamp(a,min,max) (a > max ? max : (a < min ? min : a))
