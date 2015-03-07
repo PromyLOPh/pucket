@@ -11,6 +11,9 @@ typedef struct {
 } bucket;
 
 void bucket_init (bucket * const b, const uint2 dim);
+bool bucket_deserialize (bucket * const b, const char *file);
+void bucket_serialize (bucket * const b, const char *file);
+
 bool render_bucket (flam3_genome * const genome, bucket * const bucket,
 		const double timelimit);
 void render_image (const flam3_genome * const genome, const bucket * const b,

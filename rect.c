@@ -194,7 +194,70 @@ void bucket_init (bucket * const b, const uint2 dim) {
 	int ret = posix_memalign ((void **) &b->data, sizeof (*b->data), size);
 	assert (ret == 0);
 	assert (b->data != NULL);
+
 	memset (b->data, 0, size);
+}
+
+/* just a random 32 bit value */
+#define BUCKET_CACHE_IDENT 0x252007d2
+
+/*	Read bucket from file
+ */
+bool bucket_deserialize (bucket * const b, const char *file) {
+	FILE *fd = fopen (file, "r");
+	if (fd == NULL) {
+		return false;
+	}
+
+	uint32_t ident;
+	size_t ret = fread (&ident, sizeof (ident), 1, fd);
+	assert (ret == 1);
+	assert (ident == BUCKET_CACHE_IDENT);
+
+	uint32_t w, h;
+	ret = fread (&w, sizeof (w), 1, fd);
+	assert (ret == 1);
+	ret = fread (&h, sizeof (h), 1, fd);
+	assert (ret == 1);
+	assert (b->dim[0] == w && b->dim[1] == h);
+
+	uint64_t samples, badvals;
+	ret = fread (&samples, sizeof (samples), 1, fd);
+	assert (ret == 1);
+	ret = fread (&badvals, sizeof (badvals), 1, fd);
+	assert (ret == 1);
+	b->samples = samples;
+	b->badvals = badvals;
+
+	ret = fread (b->data, sizeof (*b->data), w*h, fd);
+	assert (ret == w*h);
+
+	fclose (fd);
+
+	return true;
+}
+
+/*	Write bucket into a file
+ */
+void bucket_serialize (bucket * const b, const char *file) {
+	FILE *fd = fopen (file, "w");
+	assert (fd != NULL);
+
+	uint32_t ident = BUCKET_CACHE_IDENT;
+	fwrite (&ident, sizeof (ident), 1, fd);
+
+	assert (sizeof (b->dim[0]) >= sizeof (uint32_t));
+	fwrite (&b->dim[0], sizeof (uint32_t), 1, fd);
+	fwrite (&b->dim[1], sizeof (uint32_t), 1, fd);
+
+	assert (sizeof (b->samples) >= sizeof (uint64_t));
+	assert (sizeof (b->badvals) >= sizeof (uint64_t));
+	fwrite (&b->samples, sizeof (uint64_t), 1, fd);
+	fwrite (&b->badvals, sizeof (uint64_t), 1, fd);
+
+	fwrite (b->data, sizeof (*b->data), b->dim[0]*b->dim[1], fd);
+
+	fclose (fd);
 }
 
 static void compute_camera (const flam3_genome * const genome,
