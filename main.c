@@ -1,5 +1,4 @@
 /*
-    FLAM3 - cosmic recursive fractal flames
     Copyright (C) 1992-2009 Spotworks LLC
 
     This program is free software; you can redistribute it and/or modify
@@ -29,8 +28,7 @@
 
 #define streq(a,b) (strcmp (a, b) == 0)
 
-const char *argp_program_version =
-  "vlam3-pre";
+const char *argp_program_version = PACKAGE "-" VERSION;
 
 typedef struct {
 	unsigned int bpc;
@@ -137,7 +135,7 @@ static void do_render (const render_arguments * const arguments) {
 }
 
 static void print_genome (flam3_genome * const genome) {
-	printf("<pick version=\"FLAM3-%s\">\n", flam3_version());
+	printf("<pick version=\"" PACKAGE "-" VERSION "\">\n");
 	flam3_print (stdout, genome, NULL, flam3_dont_print_edits);
 	printf("</pick>\n");
 }
@@ -431,7 +429,7 @@ int main (int argc, char **argv) {
 				{"method", 'm', "XXX", OPTION_ARG_OPTIONAL, "Cross method" },
 				{ 0 },
 				};
-		const char doc[] = "vlame3-cross -- a fractal flame renderer";
+		const char doc[] = PACKAGE "-cross -- a fractal flame renderer";
 		const struct argp argp = {
 				.options = options, .parser = parse_cross_opt,
 				.args_doc = NULL, .doc = doc, .children = NULL
@@ -448,7 +446,7 @@ int main (int argc, char **argv) {
 				{"method", 'm', "XXX", OPTION_ARG_OPTIONAL, "Mutation method" },
 				{ 0 },
 				};
-		const char doc[] = "vlame3-mutate -- a fractal flame renderer";
+		const char doc[] = PACKAGE "-mutate -- a fractal flame renderer";
 		const struct argp argp = {
 				.options = options, .parser = parse_mutate_opt,
 				.args_doc = NULL, .doc = doc, .children = NULL
@@ -468,7 +466,7 @@ int main (int argc, char **argv) {
 				{"width", 'w', "pixels", 0, "Output flame width" },
 				{ 0 },
 				};
-		const char doc[] = "vlame3-random -- a fractal flame generator";
+		const char doc[] = PACKAGE "-random -- a fractal flame generator";
 		const struct argp argp = {
 				.options = options, .parser = parse_random_opt,
 				.args_doc = NULL, .doc = doc, .children = NULL
@@ -492,7 +490,7 @@ int main (int argc, char **argv) {
 				{"cache", 'c', "path", 0, "Cache file" },
 				{ 0 },
 				};
-		const char doc[] = "vlame3-render -- a fractal flame renderer";
+		const char doc[] = PACKAGE "-render -- a fractal flame renderer";
 		const struct argp argp = {
 				.options = options, .parser = parse_render_opt,
 				.args_doc = NULL, .doc = doc, .children = NULL,

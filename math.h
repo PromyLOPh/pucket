@@ -1,7 +1,6 @@
 /*
-    FLAM3 - cosmic recursive fractal flames
     Copyright (C) 1992-2009 Spotworks LLC
-    Copyright (C) 2015 vlam3 contributors
+    Copyright (C) 2015 pucket contributors
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

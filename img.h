@@ -1,5 +1,4 @@
 /*
-    FLAM3 - cosmic recursive fractal flames
     Copyright (C) 1992-2009 Spotworks LLC
 
     This program is free software; you can redistribute it and/or modify

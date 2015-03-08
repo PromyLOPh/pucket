@@ -2,7 +2,9 @@ def options(opt):
     opt.load ('compiler_c')
 
 def configure(conf):
+    conf.define (key='PACKAGE', val='pucket')
     conf.define (key='VERSION', val='pre')
+
     conf.load ('compiler_c')
 
     conf.env.append_unique ('CFLAGS', '-std=gnu99')
@@ -20,5 +22,5 @@ def configure(conf):
     conf.write_config_header ('config.h')
 
 def build(bld):
-    bld.program (features='c cprogram', source='flam3.c parser.c variations.c interpolation.c palettes.c png.c random.c rect.c main.c', target='vlam3', use='xml2 png amdlibm')
+    bld.program (features='c cprogram', source='flam3.c parser.c variations.c interpolation.c palettes.c png.c random.c rect.c main.c', target='pucket', use='xml2 png amdlibm')
 

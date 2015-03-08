@@ -1,5 +1,4 @@
 /*
-    FLAM3 - cosmic recursive fractal flames
     Copyright (C) 1992-2009 Spotworks LLC
 
     This program is free software; you can redistribute it and/or modify
@@ -36,11 +35,6 @@
 #endif
 #include <errno.h>
 #include <assert.h>
-
-char *flam3_version() {
-  return VERSION;
-}
-
 
 #define CHOOSE_XFORM_GRAIN 16384
 #define CHOOSE_XFORM_GRAIN_M1 16383
@@ -1291,7 +1285,7 @@ char *flam3_print_to_string(flam3_genome *cp) {
    tmpflame = tmpfile();
    if (NULL==tmpflame) {
        if (using_tmpdir == 0) {
-          perror("FLAM3: opening temporary file");
+          perror("opening temporary file");
           return (NULL);
        }
    }
@@ -1300,7 +1294,7 @@ char *flam3_print_to_string(flam3_genome *cp) {
    fseek(tmpflame,0L, SEEK_SET);
    genome_string = (char *)calloc(stringbytes+1,1);
    if (stringbytes != fread(genome_string, 1, stringbytes, tmpflame)) {
-       perror("FLAM3: reading string from temp file");
+       perror("reading string from temp file");
    }
    fclose(tmpflame);
 
@@ -1330,7 +1324,7 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
       fprintf(stderr, "error: couldn't set C locale\n");
 
    
-   fprintf(f, "<flame version=\"FLAM3-%s\" time=\"%g\"", flam3_version(),cp->time);
+   fprintf(f, "<flame version=\"" PACKAGE "-" VERSION "\" time=\"%g\"", cp->time);
    
    if (cp->flame_name[0]!=0)
       fprintf(f, " name=\"%s\"",cp->flame_name);

@@ -1,5 +1,4 @@
 /*
-    FLAM3 - cosmic recursive fractal flames
     Copyright (C) 1992-2009 Spotworks LLC
 
     This program is free software; you can redistribute it and/or modify
@@ -22,8 +21,6 @@
 
 #include <stdio.h>
 #include <libxml/parser.h>
-
-char *flam3_version();
 
 #define flam3_palette_random       (-1)
 #define flam3_palette_interpolated (-2)
