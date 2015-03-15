@@ -40,30 +40,29 @@ typedef struct {
 /*	Lookup color [0,1]
  */
 static double4 color_palette_lookup (const double color,
-		const color_palette_mode mode, const flam3_palette_entry * const map,
-		const unsigned int map_count) {
+		const color_palette_mode mode, const palette * const map) {
 	assert (color >= 0.0 && color <= 1.0);
 
 	switch (mode) {
 		case PALETTE_MODE_LINEAR: {
-			const double ix = color * map_count;
+			const double ix = color * map->count;
 			const double bottomix = floor (ix);
 			const double frac = ix - bottomix;
 			const unsigned int intix = bottomix;
 
-			if (intix == map_count-1) {
-				return vector_d4 (map[intix].color);
+			if (intix == map->count-1) {
+				return map->color[intix];
 			} else {
-				const double4 c1 = vector_d4 (map[intix].color);
-				const double4 c2 = vector_d4 (map[intix+1].color);
+				const double4 c1 = map->color[intix];
+				const double4 c2 = map->color[intix+1];
 				return c1 * (1.0-frac) + c2 * frac;
 			}
 			break;
 		}
 
 		case PALETTE_MODE_STEP: {
-			const unsigned int intix = nearbyint (color * (map_count-1));
-			return vector_d4 (map[intix].color);
+			const unsigned int intix = nearbyint (color * (map->count-1));
+			return map->color[intix];
 			break;
 		}
 
@@ -80,6 +79,7 @@ static void iter_thread (flam3_genome * const input_genome,
 	rand_seed (&rc);
 
 	flam3_genome genome;
+	memset (&genome, 0, sizeof (genome));
 	flam3_copy (&genome, input_genome);
 
 	double4 *iter_storage;
@@ -134,8 +134,7 @@ static void iter_thread (flam3_genome * const input_genome,
 #endif
 
 					double4 interpcolor = color_palette_lookup (p[2],
-							genome.palette_mode, input_genome->palette,
-							256);
+							genome.palette_mode, &input_genome->palette);
 
 					const double logvis = p[3];
 					if (logvis != 1.0) {

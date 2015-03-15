@@ -18,6 +18,7 @@
 #include "parser.h"
 #include "interpolation.h"
 #include <errno.h>
+#include <assert.h>
 
 static int flam3_conversion_failed;
 
@@ -78,6 +79,7 @@ int var2n(const char *s) {
    return flam3_variation_none;
 }
 
+#if 0
 int flam3_parse_hexformat_colors(char *colstr, flam3_genome *cp, int numcolors, int chan) {
 
    int c_idx=0;
@@ -129,7 +131,9 @@ int flam3_parse_hexformat_colors(char *colstr, flam3_genome *cp, int numcolors, 
    
    return(0);
 }
+#endif
 
+#if 0
 int flam3_interp_missing_colors(flam3_genome *cp) {
 
     /* Check for a non-full palette */
@@ -209,6 +213,7 @@ int flam3_interp_missing_colors(flam3_genome *cp) {
 
     return(0);
 }
+#endif
 
 
 void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag, flam3_genome **all_cps, int *all_ncps, randctx * const rc) {
@@ -218,7 +223,6 @@ void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag
    flam3_genome *genome_storage = *all_cps; /* To simplify semantics */
    size_t f3_storage;
    int pfe_success;
-   int col_success;
    
    memset(&loc_current_cp,0,sizeof(flam3_genome));
 
@@ -251,18 +255,7 @@ void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag
          /* Clear out the realloc'd memory */
          memset(&(genome_storage[*all_ncps]),0,sizeof(flam3_genome));
 
-         if (loc_current_cp.palette_index != -1) {
-            col_success = flam3_get_palette(loc_current_cp.palette_index, loc_current_cp.palette,
-               loc_current_cp.hue_rotation, rc);
-            if (col_success < 0)
-               fprintf(stderr,"error retrieving palette %d, setting to all white\n",loc_current_cp.palette_index);
-         }
-         
-         col_success = flam3_interp_missing_colors(&loc_current_cp);
-
          loc_current_cp.genome_index = *all_ncps;
-         memset(loc_current_cp.parent_fname, 0, flam3_parent_fn_len);
-         strncpy(loc_current_cp.parent_fname,parent_file,flam3_parent_fn_len-1);
 
          flam3_copy(&(genome_storage[*all_ncps]), &loc_current_cp);
          (*all_ncps) ++;         
@@ -300,15 +293,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
 
    /* Store this flame element in the current cp */
    
-   /* Wipe out the current palette, replace with -1 for each element */
-   for (i=0;i<256;i++) {
-      cp->palette[i].color[0] = 0;
-      cp->palette[i].color[1] = 0;
-      cp->palette[i].color[2] = 0;
-      cp->palette[i].color[3] = 0;
-      cp->palette[i].index = -1;
-   }
-
    /* The top level element is a flame element. */
    /* Read the attributes of it and store them. */
    att_ptr = flame_node->properties;
@@ -365,8 +349,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
                cp->flame_name[i] = '_';
          }
 
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"palette")) {
-         cp->palette_index = flam3_atoi(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"size")) {
          if (sscanf(att_str, "%d %d%1s", &cp->width, &cp->height, tmps) != 2) {
             fprintf(stderr,"error: invalid size attribute '%s'\n",att_str);
@@ -394,14 +376,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
             cp->palette_mode = PALETTE_MODE_LINEAR;
          else
             fprintf(stderr,"warning: unrecognized palette mode %s.  Using step.\n",att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"quality")) {
-         cp->sample_density = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"background")) {
-         if (sscanf(att_str, "%lf %lf %lf%1s", &cp->background[0], &cp->background[1], &cp->background[2], tmps) != 3) {
-            fprintf(stderr,"error: invalid background attribute '%s'\n",att_str);
-            xmlFree(att_str);
-            return(1);
-         }
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"brightness")) {
          cp->brightness = flam3_atof(att_str);
 /*      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"contrast")) {
@@ -474,18 +448,12 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
 
             xmlFree(att_str);
          }
+ 
+		assert (cp->palette.count == index);
+		const double4 c = (double4) { r/255.0, g/255.0, b/255.0, a/255.0 };
+		palette_add (&cp->palette, c);
 
-         if (index >= 0 && index <= 255) {
-            cp->palette[index].color[3] = a / 255.0;
-            /* Don't forget to premultiply the palette... */
-            cp->palette[index].color[0] = cp->palette[index].color[3] * r / 255.0;
-            cp->palette[index].color[1] = cp->palette[index].color[3] * g / 255.0;
-            cp->palette[index].color[2] = cp->palette[index].color[3] * b / 255.0;
-            cp->palette[index].index = index;
-         } else {
-            fprintf(stderr,"Error:  Color element with bad/missing index attribute (%d)\n",index);
-            return(1);
-         }
+#if 0
       } else if (!xmlStrcmp(chld_node->name, (const xmlChar *)"colors")) {
 
          int count = 0;
@@ -518,7 +486,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
 
             xmlFree(att_str);
          }
-
 
       } else if (!xmlStrcmp(chld_node->name, (const xmlChar *)"palette")) {
 
@@ -608,6 +575,7 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
 
             xmlFree(pal_str);
          }
+#endif
       } else if (!xmlStrcmp(chld_node->name, (const xmlChar *)"symmetry")) {
 
          int kind=0;

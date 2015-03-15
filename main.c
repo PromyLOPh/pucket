@@ -224,9 +224,13 @@ static void do_random (const random_arguments * const arguments) {
 	randctx rc;
 	rand_seed(&rc);
 
+	palette_collection pc;
+	bool bret = palette_read_collection ("flam3-palettes.xml", &pc);
+	assert (bret);
+
 	flam3_genome genome = { .edits = NULL };
 	int ivars = flam3_variation_random;
-	flam3_random (&genome, &ivars, 1, arguments->symmetry, 0, &rc);
+	flam3_random (&genome, &ivars, 1, arguments->symmetry, 0, &pc, &rc);
 
 	/* random resets genome, adjust before finding appropriate bbox */
 	genome.width = arguments->width;
@@ -299,12 +303,16 @@ static void do_mutate (const mutate_arguments * const arguments) {
 	}
 	assert (ncps == 1);
 
+	palette_collection pc;
+	bool bret = palette_read_collection ("flam3-palettes.xml", &pc);
+	assert (bret);
+
 	flam3_genome * const genome = &cps[0];
 
 	int ivars = flam3_variation_random;
 	const double speed = 1.0;
 	flam3_mutate (genome, arguments->method, &ivars, 1, arguments->symmetry,
-			speed, &rc);
+			speed, &pc, &rc);
 
 	print_genome (genome);
 }

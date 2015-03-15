@@ -18,6 +18,8 @@
 #include "interpolation.h"
 #include "palettes.h"
 
+#include <assert.h>
+
 double adjust_percentage(double in) {
 
    if (in==0.0)
@@ -140,6 +142,7 @@ int compare_xforms(const void *av, const void *bv) {
    return 0;
 }
 
+#if 0
 void interpolate_cmap(flam3_palette cmap, double blend,
                       int index0, double hue0, int index1, double hue1,
 					  randctx * const rc) {
@@ -179,6 +182,7 @@ void interpolate_cmap(flam3_palette cmap, double blend,
       cmap[i].index = t4;
    }
 }
+#endif
 
 void interp_and_convert_back(double *c, int ncps, int xfi, double cxang[4][2], 
                              double cxmag[4][2], double cxtrn[4][2],double store_array[3][2]) {
@@ -356,7 +360,6 @@ double get_stagger_coef(double t, double stagger_prc, int num_xforms, int this_x
 }
    
 
-
 /* all cpi and result must be aligned (have the same number of xforms,
    and have final xform in the same slot) */
 void flam3_interpolate_n(flam3_genome *result, int ncp,
@@ -365,56 +368,43 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
    
    if (flam3_palette_interpolation_hsv == cpi[0].palette_interpolation) {
    
-      for (i = 0; i < 256; i++) {
-         double s4;
+      for (i = 0; i < cpi[0].palette.count; i++) {
 		 double4 s, t;
          int alpha1 = 1;
 
-         s[0] = s[1] = s[2] = s[3] = s4 = 0.0;
+         s[0] = s[1] = s[2] = s[3] = 0.0;
          
          for (k = 0; k < ncp; k++) {
-            t = rgb2hsv(vector_d4 (cpi[k].palette[i].color));
+		    assert (cpi[k].palette.count == cpi[0].palette.count);
+            t = rgb2hsv(cpi[k].palette.color[i]);
             for (j = 0; j < 3; j++)
                s[j] += c[k] * t[j];
             
-            s[3] += c[k] * cpi[k].palette[i].color[3];
-            if (cpi[k].palette[i].color[3] != 1.0)
+            s[3] += c[k] * cpi[k].palette.color[i][3];
+            if (cpi[k].palette.color[i][3] != 1.0)
                alpha1 = 0;
-            s4 += c[k] * cpi[k].palette[i].index;
-            
          }
 
          if (alpha1 == 1)
             s[3] = 1.0;
        
 		 const double4 ret_color = hsv2rgb(s);
-         result->palette[i].color[0] = ret_color[0];
-         result->palette[i].color[1] = ret_color[1];
-         result->palette[i].color[2] = ret_color[2];
-         result->palette[i].color[3] = s[3];
-         result->palette[i].index = s4;
+		 palette_add (&result->palette, (double4) { ret_color[0], ret_color[1],
+				                    ret_color[2], s[3] });
        
-         for (j = 0; j < 4; j++) {
-            if (result->palette[i].color[j] < 0.0)
-               result->palette[i].color[j] = 0.0;
-            if (result->palette[i].color[j] > 1.0)
-               result->palette[i].color[j] = 1.0;
-         }
-         
-         if (result->palette[i].index < 0.0)
-            result->palette[i].index = 0.0;
-         if (result->palette[i].index > 255.0)
-            result->palette[i].index = 255.0;
       }
    } else {
+	/* XXX: broken */
+	assert (0);
+#if 0
       /* Sweep - not the best option for float indices */
-      for (i = 0; i < 256; i++) {
-         j = (i < (256 * c[0])) ? 0 : 1;
-         result->palette[i] = cpi[j].palette[i];
+      for (i = 0; i < cpi[0].palette.count; i++) {
+         j = (i < (cpi[j].palette.count * c[0])) ? 0 : 1;
+         palette_add (&result->palette, cpi[j].palette.color[i]);
       }
+#endif
    }
 
-   result->palette_index = flam3_palette_random;
    result->symmetry = 0;
    result->palette_mode = cpi[0].palette_mode;
 
@@ -431,11 +421,7 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
    INTERP(center[1]);
    INTERP(rot_center[0]);
    INTERP(rot_center[1]);
-   INTERP(background[0]);
-   INTERP(background[1]);
-   INTERP(background[2]);
    INTERP(pixels_per_unit);
-   INTERP(sample_density);
    INTERP(zoom);
    INTERP(rotate);
    INTERP(gam_lin_thresh);

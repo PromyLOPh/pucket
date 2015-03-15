@@ -35,17 +35,7 @@
 
 #include "vector.h"
 
-//typedef double flam3_palette[256][3];
-typedef struct {
-	double index;
-	double color[4];
-} flam3_palette_entry;
-
-typedef flam3_palette_entry flam3_palette[256];
-
 #include "random.h"
-
-int flam3_get_palette(int n, flam3_palette c, double hue_rotation, randctx * const rc);
 
 #define flam3_variation_random (-1)
 #define flam3_variation_random_fromspecified (-2)
@@ -54,8 +44,6 @@ extern char *flam3_variation_names[];
 
 #define flam3_nvariations 99
 #define flam3_nxforms     12
-
-#define flam3_parent_fn_len     30
 
 #define flam3_interpolation_linear 0
 #define flam3_interpolation_smooth 1
@@ -439,6 +427,8 @@ typedef struct xform {
 
 } flam3_xform;
 
+#include "palettes.h"
+
 typedef struct {
    char flame_name[flam3_name_len+1]; /* 64 chars plus a null */
    double time;
@@ -455,11 +445,9 @@ typedef struct {
    int chaos_enable;
    
    int genome_index;                   /* index into source file */
-   char parent_fname[flam3_parent_fn_len];   /* base filename where parent was located */
    int symmetry;                /* 0 means none */
-   flam3_palette palette;
+   palette palette;
    char *input_image;           /* preview/temporary! */
-   int  palette_index;
    double brightness;           /* 1.0 = normal */
    double contrast;             /* 1.0 = normal */
    double gamma;
@@ -470,10 +458,8 @@ typedef struct {
    double rotate;                /* camera */
    double vibrancy;              /* blend between color algs (0=old,1=new) */
    double hue_rotation;          /* applies to cmap, 0-1 */
-   double background[3];
    double zoom;                  /* effects ppu, sample density, scale */
    double pixels_per_unit;       /* vertically */
-   double sample_density;        /* samples per pixel (not bucket) */
 
    /* XML Edit structure */
    xmlDocPtr edits;
@@ -537,11 +523,13 @@ char *flam3_print_to_string(flam3_genome *cp);
 /* ivars_n is the number of values in ivars to select from.            */
 /* sym is either a symmetry group or 0 meaning random or no symmetry   */
 /* spec_xforms specifies the number of xforms to use, setting to 0 makes the number random. */
-void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_xforms, randctx * const rc);
+void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym,
+			      int spec_xforms, const palette_collection * const pc,
+				  randctx * const rc);
 
 void add_to_action(char *action, char *addtoaction);
 
-void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, randctx *rc);
+void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, const palette_collection * const pc, randctx *rc);
 void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc);
 
 /* return NULL in case of error */
@@ -550,7 +538,7 @@ flam3_genome *flam3_parse_from_file(FILE *f, char *fn, int default_flag, int *nc
 
 void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc);
 
-void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution, randctx * const);
+void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution, const palette_collection * const pc, randctx * const rc);
 int flam3_colorhist(flam3_genome *cp, int num_batches, randctx *rc, double *hist);
 int flam3_estimate_bounding_box(flam3_genome *g, double eps, int nsamples,
              double *bmin, double *bmax, randctx *rc);

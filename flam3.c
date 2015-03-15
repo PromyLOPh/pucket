@@ -963,6 +963,7 @@ void flam3_copy(flam3_genome *dest, const flam3_genome * const src) {
    for (i=0;i<numstd;i++)
       memcpy(dest->chaos[i],src->chaos[i], numstd * sizeof(double));
       
+   palette_copy (&src->palette, &dest->palette);
 }
 
 void flam3_copyx(flam3_genome *dest, flam3_genome *src, int dest_std_xforms, int dest_final_xform) {
@@ -1025,78 +1026,38 @@ void flam3_copyx(flam3_genome *dest, flam3_genome *src, int dest_std_xforms, int
 }
 
 void clear_cp(flam3_genome *cp, int default_flag) {
-    cp->palette_index = flam3_palette_random;
-    cp->center[0] = 0.0;
-    cp->center[1] = 0.0;
-    cp->rot_center[0] = 0.0;
-    cp->rot_center[1] = 0.0;
+	memset (cp, 0, sizeof (*cp));
+
     cp->gamma = 4.0;
     cp->vibrancy = 1.0;
     cp->contrast = 1.0;
     cp->brightness = 4.0;
-    cp->symmetry = 0;
-    cp->hue_rotation = 0.0;
-    cp->rotate = 0.0;
     cp->pixels_per_unit = 50;
     cp->interpolation = flam3_interpolation_linear;
     cp->palette_interpolation = flam3_palette_interpolation_hsv;
 
-    cp->genome_index = 0;
-    memset(cp->parent_fname,0,flam3_parent_fn_len);
-
     if (default_flag==flam3_defaults_on) {
        /* If defaults are on, set to reasonable values */
        cp->highlight_power = -1.0;
-       cp->background[0] = 0.0;
-       cp->background[1] = 0.0;
-       cp->background[2] = 0.0;
        cp->width = 100;
        cp->height = 100;
-       cp->zoom = 0.0;
-       cp->sample_density = 1;
        cp->gam_lin_thresh = 0.01;
-//       cp->motion_exp = 0.0;
        cp->interpolation_type = flam3_inttype_log;
        cp->palette_mode = PALETTE_MODE_STEP;
 
     } else {
        /* Defaults are off, so set to UN-reasonable values. */
        cp->highlight_power = -1.0;
-       cp->background[0] = -1.0;
-       cp->background[1] = -1.0;
-       cp->background[2] = -1.0;
        cp->zoom = 999999999;
        cp->width = -1;
        cp->height = -1;
-       cp->sample_density = -1;
        cp->gam_lin_thresh = -1;
 //       cp->motion_exp = -999;
        cp->interpolation_type = -1;
        cp->palette_mode = -1;
     }
 
-    if (cp->xform != NULL && cp->num_xforms > 0) {
-        int i;
-        int ns = cp->num_xforms - (cp->final_xform_index>=0);
-        
-       for (i=0;i<ns;i++) {
-          free(cp->chaos[i]);
-       }
-       free(cp->chaos);
-       cp->chaos=NULL;
-
-      for (i=0;i<cp->num_xforms;i++)
-         flam3_delete_motion_elements(&cp->xform[i]);
-                       
-       free(cp->xform);
-       cp->xform=NULL;
-       
-       cp->num_xforms = 0;
-    }
-    
-    cp->final_xform_enable = 0;
     cp->final_xform_index = -1;
-
 }
 
 flam3_genome *flam3_parse_xml2(char *xmldata, char *xmlfilename, int default_flag, int *ncps, randctx * const rc) {
@@ -1243,16 +1204,8 @@ flam3_genome * flam3_parse_from_file(FILE *f, char *fname, int default_flag, int
 void flam3_apply_template(flam3_genome *cp, flam3_genome *templ) {
 
    /* Check for invalid values - only replace those with valid ones */
-   if (templ->background[0] >= 0)
-      cp->background[0] = templ->background[0];
-   if (templ->background[1] >= 0)
-      cp->background[1] = templ->background[1];
-   if (templ->background[1] >= 0)
-      cp->background[2] = templ->background[2];
    if (templ->zoom < 999999998)
       cp->zoom = templ->zoom;
-   if (templ->sample_density > 0)
-      cp->sample_density = templ->sample_density;
    if (templ->width > 0) {
       /* preserving scale should be an option */
       cp->pixels_per_unit = cp->pixels_per_unit * templ->width / cp->width;
@@ -1338,9 +1291,6 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
 
    fprintf(f, " rotate=\"%g\"", cp->rotate);
 
-   fprintf(f, " quality=\"%g\"", cp->sample_density);
-   fprintf(f, " background=\"%g %g %g\"",
-      cp->background[0], cp->background[1], cp->background[2]);
    fprintf(f, " brightness=\"%g\"", cp->brightness);
    fprintf(f, " gamma=\"%g\"", cp->gamma);
    
@@ -1389,20 +1339,18 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
 
    }
 
-   for (i = 0; i < 256; i++) {
-      double r, g, b, a;
-      r = (cp->palette[i].color[0] * 255.0);
-      g = (cp->palette[i].color[1] * 255.0);
-      b = (cp->palette[i].color[2] * 255.0);
-      a = (cp->palette[i].color[3] * 255.0);
-      
+   for (i = 0; i < cp->palette.count; i++) {
+	  double4 rgba = cp->palette.color[i] * 255.0;
+
       fprintf(f, "   ");
       
-      if (a==255.0) {
+      if (rgba[3] ==255.0) {
       
-	  	 fprintf(f, "<color index=\"%d\" rgb=\"%.6g %.6g %.6g\"/>", i, r, g, b);
+		 fprintf(f, "<color index=\"%d\" rgb=\"%.6g %.6g %.6g\"/>", i, rgba[0],
+				 rgba[1], rgba[2]);
       } else {
-         fprintf(f, "   <color index=\"%d\" rgba=\"%.6g %.6g %.6g %.6g\"/>", i, r, g, b, a);
+		 fprintf(f, "   <color index=\"%d\" rgba=\"%.6g %.6g %.6g %.6g\"/>", i,
+				 rgba[0], rgba[1], rgba[2], rgba[3]);
       }
 //      if (i%4 == 3)
          fprintf(f, "\n");
@@ -2276,19 +2224,20 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
       sprintf(ministr," %d:",startParent);
                   
       /* Loop over the entries, switching to the other parent 1% of the time */
-      for (ci=0;ci<256;ci++) {
+      for (ci=0;ci<out->palette.count;ci++) {
          if (rand_d01(rc)<.01) {
             startParent = 1-startParent;
             sprintf(ministr," %d",ci);
          }
                      
-         out->palette[ci] = startParent ? cp1->palette[ci]: cp0->palette[ci];
+         out->palette.color[ci] = startParent ? cp1->palette.color[ci] :
+		 		cp0->palette.color[ci];
       }
    }
 
 }
 
-void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, randctx *rc) {
+void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, const palette_collection * const pc, randctx *rc) {
 
    double randselect;
    flam3_genome mutation;
@@ -2325,7 +2274,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       do {
          /* Create a random flame, and use the variations */
          /* to replace those in the original              */
-         flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms, rc);
+         flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms, pc, rc);
          for (i = 0; i < cp->num_xforms; i++) {
             for (j = 0; j < flam3_nvariations; j++) {
                if (cp->xform[i].var[j] != mutation.xform[i].var[j]) {
@@ -2347,7 +2296,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       int modxf;
    
       /* Generate a 2-xform random */
-      flam3_random(&mutation, ivars, ivars_n, sym, 2, rc);
+      flam3_random(&mutation, ivars, ivars_n, sym, 2, pc, rc);
       
       /* Which xform do we mutate? */
       modxf = rand_mod(rc, cp->num_xforms);
@@ -2457,20 +2406,17 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 
       if (s < 0.4) { /* randomize xform color coords */
       
-         flam3_improve_colors(cp, 100, 0, 10, rc);
+         flam3_improve_colors(cp, 100, 0, 10, pc, rc);
          
       } else if (s < 0.8) { /* randomize xform color coords and palette */
       
-         flam3_improve_colors(cp, 25, 1, 10, rc);
+         flam3_improve_colors(cp, 25, 1, 10, pc, rc);
          
       } else { /* randomize palette only */
-
-         cp->palette_index = flam3_get_palette(flam3_palette_random, cp->palette, cp->hue_rotation, rc);
-         /* if our palette retrieval fails, skip the mutation */
-         if (cp->palette_index >= 0) {
-         } else
-            fprintf(stderr,"failure getting random palette, palette set to white\n");
-
+		 const palette * const p = palette_random (pc, rc);
+		 assert (p != NULL);
+		 palette_copy (p, &cp->palette);
+		 palette_rotate_hue (&cp->palette, cp->hue_rotation);
       }
    } else if (mutate_mode == MUTATE_DELETE_XFORM) {
    
@@ -2483,7 +2429,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
    } else { /* MUTATE_ALL_COEFS */ 
    
       int x;
-      flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms, rc);
+      flam3_random(&mutation, ivars, ivars_n, sym, cp->num_xforms, pc, rc);
 
       /* change all the coefs by a fraction of the random */
       for (x = 0; x < cp->num_xforms; x++) {
@@ -2501,7 +2447,9 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 
 }
 
-void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_xforms, randctx * const rc) {
+void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym,
+			      int spec_xforms, const palette_collection * const pc,
+				  randctx * const rc) {
 
    int i, nxforms, var, samed, multid, samepost, postid, addfinal=0;
    int finum = -1;
@@ -2520,9 +2468,10 @@ void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym, int spec_x
    clear_cp(cp,flam3_defaults_on);
 
    cp->hue_rotation = rand_mod(rc, 8) ? 0.0 : rand_d01(rc);
-   cp->palette_index = flam3_get_palette(flam3_palette_random, cp->palette, cp->hue_rotation, rc);
-   if (cp->palette_index < 0)
-      fprintf(stderr,"error getting palette from xml file, setting to all white\n");
+   const palette * const p = palette_random (pc, rc);
+   assert (p != NULL);
+   palette_copy (p, &cp->palette);
+   palette_rotate_hue (&cp->palette, cp->hue_rotation);
    cp->time = 0.0;
    cp->interpolation = flam3_interpolation_linear;
    cp->palette_interpolation = flam3_palette_interpolation_hsv;

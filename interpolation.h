@@ -43,8 +43,10 @@ void mult_matrix(double s1[2][2], double s2[2][2], double d[2][2]);
 
 int compare_xforms(const void *av, const void *bv);
 
+#if 0
 void interpolate_cmap(flam3_palette cmap, double blend,
               int index0, double hue0, int index1, double hue1, randctx * const);
+#endif
 void interp_and_convert_back(double *c, int ncps, int xfi, double cxang[4][2], 
                              double cxmag[4][2], double cxtrn[4][2],double store_array[3][2]);                             
 void convert_linear_to_polar(flam3_genome *cp, int ncps, int xfi, int cflag, 

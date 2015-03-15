@@ -1,5 +1,6 @@
 /*
     Copyright (C) 1992-2009 Spotworks LLC
+	Copyright (C) 2015 pucket contributors
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,15 +16,27 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef palettes_included
-#define palettes_included
+#pragma once
 
+#include <stdlib.h>
+#include <stdbool.h>
 
+#include "flam3.h"
+
+/* One palette */
 typedef struct {
-    int number;
-    char name[flam3_name_len];
-    double colors[256][3];
-} lib_palette;
+	/* number of items allocated */
+	size_t allocated;
+	/* number of items in palette */
+	size_t count;
+	double4 *color;
+} palette;
+
+/* A collection/array of palettes */
+typedef struct {
+	size_t count;
+	palette *p;
+} palette_collection;
 
 #include "vector.h"
 
@@ -32,6 +45,10 @@ double4 hsv2rgb(double4);
 
 double flam3_calc_alpha(double density, double gamma, double linrange);
 double4 flam3_calc_newrgb(double4 cbuf, double ls, double highpow);
-
-#endif
+void palette_add (palette * const p, const double4 c);
+const palette *palette_random (const palette_collection * const pc, randctx * const rc);
+void palette_copy (const palette * const src, palette * const dest);
+void palette_rotate_hue (palette * const p, double rot);
+bool palette_read_collection (const char * const filename,
+		palette_collection * const pc);
 
