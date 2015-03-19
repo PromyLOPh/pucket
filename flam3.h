@@ -572,9 +572,6 @@ void rotate_by(double *p, double *center, double by);
 
 void flam3_init_frame(flam3_frame *f);
 
-flam3_genome *sheep_loop(flam3_genome *cp, double blend);
-flam3_genome *sheep_edge(flam3_genome *cp, double blend, int seqflag, double stagger);
-
 /* Motion function indices */
 #define MOTION_SIN 1
 #define MOTION_TRIANGLE 2

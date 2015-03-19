@@ -231,41 +231,6 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *
    return(badvals);
 }
 
-flam3_genome *sheep_loop(flam3_genome *cp, double blend) {
-   
-   flam3_genome *result;
-   int i;
-
-   /* Allocate the genome - this must be freed by calling function */
-   result = calloc(1,sizeof(flam3_genome));
-   
-   /* Clear it */
-   clear_cp(result,flam3_defaults_on);
-   
-   /* Copy the original */
-   flam3_copy(result,cp);
-
-   /*
-    * Insert motion magic here :
-    * if there are motion elements, we will modify the contents of
-    * the result genome before flam3_rotate is called.
-    */
-   for (i=0;i<cp->num_xforms;i++) {
-      if (cp->xform[i].num_motion>0) {
-         /* Apply motion parameters to result.xform[i] using blend parameter */
-         apply_motion_parameters(&cp->xform[i], &result->xform[i], blend);
-      }
-      
-      /* Delete the motion parameters from the result */
-      flam3_delete_motion_elements(&result->xform[i]);
-   }
-
-   /* Rotate the affines */
-   flam3_rotate(result, blend*360.0,result->interpolation_type);
-   
-   return(result);
-}
-
 /* BY is angle in degrees */
 void flam3_rotate(flam3_genome *cp, double by, int interpolation_type) {
    int i;
