@@ -1207,7 +1207,7 @@ char *flam3_print_to_string(flam3_genome *cp) {
           return (NULL);
        }
    }
-   flam3_print(tmpflame,cp,NULL,flam3_dont_print_edits);
+   flam3_print(tmpflame,cp,NULL);
    stringbytes = ftell(tmpflame);
    fseek(tmpflame,0L, SEEK_SET);
    genome_string = (char *)calloc(stringbytes+1,1);
@@ -1223,7 +1223,7 @@ char *flam3_print_to_string(flam3_genome *cp) {
 }
    
 
-void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_edits) {
+void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes) {
    int i,numstd;
 
    // force use of "C" locale when writing reals.
@@ -1322,13 +1322,6 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes, int print_ed
          
    }
 
-   if (cp->edits != NULL && print_edits==flam3_print_edits) {
-
-      /* We need a custom script for printing these */
-      /* and it needs to be recursive               */
-      xmlNodePtr elem_node = xmlDocGetRootElement(cp->edits);
-      flam3_edit_print(f,elem_node, 1, 1);
-   }
    fprintf(f, "</flame>\n");
 
    if (locale != NULL) {

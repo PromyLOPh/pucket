@@ -276,7 +276,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
                         randctx * const rc) {
    flam3_genome *cp = loc_current_cp;
    xmlNode *chld_node, *motion_node;
-   xmlNodePtr edit_node;
    xmlAttrPtr att_ptr, cur_att;
    int solo_xform=-1;
    char *att_str;
@@ -674,14 +673,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
             }
             
          }           
-
-      } else if (!xmlStrcmp(chld_node->name, (const xmlChar *)"edit")) {
-
-         /* Create a new XML document with this edit node as the root node */
-         cp->edits = xmlNewDoc( (const xmlChar *)"1.0");
-         edit_node = xmlCopyNode( chld_node, 1 );
-         xmlDocSetRootElement(cp->edits, edit_node);
-
       }
    } /* Done parsing flame element. */
    
@@ -1149,132 +1140,5 @@ int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_xaos,
       xmlFree(att_str);
    }
    return(0);
-}
-
-void flam3_edit_print(FILE *f, xmlNodePtr editNode, int tabs, int formatting) {
-
-   char *tab_string = "   ";
-   int ti,strl;
-   xmlAttrPtr att_ptr=NULL,cur_att=NULL;
-   xmlNodePtr chld_ptr=NULL, cur_chld=NULL;
-   int indent_printed = 0;
-
-   char *att_str,*cont_str,*cpy_string;
-
-   /* If this node is an XML_ELEMENT_NODE, print it and it's attributes */
-   if (editNode->type==XML_ELEMENT_NODE) {
-
-      /* Print the node at the tab specified */
-      if (formatting) {
-         for (ti=0;ti<tabs;ti++)
-            fprintf(f,"%s",tab_string);
-      }
-
-      fprintf(f,"<%s",editNode->name);
-
-      /* This can either be an edit node or a sheep node */
-      /* If it's an edit node, add one to the tab        */
-      if (!xmlStrcmp(editNode->name, (const xmlChar *)"edit")) {
-         tabs ++;
-      }
-
-      /* Print the attributes */
-      att_ptr = editNode->properties;
-
-      for (cur_att = att_ptr; cur_att; cur_att = cur_att->next) {
-
-         att_str = (char *) xmlGetProp(editNode,cur_att->name);
-         fprintf(f," %s=\"%s\"",cur_att->name,att_str);
-         xmlFree(att_str);
-      }
-
-      /* Does this node have children? */
-      if (!editNode->children) {
-         /* Close the tag and subtract the tab */
-         fprintf(f,"/>");
-         if (formatting)
-            fprintf(f,"\n");
-         tabs--;
-      } else {
-
-         /* Close the tag */
-         fprintf(f,">");
-
-         if (formatting)
-            fprintf(f,"\n");
-
-         /* Loop through the children and print them */
-         chld_ptr = editNode->children;
-
-         indent_printed = 0;
-
-         for (cur_chld=chld_ptr; cur_chld; cur_chld = cur_chld->next) {
-
-            /* If child is an element, indent first and then print it. */
-            if (cur_chld->type==XML_ELEMENT_NODE &&
-               (!xmlStrcmp(cur_chld->name, (const xmlChar *)"edit") ||
-      (!xmlStrcmp(cur_chld->name, (const xmlChar *)"sheep")))) {
-
-               if (indent_printed) {
-                  indent_printed = 0;
-                  fprintf(f,"\n");
-               }
-
-               flam3_edit_print(f, cur_chld, tabs, 1);
-
-            } else {
-
-               /* Child is a text node.  We don't want to indent more than once. */
-               if (xmlIsBlankNode(cur_chld))
-                  continue;
-
-               if (indent_printed==0 && formatting==1) {
-                  for (ti=0;ti<tabs;ti++)
-                     fprintf(f,"%s",tab_string);
-                  indent_printed = 1;
-               }
-
-               /* Print nodes without formatting. */
-               flam3_edit_print(f, cur_chld, tabs, 0);
-
-            }
-         }
-
-         if (indent_printed && formatting)
-            fprintf(f,"\n");
-
-         /* Tab out. */
-         tabs --;
-         if (formatting) {
-            for (ti=0;ti<tabs;ti++)
-               fprintf(f,"%s",tab_string);
-         }
-
-         /* Close the tag */
-         fprintf(f,"</%s>",editNode->name);
-
-         if (formatting) {
-            fprintf(f,"\n");
-         }
-      }
-
-   } else if (editNode->type==XML_TEXT_NODE) {
-
-      /* Print text node */
-      cont_str = (char *) xmlNodeGetContent(editNode);
-      cpy_string = &(cont_str[0]);
-      while (isspace(*cpy_string))
-         cpy_string++;
-
-      strl = (int)strlen(cont_str)-1;
-
-      while (isspace(cont_str[strl]))
-         strl--;
-
-      cont_str[strl+1] = 0;
-
-      fprintf(f,"%s",cpy_string);
-
-   }
 }
 

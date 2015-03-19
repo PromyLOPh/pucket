@@ -30,9 +30,6 @@
 
 #define flam3_name_len    64
 
-#define flam3_print_edits  (1)
-#define flam3_dont_print_edits  (0)
-
 #include "vector.h"
 
 #include "random.h"
@@ -461,9 +458,6 @@ typedef struct {
    double zoom;                  /* effects ppu, sample density, scale */
    double pixels_per_unit;       /* vertically */
 
-   /* XML Edit structure */
-   xmlDocPtr edits;
-
    /* Small-gamma linearization threshold */
    double gam_lin_thresh;
 
@@ -475,8 +469,6 @@ typedef struct {
    double palette_blend;
 
    int palette_mode;
-
-
 } flam3_genome;
 
 typedef struct {
@@ -515,7 +507,7 @@ void apply_motion_parameters(flam3_xform *xf, flam3_xform *addto, double blend);
 void flam3_interpolate(flam3_genome *genomes, int ngenomes, double time, double stagger, flam3_genome *result);
 
 /* print genome to given file with extra_attributes if not NULL */
-void flam3_print(FILE *f, flam3_genome *g, char *extra_attributes, int print_edits);
+void flam3_print(FILE *f, flam3_genome *g, char *extra_attributes);
 void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row, int motion_flag);
 char *flam3_print_to_string(flam3_genome *cp);
 

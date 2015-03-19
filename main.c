@@ -136,7 +136,7 @@ static void do_render (const render_arguments * const arguments) {
 
 static void print_genome (flam3_genome * const genome) {
 	printf("<pick version=\"" PACKAGE "-" VERSION "\">\n");
-	flam3_print (stdout, genome, NULL, flam3_dont_print_edits);
+	flam3_print (stdout, genome, NULL);
 	printf("</pick>\n");
 }
 
@@ -228,7 +228,7 @@ static void do_random (const random_arguments * const arguments) {
 	bool bret = palette_read_collection ("flam3-palettes.xml", &pc);
 	assert (bret);
 
-	flam3_genome genome = { .edits = NULL };
+	flam3_genome genome;
 	int ivars = flam3_variation_random;
 	flam3_random (&genome, &ivars, 1, arguments->symmetry, 0, &pc, &rc);
 
