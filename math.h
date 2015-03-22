@@ -27,6 +27,7 @@
 #define REPLACE_WITH_AMDLIBM
 #include <amdlibm.h>
 #undef nearbyint
+#undef floor
 #endif
 
 #define clamp(a,min,max) (a > max ? max : (a < min ? min : a))
@@ -55,6 +56,14 @@ inline void translate (const double2 xy, double2 matrix[3]) {
 	matrix[2] = xy;
 }
 
+/*	Create affine scaling matrix
+ */
+inline void scale (const double2 xy, double2 matrix[3]) {
+	matrix[0] = (double2) { xy[0], 0.0 };
+	matrix[1] = (double2) { 0.0, xy[1] };
+	matrix[2] = (double2) { 0.0, 0.0 };
+}
+
 /*	Multiply two affine matrices a, b and store the result in c.
  *
  *	The last row of each matrix is assumed to be 0, 0, 1.
@@ -63,6 +72,23 @@ inline void matrixmul (const double2 a[3], const double2 b[3], double2 c[3]) {
 	c[0] = a[0] * b[0][0] + a[1] * b[0][1];
 	c[1] = a[0] * b[1][0] + a[1] * b[1][1];
 	c[2] = a[0] * b[2][0] + a[1] * b[2][1] + a[2];
+}
+
+/*	Affine matrix that transforms rect from (x1, y1, x2, y2) into rect to
+ */
+inline void translate_rect (const double4 from, const double4 to,
+		double2 matrix[3]) {
+	const double2 from_edge = (double2) { from[0], from[1] },
+			to_edge = (double2) { to[0], to[1] };
+	/* first align one of A and B’s edges */
+	double2 translate_edge[3];
+	translate (to_edge - from_edge, translate_edge);
+	/* then scale it up or down */
+	double2 scale_rect[3];
+	scale ((double2) { (to[2] - to[0])/(from[2] - from[0]),
+			(to[3] - to[1])/(from[3] - from[1])}, scale_rect);
+	/* the result is scale*translate (i.e. translate first) */
+	matrixmul (scale_rect, translate_edge, matrix);
 }
 
 /* Create rotation around center. Note that matrix multiplication is

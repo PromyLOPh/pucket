@@ -29,12 +29,7 @@ typedef struct {
 	double timelimit;
 	unsigned int sub_batch_size, fuse;
 	unsigned short *xform_distrib;
-
-	/* camera stuff */
-	double ws0, wb0s0, hs1, hb1s1; /* shortcuts for indexing */
-	double bounds[4]; /* Corner coords of viewable area */
-	double2 rot[3]; /* Rotation transformation */
-	double ppux, ppuy;
+	double2 camera[3];
 } render_constants;
 
 /*	Lookup color [0,1]
@@ -112,20 +107,18 @@ static void iter_thread (flam3_genome * const input_genome,
 
 			/* Put them in the bucket accumulator */
 			for (unsigned int j = 0; j < c->sub_batch_size; j++) {
-				double4 p = iter_storage[j];
+				const double4 p = iter_storage[j];
 
-				if (genome.rotate != 0.0) {
-					const double2 p01 = (double2) { p[0], p[1] };
-					const double2 rotatedp = apply_affine (p01, c->rot);
-					p[0] = rotatedp[0];
-					p[1] = rotatedp[1];
-				}
+				const double2 origpos = (double2) { p[0], p[1] };
+				const double2 transpos = apply_affine (origpos, c->camera);
+				const unsigned int x = floor (transpos[0]);
+				const unsigned int y = floor (transpos[1]);
 
 				/* Skip if out of bounding box or invisible */
-				if (p[0] >= c->bounds[0] && p[1] >= c->bounds[1] &&
-						p[0] <= c->bounds[2] && p[1] <= c->bounds[3] &&
+				if (x >= 0 && x < bucket->dim[0] &&
+						y >= 0 && y < bucket->dim[1] &&
 						p[3] > 0) {
-					const size_t ix = (int)(c->ws0 * p[0] - c->wb0s0) + bucket->dim[0] * (int)(c->hs1 * p[1] - c->hb1s1);
+					const size_t ix = x + bucket->dim[0] * y;
 #if HAVE_BUILTIN_PREFETCH
 					/* prefetch for reading (0) with no locality (0). This (partially)
 					 * hides the load latency for the += operation at the end of this
@@ -137,9 +130,7 @@ static void iter_thread (flam3_genome * const input_genome,
 							genome.palette_mode, &input_genome->palette);
 
 					const double logvis = p[3];
-					if (logvis != 1.0) {
-						interpcolor *= logvis;
-					}
+					interpcolor *= logvis;
 
 					bucket->data[ix] += interpcolor;
 				}
@@ -264,27 +255,25 @@ static void compute_camera (const flam3_genome * const genome,
 	assert (bucket != NULL);
 	assert (c != NULL);
 
-	double corner0, corner1;
-
 	const double scale = pow(2.0, genome->zoom);
 
-	c->ppux = genome->pixels_per_unit * scale;
-	c->ppuy = c->ppux;
-	//ppux /=  spec->pixel_aspect_ratio;
-	corner0 = genome->center[0] - bucket->dim[0] / c->ppux / 2.0;
-	corner1 = genome->center[1] - bucket->dim[1] / c->ppuy / 2.0;
-	c->bounds[0] = corner0;
-	c->bounds[1] = corner1;
-	c->bounds[2] = corner0 + bucket->dim[0] / c->ppux;
-	c->bounds[3] = corner1 + bucket->dim[1] / c->ppuy;
-	const double size[2] = {1.0 / (c->bounds[2] - c->bounds[0]),
-							1.0 / (c->bounds[3] - c->bounds[1])};
+	const double ppux = genome->pixels_per_unit * scale;
+	const double ppuy = ppux;
+	const double corner0 = genome->center[0] - bucket->dim[0] / ppux / 2.0;
+	const double corner1 = genome->center[1] - bucket->dim[1] / ppuy / 2.0;
+
+	double2 rot_matrix[3];
 	rotate_center ((double2) { genome->rot_center[0], genome->rot_center[1] },
-			genome->rotate, c->rot);
-	c->ws0 = bucket->dim[0] * size[0];
-	c->wb0s0 = c->ws0 * c->bounds[0];
-	c->hs1 = bucket->dim[1] * size[1];
-	c->hb1s1 = c->hs1 * c->bounds[1];
+			genome->rotate, rot_matrix);
+
+	const double4 from_rect = (double4) { corner0, corner1,
+			corner0 + bucket->dim[0] / ppux,
+			corner1 + bucket->dim[1] / ppuy };
+	const double4 to_rect = (double4) { 0, 0, bucket->dim[0], bucket->dim[1] };
+	double2 transform_matrix[3];
+	translate_rect (from_rect, to_rect, transform_matrix);
+
+	matrixmul (transform_matrix, rot_matrix, c->camera);
 }
 
 bool render_bucket (flam3_genome * const genome, bucket * const bucket,
