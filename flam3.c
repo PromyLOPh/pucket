@@ -1557,7 +1557,6 @@ void add_to_action(char *action, char *addtoaction) {
 void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc) {
 
    int i,j, rb;
-   char ministr[10];   
 
    if (cross_mode == CROSS_NOT_SPECIFIED) {
    
@@ -1621,9 +1620,6 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
       clear_cp(&parents[0],flam3_defaults_on);
       clear_cp(&parents[1],flam3_defaults_on);
       
-      sprintf(ministr,"%7.5g",t);
-   
-      
    } else {
    
       /* alternate mode */
@@ -1638,8 +1634,6 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
          trystr[0] = 0;
          got0 = got1 = 0;
          rb = rand_bool(rc);
-         sprintf(ministr,"%d:",rb);
-         strcat(trystr,ministr);
 
          /* Copy the parent, sorting the final xform to the end if it's present. */
          if (rb)
@@ -1659,31 +1653,25 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
                if (used_parent==0) {
                   if (i < cp1->num_xforms && cp1->xform[i].density > 0) {
                      flam3_copy_xform(&out->xform[i],&cp1->xform[i]);
-                     sprintf(ministr," 1");
                      got1 = 1;
                   } else {
-                     sprintf(ministr," 0");
                      got0 = 1;
                   }
                } else {
                   if (i < cp0->num_xforms && cp0->xform[i].density > 0) {
                      flam3_copy_xform(&out->xform[i],&cp0->xform[i]);
-                     sprintf(ministr," 0");
                      got0 = 1;
                   } else {
-                     sprintf(ministr," 1");
                      got1 = 1;
                   }
                }
             } else {
-               sprintf(ministr," %d",used_parent);
                if (used_parent)
                   got1 = 1;
                else
                   got0 = 1;
             }
 
-            strcat(trystr,ministr);
          }
              
          if (used_parent==0 && cp0->final_xform_enable)
@@ -1708,13 +1696,10 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
       int startParent=rand_bool(rc);
       int ci;
                         
-      sprintf(ministr," %d:",startParent);
-                  
       /* Loop over the entries, switching to the other parent 1% of the time */
       for (ci=0;ci<out->palette.count;ci++) {
          if (rand_d01(rc)<.01) {
             startParent = 1-startParent;
-            sprintf(ministr," %d",ci);
          }
                      
          out->palette.color[ci] = startParent ? cp1->palette.color[ci] :
@@ -1730,7 +1715,6 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
    double randselect;
    flam3_genome mutation;
    int i,j,done;
-   char ministr[30];
    
    /* If mutate_mode = -1, choose a random mutation mode */
    if (mutate_mode == MUTATE_NOT_SPECIFIED) {
@@ -1788,8 +1772,6 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       /* Which xform do we mutate? */
       modxf = rand_mod(rc, cp->num_xforms);
       
-      sprintf(ministr,"%d coefs",modxf);
-      
       /* if less than 3 xforms, then change only the translation part */
       if (2 >= cp->num_xforms) {
          for (j = 0; j < 2; j++)
@@ -1809,7 +1791,6 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
       int b = 1 + rand_mod(rc, 6);
       int same = rand_mod(rc, 4); /* 25% chance of using the same post for all of them */
       
-      sprintf(ministr,"(%d%s)",b,(same>0) ? " same" : "");
       for (i = 0; i < cp->num_xforms; i++) {
          int copy = (i > 0) && same;
 
@@ -1908,7 +1889,6 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
    } else if (mutate_mode == MUTATE_DELETE_XFORM) {
    
       int nx = rand_mod(rc, cp->num_xforms);
-      sprintf(ministr,"%d",nx);
 
       if (cp->num_xforms > 1)
          flam3_delete_xform(cp,nx);
