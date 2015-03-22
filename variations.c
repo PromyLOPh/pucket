@@ -2308,8 +2308,6 @@ void initialize_xforms(flam3_genome *thiscp, int start_here) {
       thiscp->xform[i].var[0] = 1.0;
       thiscp->xform[i].motion_freq = 0;
       thiscp->xform[i].motion_func = 0;
-      thiscp->xform[i].num_motion = 0;
-      thiscp->xform[i].motion = NULL;
       for (j = 1; j < flam3_nvariations; j++)
          thiscp->xform[i].var[j] = 0.0;
       thiscp->xform[i].c[0][0] = 1.0;

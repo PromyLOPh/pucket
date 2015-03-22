@@ -77,20 +77,6 @@ unsigned short *flam3_create_xform_distrib(flam3_genome *cp) {
    return(xform_distrib);
 }
 
-void rotate_by(double *p, double *center, double by) {
-    double r[2];
-    double th = by * 2 * M_PI / 360.0;
-    double c = cos(th);
-    double s = -sin(th);
-    p[0] -= center[0];
-    p[1] -= center[1];
-    r[0] = c * p[0] - s * p[1];
-    r[1] = s * p[0] + c * p[1];
-    p[0] = r[0] + center[0];
-    p[1] = r[1] + center[1];
-}
-
-
 int flam3_check_unity_chaos(flam3_genome *cp) {
 
    int i,j;
@@ -279,160 +265,6 @@ void flam3_rotate(flam3_genome *cp, double by, int interpolation_type) {
       cp->xform[i].c[1][1] = U[1][1];
    }
 }
-
-#define APPMOT(x)  do { addto->x += mot[i].x * motion_funcs(func,freq*blend); } while (0);
-
-void apply_motion_parameters(flam3_xform *xf, flam3_xform *addto, double blend) {
-
-   int i,j,k;
-   int freq;
-   int func;
-   flam3_xform* mot;
-   
-   mot = xf->motion;
-
-   /* Loop over the motion elements and add their contribution to the original vals */
-   for (i=0; i<xf->num_motion; i++) {   
-   
-      freq = mot->motion_freq;
-      func = mot->motion_func;
-      
-      APPMOT(density); /* Must ensure > 0 after all is applied */
-      APPMOT(color); /* Must ensure [0,1] after all is applied */
-      
-      APPMOT(opacity);      
-      APPMOT(color_speed);
-      APPMOT(animate);
-      APPMOT(blob_low);
-      APPMOT(blob_high);
-      APPMOT(blob_waves);
-      APPMOT(pdj_a);
-      APPMOT(pdj_b);
-      APPMOT(pdj_c);
-      APPMOT(pdj_d);
-      APPMOT(fan2_x);
-      APPMOT(fan2_y);
-      APPMOT(rings2_val);
-      APPMOT(perspective_angle);
-      APPMOT(perspective_dist);
-      APPMOT(julian_power);
-      APPMOT(julian_dist);
-      APPMOT(juliascope_power);
-      APPMOT(juliascope_dist);
-      APPMOT(radial_blur_angle);
-      APPMOT(pie_slices);
-      APPMOT(pie_rotation);
-      APPMOT(pie_thickness);
-      APPMOT(ngon_sides);
-      APPMOT(ngon_power);
-      APPMOT(ngon_circle);
-      APPMOT(ngon_corners);
-      APPMOT(curl_c1);
-      APPMOT(curl_c2);
-      APPMOT(rectangles_x);
-      APPMOT(rectangles_y);
-      APPMOT(amw_amp);
-      APPMOT(disc2_rot);
-      APPMOT(disc2_twist);
-      APPMOT(super_shape_rnd);
-      APPMOT(super_shape_m);
-      APPMOT(super_shape_n1);
-      APPMOT(super_shape_n2);
-      APPMOT(super_shape_n3);
-      APPMOT(super_shape_holes);
-      APPMOT(flower_petals);
-      APPMOT(flower_holes);
-      APPMOT(conic_eccentricity);
-      APPMOT(conic_holes);
-      APPMOT(parabola_height);
-      APPMOT(parabola_width);
-      APPMOT(bent2_x);
-      APPMOT(bent2_y);
-      APPMOT(bipolar_shift);
-      APPMOT(cell_size);
-      APPMOT(cpow_r);
-      APPMOT(cpow_i);
-      APPMOT(cpow_power);
-      APPMOT(curve_xamp);
-      APPMOT(curve_yamp);
-      APPMOT(curve_xlength);
-      APPMOT(curve_ylength);
-      APPMOT(escher_beta);
-      APPMOT(lazysusan_x);
-      APPMOT(lazysusan_y);
-      APPMOT(lazysusan_twist);
-      APPMOT(lazysusan_space);
-      APPMOT(lazysusan_spin);
-      APPMOT(modulus_x);
-      APPMOT(modulus_y);
-      APPMOT(oscope_separation);
-      APPMOT(oscope_frequency);
-      APPMOT(oscope_amplitude);
-      APPMOT(oscope_damping);
-      APPMOT(popcorn2_x);
-      APPMOT(popcorn2_y);
-      APPMOT(popcorn2_c);
-      APPMOT(separation_x);
-      APPMOT(separation_xinside);
-      APPMOT(separation_y);
-      APPMOT(separation_yinside);
-      APPMOT(split_xsize);
-      APPMOT(split_ysize);
-      APPMOT(splits_x);
-      APPMOT(splits_y);
-      APPMOT(stripes_space);
-      APPMOT(stripes_warp);
-      APPMOT(wedge_angle);
-      APPMOT(wedge_hole);
-      APPMOT(wedge_count);
-      APPMOT(wedge_swirl);
-      APPMOT(wedge_julia_angle);
-      APPMOT(wedge_julia_count);
-      APPMOT(wedge_julia_power);
-      APPMOT(wedge_julia_dist);
-      APPMOT(wedge_sph_angle);
-      APPMOT(wedge_sph_hole);
-      APPMOT(wedge_sph_count);
-      APPMOT(wedge_sph_swirl);
-      APPMOT(whorl_inside);
-      APPMOT(whorl_outside);
-      APPMOT(waves2_scalex);
-      APPMOT(waves2_scaley);
-      APPMOT(waves2_freqx);
-      APPMOT(waves2_freqy);
-      APPMOT(auger_sym);
-      APPMOT(auger_weight);
-      APPMOT(auger_freq);
-      APPMOT(auger_scale);
-      APPMOT(flux_spread);
-      APPMOT(mobius_re_a);
-      APPMOT(mobius_re_b);
-      APPMOT(mobius_re_c);
-      APPMOT(mobius_re_d);
-      APPMOT(mobius_im_a);
-      APPMOT(mobius_im_b);
-      APPMOT(mobius_im_c);
-      APPMOT(mobius_im_d);
-
-      for (j = 0; j < flam3_nvariations; j++)
-         APPMOT(var[j]);
-         
-      for (j=0; j<3; j++) {
-         for (k=0; k<2; k++) {
-            APPMOT(c[j][k]);
-            APPMOT(post[j][k]);
-         }
-      }
-         
-   }
-   
-   /* Make sure certain params are within reasonable bounds */
-   if (addto->color<0) addto->color=0;
-   if (addto->color>1) addto->color=1;
-   if (addto->density<0) addto->density=0;
-   
-}
-      
 
 /*
  * create a control point that interpolates between the control points
@@ -726,32 +558,6 @@ void flam3_copy_params(flam3_xform *dest, flam3_xform *src, int varn) {
    }
 }
 
-/* Motion support functions */
-void flam3_add_motion_element(flam3_xform *xf) {
-
-   /* Add one to the xform's count of motion elements */
-   xf->num_motion++;
-   
-   /* Reallocate the motion storage to include the empty space */
-   xf->motion = (struct xform *)realloc(xf->motion, xf->num_motion * sizeof(struct xform));
-   
-   /* Initialize the motion element */
-   /* In this case, all elements should be set to 0 */
-   memset( &(xf->motion[xf->num_motion-1]), 0, sizeof(struct xform));
-   
-}   
-   
-/* Motion support functions */
-void flam3_delete_motion_elements(flam3_xform *xf) {
-
-   /* Free the motion elements */
-   if (xf->num_motion>0) {
-      free(xf->motion);
-      xf->num_motion = 0;
-   }
-   
-}
-
 /* Xform support functions */
 void flam3_add_xforms(flam3_genome *thiscp, int num_to_add, int interp_padding, int final_flag) {
 
@@ -853,9 +659,6 @@ void flam3_delete_xform(flam3_genome *thiscp, int idx_to_delete) {
       thiscp->final_xform_index--;
    }
 
-   /* Delete the motion elements of the banished xform */
-   flam3_delete_motion_elements(&(thiscp->xform[idx_to_delete]));
-
    /* Move all of the xforms down one - this does not require manual motion xform adjustment */
    for (i=idx_to_delete; i<thiscp->num_xforms-1; i++)
       thiscp->xform[i] = thiscp->xform[i+1];
@@ -868,26 +671,7 @@ void flam3_delete_xform(flam3_genome *thiscp, int idx_to_delete) {
 }
 
 void flam3_copy_xform(flam3_xform *dest, flam3_xform *src) {
-
-   int j;
-   
-   /* Make sure the dest doesn't have motion already */
-   if (dest->num_motion>0)
-      flam3_delete_motion_elements(dest);
-
-   /* Copy everything */
-   *dest = *src;
-   
-   /* Reset motion in dest and copy it */
-   dest->num_motion=0;
-   dest->motion=NULL;
-
-   if (src->num_motion>0) {
-      for (j=0;j<src->num_motion;j++)
-         flam3_add_motion_element(dest);
-
-      memcpy(dest->motion,src->motion,src->num_motion*sizeof(flam3_xform));
-   }
+   memcpy (dest, src, sizeof (*dest));
 }
 
 /* Copy one control point to another */
@@ -978,8 +762,6 @@ void flam3_copyx(flam3_genome *dest, flam3_genome *src, int dest_std_xforms, int
          
       } else {
          /* Interpolated-against final xforms need animate & color_speed set to 0.0 */
-         dest->xform[dest->num_xforms-1].num_motion = 0;
-         dest->xform[dest->num_xforms-1].motion=NULL;
          dest->xform[dest->num_xforms-1].animate=0.0;
          dest->xform[dest->num_xforms-1].color_speed=0.0;
       }
@@ -1253,9 +1035,9 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes) {
    for (i = 0; i < cp->num_xforms; i++) {
    
       if (i==cp->final_xform_index)   
-         flam3_print_xform(f, &cp->xform[i], 1, numstd, NULL, 0);
+         flam3_print_xform(f, &cp->xform[i], 1, numstd, NULL);
       else 
-         flam3_print_xform(f, &cp->xform[i], 0, numstd, cp->chaos[i], 0);
+         flam3_print_xform(f, &cp->xform[i], 0, numstd, cp->chaos[i]);
 
    }
 
@@ -1289,7 +1071,7 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes) {
 #define PRINTNON(p) do { if (x->p != 0.0) fprintf(f, #p "=\"%f\" ",x->p); } while(0)
    
 
-void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row, int motion_flag) {
+void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row) {
 
    int blob_var=0,pdj_var=0,fan2_var=0,rings2_var=0,perspective_var=0;
    int juliaN_var=0,juliaScope_var=0,radialBlur_var=0,pie_var=0,disc2_var=0;
@@ -1304,28 +1086,16 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
    int j;
    int lnv;
 
-   if (motion_flag) {
-      fprintf(f, "      <motion motion_frequency=\"%d\" ",x->motion_freq);
-      if (x->motion_func == MOTION_SIN)
-         fprintf(f, "motion_function=\"sin\" ");
-      else if (x->motion_func == MOTION_TRIANGLE)
-         fprintf(f, "motion_function=\"triangle\" ");
-      else if (x->motion_func == MOTION_HILL)
-         fprintf(f, "motion_function=\"hill\" ");
-   } else {
-      if (final_flag)
-         fprintf(f, "   <finalxform ");
-      else
-         fprintf(f, "   <xform weight=\"%g\" ", x->density);
-   }
+   if (final_flag)
+	   fprintf(f, "   <finalxform ");
+   else
+	   fprintf(f, "   <xform weight=\"%g\" ", x->density);
    
-   if (!motion_flag || x->color != 0.0)
-      fprintf(f, "color=\"%g\" ", x->color);
+   fprintf(f, "color=\"%g\" ", x->color);
    
-   if (!motion_flag)   
-      fprintf(f, "color_speed=\"%g\" ", x->color_speed);
+   fprintf(f, "color_speed=\"%g\" ", x->color_speed);
    
-   if (!final_flag && !motion_flag)
+   if (!final_flag)
       fprintf(f, "animate=\"%g\" ", x->animate);
 
    lnv = flam3_nvariations;
@@ -1413,7 +1183,6 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
       }
    }
 
-   if (!motion_flag) {
       if (blob_var==1) {
          fprintf(f, "blob_low=\"%g\" ", x->blob_low);
          fprintf(f, "blob_high=\"%g\" ", x->blob_high);
@@ -1655,177 +1424,7 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
          fprintf(f, "\"");
       }
 
-
-   } else {
-      /* For motion, print any parameter if it's nonzero */
-      PRINTNON(blob_low);
-      PRINTNON(blob_high);
-      PRINTNON(blob_waves);
-
-      PRINTNON(pdj_a);
-      PRINTNON(pdj_b);
-      PRINTNON(pdj_c);
-      PRINTNON(pdj_d);
-
-      PRINTNON(fan2_x);
-      PRINTNON(fan2_y);
-
-      PRINTNON(rings2_val);
-
-      PRINTNON(perspective_angle);
-      PRINTNON(perspective_dist);
-      
-      PRINTNON(julian_power);
-      PRINTNON(julian_dist);      
-
-      PRINTNON(juliascope_power);
-      PRINTNON(juliascope_dist);      
-
-      PRINTNON(radial_blur_angle);
-
-      PRINTNON(pie_slices);
-      PRINTNON(pie_rotation);
-      PRINTNON(pie_thickness);      
-
-      PRINTNON(ngon_sides);
-      PRINTNON(ngon_power);
-      PRINTNON(ngon_corners);
-      PRINTNON(ngon_circle);
-
-      PRINTNON(curl_c1);
-      PRINTNON(curl_c2);
-
-      PRINTNON(rectangles_x);
-      PRINTNON(rectangles_y);
-
-      PRINTNON(disc2_rot);
-      PRINTNON(disc2_twist);
-
-      PRINTNON(super_shape_rnd);
-      PRINTNON(super_shape_m);
-      PRINTNON(super_shape_n1);
-      PRINTNON(super_shape_n2);
-      PRINTNON(super_shape_n3);
-      PRINTNON(super_shape_holes);
-
-      PRINTNON(flower_petals);
-      PRINTNON(flower_holes);
-
-      PRINTNON(conic_eccentricity);
-      PRINTNON(conic_holes);
-
-      PRINTNON(parabola_height);
-      PRINTNON(parabola_width);
-
-      PRINTNON(bent2_x);
-      PRINTNON(bent2_y);
-
-      PRINTNON(bipolar_shift);      
-
-      PRINTNON(cell_size);
-
-      PRINTNON(cpow_i);
-      PRINTNON(cpow_r);
-      PRINTNON(cpow_power);
-
-      PRINTNON(curve_xamp);
-      PRINTNON(curve_yamp);
-      PRINTNON(curve_xlength);
-      PRINTNON(curve_ylength);
-
-      PRINTNON(escher_beta);
-
-      PRINTNON(lazysusan_x);
-      PRINTNON(lazysusan_y);
-      PRINTNON(lazysusan_spin);
-      PRINTNON(lazysusan_space);
-      PRINTNON(lazysusan_twist);
-
-      PRINTNON(modulus_x);
-      PRINTNON(modulus_y);
-
-      PRINTNON(oscope_separation);
-      PRINTNON(oscope_frequency);
-      PRINTNON(oscope_amplitude);
-      PRINTNON(oscope_damping);
-
-      PRINTNON(popcorn2_x);
-      PRINTNON(popcorn2_y);
-      PRINTNON(popcorn2_c);
-
-      PRINTNON(separation_x);
-      PRINTNON(separation_y);
-      PRINTNON(separation_xinside);
-      PRINTNON(separation_yinside);
-
-      PRINTNON(split_xsize);
-      PRINTNON(split_ysize);
-
-      PRINTNON(splits_x);
-      PRINTNON(splits_y);
-
-      PRINTNON(stripes_space);
-      PRINTNON(stripes_warp);
-
-      PRINTNON(wedge_angle);
-      PRINTNON(wedge_hole);
-      PRINTNON(wedge_count);
-      PRINTNON(wedge_swirl);
-
-      PRINTNON(wedge_julia_angle);
-      PRINTNON(wedge_julia_count);
-      PRINTNON(wedge_julia_power);
-      PRINTNON(wedge_julia_dist);
-
-      PRINTNON(wedge_sph_angle);
-      PRINTNON(wedge_sph_hole);
-      PRINTNON(wedge_sph_count);
-      PRINTNON(wedge_sph_swirl);
-      
-      PRINTNON(whorl_inside);
-      PRINTNON(whorl_outside);
-      
-      PRINTNON(waves2_scalex);
-      PRINTNON(waves2_scaley);
-      PRINTNON(waves2_freqx);
-      PRINTNON(waves2_freqy);
-
-      PRINTNON(auger_sym);
-      PRINTNON(auger_weight);
-      PRINTNON(auger_freq);
-      PRINTNON(auger_scale);
-
-      PRINTNON(flux_spread);
-
-      PRINTNON(mobius_re_a);
-      PRINTNON(mobius_im_a);
-      PRINTNON(mobius_re_b);
-      PRINTNON(mobius_im_b);
-      PRINTNON(mobius_re_c);
-      PRINTNON(mobius_im_c);
-      PRINTNON(mobius_re_d);
-      PRINTNON(mobius_im_d);
-      
-      if (!zero_matrix(x->c)) {
-         fprintf(f, "coefs=\"");
-         for (j = 0; j < 3; j++) {
-            if (j) fprintf(f, " ");
-            fprintf(f, "%g %g", x->c[j][0], x->c[j][1]);
-         }
-         fprintf(f, "\"");
-      }
-
-      if (!zero_matrix(x->post)) {
-         fprintf(f, " post=\"");
-         for (j = 0; j < 3; j++) {
-            if (j) fprintf(f, " ");
-            fprintf(f, "%g %g", x->post[j][0], x->post[j][1]);
-         }
-         fprintf(f, "\"");
-      }
-   }   
-      
-   if (!final_flag && !motion_flag) {
+   if (!final_flag) {
       
       /* Print out the chaos row for this xform */
       int numcols = numstd;
@@ -1843,25 +1442,9 @@ void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, doub
                
    }
 
-   if (!motion_flag) {
-      fprintf(f, " opacity=\"%g\"",x->opacity);
-   }
+   fprintf(f, " opacity=\"%g\"",x->opacity);
 
-   if (!motion_flag && x->num_motion>0) {
-      int nm;
-      
-      fprintf(f,">\n");
-      
-      for (nm=0; nm<x->num_motion; nm++)
-         flam3_print_xform(f, &(x->motion[nm]), 0, 0, NULL, 1);
-         
-      if (final_flag)
-         fprintf(f,"   </finalxform>\n");
-      else
-         fprintf(f,"   </xform>\n");
-
-   } else
-      fprintf(f, "/>\n");
+   fprintf(f, "/>\n");
 }
 
 static double round6(double x) {
@@ -2041,9 +1624,6 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
       parents[1].time = 1.0;
       flam3_interpolate(parents, 2, t, 0, out);
       
-      for (i=0;i<out->num_xforms;i++)
-         flam3_delete_motion_elements(&out->xform[i]);
-         
       clear_cp(&parents[0],flam3_defaults_on);
       clear_cp(&parents[1],flam3_defaults_on);
       

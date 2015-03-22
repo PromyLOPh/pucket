@@ -413,11 +413,6 @@ typedef struct xform {
    
    int motion_freq;
    int motion_func;
-   
-   struct xform *motion;
-   int num_motion;
-   
-
 } flam3_xform;
 
 #include "palettes.h"
@@ -475,14 +470,12 @@ typedef struct {
 
 /* xform manipulation */
 
-void flam3_add_motion_element(flam3_xform *xf);
 void flam3_add_xforms(flam3_genome *cp, int num_to_add, int interp_padding, int final_flag);
 void flam3_delete_xform(flam3_genome *thiscp, int idx_to_delete);
 void flam3_copy_xform(flam3_xform *dest, flam3_xform *src);
 void flam3_copy(flam3_genome *dest, const flam3_genome * const src);
 void flam3_copyx(flam3_genome *dest, flam3_genome *src, int num_std, int num_final);
 void flam3_copy_params(flam3_xform *dest, flam3_xform *src, int varn);
-void flam3_delete_motion_elements(flam3_xform *xf);
 
 unsigned short* flam3_create_xform_distrib(flam3_genome *cp);
 int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_distrib);
@@ -496,15 +489,13 @@ void clear_cp(flam3_genome *cp, int def_flag);
    nsamples iterations and save them in the samples array */
 int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, const unsigned short *xform_distrib, randctx *rc);
 
-void apply_motion_parameters(flam3_xform *xf, flam3_xform *addto, double blend);
-
 /* genomes is array ngenomes long, with times set and in ascending order.
    interpolate to the requested time and return in result */
 void flam3_interpolate(flam3_genome *genomes, int ngenomes, double time, double stagger, flam3_genome *result);
 
 /* print genome to given file with extra_attributes if not NULL */
 void flam3_print(FILE *f, flam3_genome *g, char *extra_attributes);
-void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row, int motion_flag);
+void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row);
 char *flam3_print_to_string(flam3_genome *cp);
 
 void flam3_random(flam3_genome *cp, const unsigned int max_xform,
@@ -544,15 +535,6 @@ typedef struct {
    int           sub_batch_size;
 } flam3_frame;
 
-
-/* out is pixel array.  pixels are rgba */
-int flam3_render(flam3_frame *spec, void *out,
-        stat_struct *stats);
-
-void rotate_by(double *p, double *center, double by);
-
-
-void flam3_init_frame(flam3_frame *f);
 
 /* Motion function indices */
 #define MOTION_SIN 1

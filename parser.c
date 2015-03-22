@@ -275,7 +275,7 @@ void scan_for_flame_nodes(xmlNode *cur_node, int default_flag, flam3_genome **al
 int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
                         randctx * const rc) {
    flam3_genome *cp = loc_current_cp;
-   xmlNode *chld_node, *motion_node;
+   xmlNode *chld_node;
    xmlAttrPtr att_ptr, cur_att;
    int solo_xform=-1;
    char *att_str;
@@ -655,24 +655,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
             return(1);
          }
          
-         
-         /* Motion Language:  Check the xform element for children - should be named 'motion'. */
-         for (motion_node=chld_node->children; motion_node; motion_node = motion_node->next) {
-                  
-            if (!xmlStrcmp(motion_node->name, (const xmlChar *)"motion")) {
-            
-               int nm = cp->xform[xf].num_motion;
-
-               /* Add motion element to xform */
-               flam3_add_motion_element( &cp->xform[xf] );            
-               
-               /* Read motion xml */
-               if (parse_xform_xml(motion_node, &(cp->xform[xf].motion[nm]), NULL, NULL, 0, 1) != 0)
-                  return(1);
-               
-            }
-            
-         }           
       }
    } /* Done parsing flame element. */
    
