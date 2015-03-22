@@ -249,7 +249,6 @@ static void do_random (const random_arguments * const arguments) {
 	palette_copy (p, &genome.palette);
 	palette_rotate_hue (&genome.palette, genome.hue_rotation);
 	genome.interpolation = flam3_interpolation_linear;
-	genome.palette_interpolation = flam3_palette_interpolation_hsv;
 	genome.rotate = rand_d01 (&rc) * 360.0;
 
 	unsigned int nxforms = rand_mod (&rc, arguments->max_xforms) + 1;
@@ -427,32 +426,65 @@ static void do_cross (const cross_arguments * const arguments) {
 static void do_improvecolors () {
 	flam3_improve_colors(&cp_orig, 100, 0, 10, &rc);
 }
-
-static void do_interpolate () {
-	for (ftime = first_frame; ftime <= last_frame; ftime += 1) {
-		iscp=0;
-		for (i=0;i<ncp;i++) {
-			if ( ftime==cp[i].time ) {
-				flam3_copy(&interpolated, &(cp[i]) );
-				iscp=1;
-			}
-		}
-		if (iscp==0) {
-			flam3_interpolate(cp, ncp, (double)ftime, stagger, &interpolated);
-			for (i=0;i<ncp;i++) {
-				if ( ftime==cp[i].time-1 ) {
-					iscp=1;
-				}
-			}
-			if (iscp==0)
-				interpolated.interpolation_type = flam3_inttype_linear;
-		}
-
-		if (templ) flam3_apply_template(&interpolated, templ);
-		gprint(&interpolated, 1);
-	}
-}
 #endif
+
+typedef struct {
+	float time;
+} interpolate_arguments;
+
+static error_t parse_interpolate_opt (int key, char *arg,
+		struct argp_state * const state) {
+	interpolate_arguments * const arguments = state->input;
+	switch (key) {
+		case 't': {
+			assert (arg != NULL);
+			float i = atof (arg);
+			if (i >= 0.0 && i <= 1.0) {
+				arguments->time = i;
+			} else {
+				argp_error (state, "Time must be between 0 and 1");
+			}	
+			break;
+		}
+
+		case ARGP_KEY_ARG:
+			if (state->arg_num > 0) {
+				return ARGP_ERR_UNKNOWN;
+			}
+			break;
+
+		case ARGP_KEY_END:
+			break;
+
+		default:
+			return ARGP_ERR_UNKNOWN;
+			break;
+	}
+
+	return 0;
+}
+
+static void do_interpolate (const interpolate_arguments * const arguments) {
+	randctx rc;
+
+	rand_seed(&rc);
+
+	int ncps;
+	flam3_genome * const cps = flam3_parse_xml2 (STDIN_FILENO,
+			flam3_defaults_on, &ncps, &rc);
+	if (cps == NULL) {
+		fprintf(stderr,"error reading genomes from file\n");
+		exit(1);
+	}
+	assert (ncps == 2);
+	cps[0].time = 0.0;
+	cps[1].time = 1.0;
+
+	flam3_genome genome_out;
+	flam3_interpolate (cps, 2, arguments->time, 0, &genome_out);
+
+	print_genome (&genome_out);
+}
 
 static void show_help (const char * const argv0) {
 	const char *progname = strrchr (argv0, (int) '/');
@@ -463,10 +495,11 @@ static void show_help (const char * const argv0) {
 	}
 	fprintf (stderr,
 			"Usage: %s cross [OPTION...]\n"
+			"   Or: %s interpolate [OPTION...]\n"
 			"   Or: %s mutate [OPTION...]\n"
 			"   Or: %s random [OPTION...]\n"
 			"   Or: %s render [OPTION...]\n",
-			progname, progname, progname, progname);
+			progname, progname, progname, progname, progname);
 }
 
 int main (int argc, char **argv) {
@@ -494,6 +527,23 @@ int main (int argc, char **argv) {
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
 		do_cross (&arguments);
+	} else if (streq (command, "interpolate")) {
+		const struct argp_option options[] = {
+				{"time", 't', "float", OPTION_ARG_OPTIONAL, "Time step (0.5)" },
+				{ 0 },
+				};
+		const char doc[] = PACKAGE "-interpolate -- fractal flame interpolation";
+		const struct argp argp = {
+				.options = options, .parser = parse_interpolate_opt,
+				.args_doc = NULL, .doc = doc, .children = NULL
+				};
+
+		interpolate_arguments arguments = {
+				.time = 0.5,
+				};
+
+		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
+		do_interpolate (&arguments);
 #if 0
 	} else if (streq (command, "mutate")) {
 		const struct argp_option options[] = {

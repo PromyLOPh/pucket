@@ -341,7 +341,6 @@ void flam3_interpolate(flam3_genome cps[], int ncps,
    result->time = time;
    result->interpolation = flam3_interpolation_linear;
    result->interpolation_type = cpi[0].interpolation_type;
-   result->palette_interpolation = flam3_palette_interpolation_hsv;
 
    if (!smoothflag) {
        flam3_interpolate_n(result, 2, cpi, c, stagger);
@@ -782,7 +781,6 @@ void clear_cp(flam3_genome *cp, int default_flag) {
     cp->brightness = 4.0;
     cp->pixels_per_unit = 50;
     cp->interpolation = flam3_interpolation_linear;
-    cp->palette_interpolation = flam3_palette_interpolation_hsv;
 
     if (default_flag==flam3_defaults_on) {
        /* If defaults are on, set to reasonable values */
@@ -1017,10 +1015,6 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes) {
        fprintf(f, " interpolation_type=\"old\"");
    else if (flam3_inttype_older == cp->interpolation_type)
        fprintf(f, " interpolation_type=\"older\"");
-
-
-   if (flam3_palette_interpolation_hsv != cp->palette_interpolation)
-       fprintf(f, " palette_interpolation=\"sweep\"");
 
    if (extra_attributes)
       fprintf(f, " %s", extra_attributes);

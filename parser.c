@@ -318,14 +318,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
      } else {
          fprintf(stderr, "warning: unrecognized interpolation type %s.\n", att_str);
      }
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"palette_interpolation")) {
-     if (!strcmp("hsv", att_str)) {
-         cp->palette_interpolation = flam3_palette_interpolation_hsv;
-     } else if  (!strcmp("sweep", att_str)) {
-         cp->palette_interpolation = flam3_palette_interpolation_sweep;
-     } else {
-         fprintf(stderr, "warning: unrecognized palette interpolation type %s.\n", att_str);
-     }
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"interpolation_space") ||
                  !xmlStrcmp(cur_att->name, (const xmlChar *)"interpolation_type")) {
       

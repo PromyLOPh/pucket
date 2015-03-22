@@ -366,7 +366,7 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
           flam3_genome *cpi, double *c, double stagger) {
    int i, j, k, numstd;
    
-   if (flam3_palette_interpolation_hsv == cpi[0].palette_interpolation) {
+	  /* HSV palette interpolation */
    
       for (i = 0; i < cpi[0].palette.count; i++) {
 		 double4 s, t;
@@ -393,17 +393,6 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
 				                    ret_color[2], s[3] });
        
       }
-   } else {
-	/* XXX: broken */
-	assert (0);
-#if 0
-      /* Sweep - not the best option for float indices */
-      for (i = 0; i < cpi[0].palette.count; i++) {
-         j = (i < (cpi[j].palette.count * c[0])) ? 0 : 1;
-         palette_add (&result->palette, cpi[j].palette.color[i]);
-      }
-#endif
-   }
 
    result->symmetry = 0;
    result->palette_mode = cpi[0].palette_mode;

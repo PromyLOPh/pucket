@@ -46,9 +46,6 @@ extern char *flam3_variation_names[];
 #define flam3_inttype_compat 2 /* Linear and old behaviour */
 #define flam3_inttype_older  3 /* rotate padded xforms     */
 
-#define flam3_palette_interpolation_hsv   0
-#define flam3_palette_interpolation_sweep 1
-
 #define flam3_max_action_length 10000
 
 typedef enum {
@@ -422,7 +419,6 @@ typedef struct {
    double time;
    int interpolation;
    int interpolation_type;
-   int palette_interpolation;
    int num_xforms;
    int final_xform_index;
    int final_xform_enable;
