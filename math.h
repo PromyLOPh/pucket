@@ -19,6 +19,7 @@
 #pragma once
 
 #include <math.h>
+#include <assert.h>
 
 #include "build/config.h"
 
@@ -78,6 +79,20 @@ inline void rotate_center (const double2 center, const double angle, double2 out
 inline double sum(const double2 in) {
 	return in[0] + in[1];
 }
+
+inline void normalize (double * const a, const size_t n) {
+	double sum = 0.0;
+	for (unsigned int j = 0; j < n; j++) {
+		sum += a[j];
+	}
+	assert (sum > 0.0);
+
+	for (unsigned int j = 0; j < n; j++) {
+		a[j] /= sum;
+	}
+}
+
+#define max(a,b) ((a) > (b) ? (a) : (b))
 
 /*	Vector wrapping function, could be replaced by true vector functions later
  */

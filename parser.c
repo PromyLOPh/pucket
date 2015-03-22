@@ -216,7 +216,7 @@ int flam3_interp_missing_colors(flam3_genome *cp) {
 #endif
 
 
-void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag, flam3_genome **all_cps, int *all_ncps, randctx * const rc) {
+void scan_for_flame_nodes(xmlNode *cur_node, int default_flag, flam3_genome **all_cps, int *all_ncps, randctx * const rc) {
 
    xmlNode *this_node = NULL;
    flam3_genome loc_current_cp;
@@ -262,7 +262,7 @@ void scan_for_flame_nodes(xmlNode *cur_node, char *parent_file, int default_flag
 
       } else {
          /* Check all of the children of this element */
-         scan_for_flame_nodes(this_node->children, parent_file, default_flag, all_cps, all_ncps, rc);
+         scan_for_flame_nodes(this_node->children, default_flag, all_cps, all_ncps, rc);
       }
    }
    

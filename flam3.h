@@ -34,13 +34,9 @@
 
 #include "random.h"
 
-#define flam3_variation_random (-1)
-#define flam3_variation_random_fromspecified (-2)
-
 extern char *flam3_variation_names[];
 
 #define flam3_nvariations 99
-#define flam3_nxforms     12
 
 #define flam3_interpolation_linear 0
 #define flam3_interpolation_smooth 1
@@ -511,13 +507,8 @@ void flam3_print(FILE *f, flam3_genome *g, char *extra_attributes);
 void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row, int motion_flag);
 char *flam3_print_to_string(flam3_genome *cp);
 
-/* ivars is a list of variations to use, or flam3_variation_random     */
-/* ivars_n is the number of values in ivars to select from.            */
-/* sym is either a symmetry group or 0 meaning random or no symmetry   */
-/* spec_xforms specifies the number of xforms to use, setting to 0 makes the number random. */
-void flam3_random(flam3_genome *cp, int *ivars, int ivars_n, int sym,
-			      int spec_xforms, const palette_collection * const pc,
-				  randctx * const rc);
+void flam3_random(flam3_genome *cp, const unsigned int max_xform,
+		const palette_collection * const pc, randctx * const rc);
 
 void add_to_action(char *action, char *addtoaction);
 
@@ -525,8 +516,7 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc);
 
 /* return NULL in case of error */
-flam3_genome *flam3_parse_xml2(char *s, char *fn, int default_flag, int *ncps, randctx * const);
-flam3_genome *flam3_parse_from_file(FILE *f, char *fn, int default_flag, int *ncps, randctx * const);
+flam3_genome *flam3_parse_xml2(const int, int default_flag, int *ncps, randctx * const);
 
 void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc);
 

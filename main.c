@@ -25,6 +25,8 @@
 #include "private.h"
 #include "img.h"
 #include "rect.h"
+#include "math.h"
+#include "genome.h"
 
 #define streq(a,b) (strcmp (a, b) == 0)
 
@@ -93,7 +95,7 @@ static void do_render (const render_arguments * const arguments) {
 	rand_seed(&rc);
 
 	int ncps;
-	flam3_genome * const cps = flam3_parse_from_file (stdin, NULL,
+	flam3_genome * const cps = flam3_parse_xml2 (STDIN_FILENO,
 			flam3_defaults_on, &ncps, &rc);
 	if (cps == NULL) {
 		fprintf(stderr,"error reading genomes from file\n");
@@ -141,9 +143,9 @@ static void print_genome (flam3_genome * const genome) {
 }
 
 typedef struct {
-	int symmetry;
 	const char *palette;
-	unsigned int width, height;
+	unsigned int width, height, max_xforms, max_var;
+	double post_likelihood, final_likelihood, symmetry_likelihood;
 } random_arguments;
 
 static error_t parse_random_opt (int key, char *arg,
@@ -166,6 +168,16 @@ static error_t parse_random_opt (int key, char *arg,
 				argp_error (state, "Width must be > 0");
 			} else {
 				arguments->width = i;
+			}
+			break;
+		}
+
+		case 'x': {
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "Max xforms must be > 0");
+			} else {
+				arguments->max_xforms = i;
 			}
 			break;
 		}
@@ -229,8 +241,41 @@ static void do_random (const random_arguments * const arguments) {
 	assert (bret);
 
 	flam3_genome genome;
-	int ivars = flam3_variation_random;
-	flam3_random (&genome, &ivars, 1, arguments->symmetry, 0, &pc, &rc);
+	clear_cp (&genome,flam3_defaults_on);
+
+	genome.hue_rotation = rand_mod(&rc, 8) ? 0.0 : rand_d01(&rc);
+	const palette * const p = palette_random (&pc, &rc);
+	assert (p != NULL);
+	palette_copy (p, &genome.palette);
+	palette_rotate_hue (&genome.palette, genome.hue_rotation);
+	genome.interpolation = flam3_interpolation_linear;
+	genome.palette_interpolation = flam3_palette_interpolation_hsv;
+	genome.rotate = rand_d01 (&rc) * 360.0;
+
+	unsigned int nxforms = rand_mod (&rc, arguments->max_xforms) + 1;
+	flam3_add_xforms(&genome,nxforms,0,0);
+	/* Add a final xform 15% of the time */
+	const bool add_final = rand_d01(&rc) < arguments->final_likelihood;
+	if (add_final) {
+		flam3_add_xforms(&genome,1,0,1);
+		++nxforms;
+	}
+
+	/* Loop over xforms */
+	assert (nxforms > 0);
+	for (unsigned int i = 0; i < nxforms; i++) {
+		flam3_xform * const xform = &genome.xform[i];
+		const bool add_post = rand_d01 (&rc) < arguments->post_likelihood;
+		xform_rand (xform, add_post, arguments->max_var, &rc);
+		xform->density = 1.0 / nxforms;
+		xform->color_speed = 0.5;
+		xform->animate = 1.0;
+	}
+
+	/* Randomly add symmetry (but not if we've already added a final xform) */
+	if (rand_d01(&rc) < arguments->symmetry_likelihood && !add_final) {
+		flam3_add_symmetry(&genome, 0, &rc);
+	}
 
 	/* random resets genome, adjust before finding appropriate bbox */
 	genome.width = arguments->width;
@@ -295,7 +340,7 @@ static void do_mutate (const mutate_arguments * const arguments) {
 	rand_seed(&rc);
 
 	int ncps;
-	flam3_genome * const cps = flam3_parse_from_file (stdin, NULL,
+	flam3_genome * const cps = flam3_parse_xml2 (STDIN_FILENO,
 			flam3_defaults_on, &ncps, &rc);
 	if (cps == NULL) {
 		fprintf(stderr,"error reading genomes from file\n");
@@ -309,7 +354,7 @@ static void do_mutate (const mutate_arguments * const arguments) {
 
 	flam3_genome * const genome = &cps[0];
 
-	int ivars = flam3_variation_random;
+	int ivars = 0;
 	const double speed = 1.0;
 	flam3_mutate (genome, arguments->method, &ivars, 1, arguments->symmetry,
 			speed, &pc, &rc);
@@ -362,7 +407,7 @@ static void do_cross (const cross_arguments * const arguments) {
 	rand_seed(&rc);
 
 	int ncps;
-	flam3_genome * const cps = flam3_parse_from_file (stdin, NULL,
+	flam3_genome * const cps = flam3_parse_xml2 (STDIN_FILENO,
 			flam3_defaults_on, &ncps, &rc);
 	if (cps == NULL) {
 		fprintf(stderr,"error reading genomes from file\n");
@@ -449,6 +494,7 @@ int main (int argc, char **argv) {
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
 		do_cross (&arguments);
+#if 0
 	} else if (streq (command, "mutate")) {
 		const struct argp_option options[] = {
 				{"method", 'm', "XXX", OPTION_ARG_OPTIONAL, "Mutation method" },
@@ -467,11 +513,13 @@ int main (int argc, char **argv) {
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
 		do_mutate (&arguments);
+#endif
 	} else if (streq (command, "random")) {
 		/* generate random genome */
 		const struct argp_option options[] = {
-				{"height", 'h', "pixels", 0, "Output flame height" },
-				{"width", 'w', "pixels", 0, "Output flame width" },
+				{"height", 'h', "pixels", 0, "Output flame height (1000)" },
+				{"width", 'w', "pixels", 0, "Output flame width (1000)" },
+				{"max-xforms", 'x', "number", 0, "Max number of xforms (6)" },
 				{ 0 },
 				};
 		const char doc[] = PACKAGE "-random -- a fractal flame generator";
@@ -481,10 +529,14 @@ int main (int argc, char **argv) {
 				};
 
 		random_arguments arguments = {
-				.symmetry = 0,
 				.palette = "flam3-palettes.xml",
 				.width = 1000,
 				.height = 1000,
+				.max_xforms = 6,
+				.max_var = flam3_nvariations,
+				.post_likelihood = 0.4,
+				.final_likelihood = 0.15,
+				.symmetry_likelihood = 0.25,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);

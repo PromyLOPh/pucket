@@ -22,5 +22,5 @@ def configure(conf):
     conf.write_config_header ('config.h')
 
 def build(bld):
-    bld.program (features='c cprogram', source='flam3.c parser.c variations.c interpolation.c palettes.c png.c random.c rect.c main.c', target='pucket', use='xml2 png amdlibm')
+    bld.program (features='c cprogram', source='flam3.c parser.c variations.c interpolation.c palettes.c png.c random.c rect.c main.c genome.c', target='pucket', use='xml2 png amdlibm')
 
