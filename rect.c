@@ -263,7 +263,7 @@ static void compute_camera (const flam3_genome * const genome,
 	const double corner1 = genome->center[1] - bucket->dim[1] / ppuy / 2.0;
 
 	double2 rot_matrix[3];
-	rotate_center ((double2) { genome->rot_center[0], genome->rot_center[1] },
+	rotate_center ((double2) { genome->center[0], genome->center[1] },
 			genome->rotate, rot_matrix);
 
 	const double4 from_rect = (double4) { corner0, corner1,

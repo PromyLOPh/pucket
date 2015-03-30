@@ -352,8 +352,6 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
             xmlFree(att_str);
             return(1);
          }
-         cp->rot_center[0] = cp->center[0];
-         cp->rot_center[1] = cp->center[1];
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"scale")) {
          cp->pixels_per_unit = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"rotate")) {

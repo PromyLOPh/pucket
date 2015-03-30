@@ -438,7 +438,6 @@ typedef struct {
    double highlight_power;
    int  width, height;          /* of the final image */
    double center[2];             /* of camera */
-   double rot_center[2];         /* really the center */
    double rotate;                /* camera */
    double vibrancy;              /* blend between color algs (0=old,1=new) */
    double hue_rotation;          /* applies to cmap, 0-1 */

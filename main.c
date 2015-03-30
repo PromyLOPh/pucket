@@ -227,8 +227,6 @@ static void adjust_bounding_box (flam3_genome * const genome, randctx * const rc
 		genome->center[0] = mix0 * bmin[0] + (1-mix0)*bmax[0];
 		genome->center[1] = mix1 * bmin[1] + (1-mix1)*bmax[1];
 	}
-	genome->rot_center[0] = genome->center[0];
-	genome->rot_center[1] = genome->center[1];
 	genome->pixels_per_unit = genome->width / (bmax[0] - bmin[0]);
 }
 
