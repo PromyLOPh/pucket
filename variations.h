@@ -15,14 +15,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef variations_included
-#define variations_included
+#pragma once
 
-#include "private.h"
+#include "flam3.h"
 
 void xform_precalc(flam3_genome *cp, int xi);
 int prepare_precalc_flags(flam3_genome *);
 
 int apply_xform(flam3_genome *cp, int fn, const double4 p, double4 *, randctx *rc);
 void initialize_xforms(flam3_genome *thiscp, int start_here);
-#endif
+

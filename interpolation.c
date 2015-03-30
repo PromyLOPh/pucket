@@ -20,39 +20,12 @@
 
 #include <assert.h>
 
-double adjust_percentage(double in) {
+#define INTERP(x)  do { result->x = 0.0; \
+   for (k = 0; k < ncp; k++) result->x += c[k] * cpi[k].x; } while(0)
 
-   if (in==0.0)
-      return(0.0);
-   else
-      return(pow(10.0, -log(1.0/in)/log(2)));
-
-}
-
-double motion_funcs(int funcnum, double timeval) {
-
-   /* motion funcs should be cyclic, and equal to 0 at integral time values */
-   /* abs peak values should be not be greater than 1                       */
-   if (funcnum==MOTION_SIN) {
-      return (sin(2.0*M_PI*timeval));
-   } else if (funcnum==MOTION_TRIANGLE) {
-      double fr = fmod(timeval,1.0);
-      
-      if (fr<0) fr+= 1.0;
-      
-      if (fr<=.25)
-         fr = 4.0 * fr;
-      else if (fr<=.75)
-         fr = -4.0 * fr + 2.0;
-      else
-         fr = 4.0 * fr - 4.0;
-     
-      return(fr);
-   } else { //if (funcnum==MOTION_HILL) {
-      return( (1.0-cos(2.0*M_PI*timeval)) * 0.5);
-   }
-   
-}
+#define INTERI(x)  do { double tt = 0.0; \
+   for (k = 0; k < ncp; k++) tt += c[k] * cpi[k].x; \
+   result->x = (int)rint(tt); } while(0)
 
 double det_matrix(double s[2][2]) {
    return s[0][0] * s[1][1] - s[0][1] * s[1][0];
@@ -68,79 +41,20 @@ int id_matrix(double2 s[3]) {
       (s[2][1] == 0.0);
 }
 
-int zero_matrix(double2 s[3]) {
-   return
-      (s[0][0] == 0.0) &&
-      (s[0][1] == 0.0) &&
-      (s[1][0] == 0.0) &&
-      (s[1][1] == 0.0) &&
-      (s[2][0] == 0.0) &&
-      (s[2][1] == 0.0);
-}
-
-void copy_matrix(double to[3][2], double from[3][2]) {
-
-   to[0][0] = from[0][0];
-   to[0][1] = from[0][1];
-   to[1][0] = from[1][0];
-   to[1][1] = from[1][1];
-   to[2][0] = from[2][0];
-   to[2][1] = from[2][1];
-}
-
-
-void clear_matrix(double2 m[3]) {
+static void clear_matrix(double2 m[3]) {
    const double2 zero = (double2) { 0.0, 0.0 };
    m[0] = zero;
    m[1] = zero;
    m[2] = zero;
 }
 
-void sum_matrix(double s, const double2 m1[3], double2 m2[3]) {
+static void sum_matrix(double s, const double2 m1[3], double2 m2[3]) {
 
    m2[0] += s * m1[0];
    m2[1] += s * m1[1];
    m2[2] += s * m1[2];
 }
 
-void mult_matrix(double s1[2][2], double s2[2][2], double d[2][2]) {
-   d[0][0] = s1[0][0] * s2[0][0] + s1[1][0] * s2[0][1];
-   d[1][0] = s1[0][0] * s2[1][0] + s1[1][0] * s2[1][1];
-   d[0][1] = s1[0][1] * s2[0][0] + s1[1][1] * s2[0][1];
-   d[1][1] = s1[0][1] * s2[1][0] + s1[1][1] * s2[1][1];
-}
-
-int compare_xforms(const void *av, const void *bv) {
-   flam3_xform *a = (flam3_xform *) av;
-   flam3_xform *b = (flam3_xform *) bv;
-   double aa[2][2];
-   double bb[2][2];
-   double ad, bd;
-
-   aa[0][0] = a->c[0][0];
-   aa[0][1] = a->c[0][1];
-   aa[1][0] = a->c[1][0];
-   aa[1][1] = a->c[1][1];
-   bb[0][0] = b->c[0][0];
-   bb[0][1] = b->c[0][1];
-   bb[1][0] = b->c[1][0];
-   bb[1][1] = b->c[1][1];
-   ad = det_matrix(aa);
-   bd = det_matrix(bb);
-
-   if (a->color_speed > b->color_speed) return 1;
-   if (a->color_speed < b->color_speed) return -1;
-   if (a->color_speed) {
-      if (ad < 0) return -1;
-      if (bd < 0) return 1;
-      ad = atan2(a->c[0][0], a->c[0][1]);
-      bd = atan2(b->c[0][0], b->c[0][1]);
-   }
-
-   if (ad < bd) return -1;
-   if (ad > bd) return 1;
-   return 0;
-}
 
 #if 0
 void interpolate_cmap(flam3_palette cmap, double blend,
@@ -184,7 +98,7 @@ void interpolate_cmap(flam3_palette cmap, double blend,
 }
 #endif
 
-void interp_and_convert_back(double *c, int ncps, int xfi, double cxang[4][2], 
+static void interp_and_convert_back(double *c, int ncps, int xfi, double cxang[4][2], 
                              double cxmag[4][2], double cxtrn[4][2],double store_array[3][2]) {
 
    int i,col;
@@ -237,7 +151,7 @@ void interp_and_convert_back(double *c, int ncps, int xfi, double cxang[4][2],
    
 }
 
-void convert_linear_to_polar(flam3_genome *cp, int ncps, int xfi, int cflag, 
+static void convert_linear_to_polar(flam3_genome *cp, int ncps, int xfi, int cflag, 
                              double cxang[4][2], double cxmag[4][2], double cxtrn[4][2]) {
 
    double c1[2],d,t,refang;
@@ -329,11 +243,11 @@ void interpolate_catmull_rom(flam3_genome cps[], double t, flam3_genome *result)
    flam3_interpolate_n(result, 4, cps, cmc, 0);
 }
 
-double smoother(double t) {
+static double smoother(double t) {
   return 3*t*t - 2*t*t*t;
 }
 
-double get_stagger_coef(double t, double stagger_prc, int num_xforms, int this_xform) {
+static double get_stagger_coef(double t, double stagger_prc, int num_xforms, int this_xform) {
 
    /* max_stag is the spacing between xform start times if stagger_prc = 1.0 */
    double max_stag = (double)(num_xforms-1)/num_xforms;
@@ -620,7 +534,7 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
    
 }
 
-void establish_asymmetric_refangles(flam3_genome *cp, int ncps) {
+static void establish_asymmetric_refangles(flam3_genome *cp, int ncps) {
 
    int k, xfi, col;
    

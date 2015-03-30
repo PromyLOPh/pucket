@@ -15,9 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-#ifndef flam3_included
-#define flam3_included
+#pragma once
 
 #include <stdio.h>
 #include <libxml/parser.h>
@@ -30,10 +28,6 @@
 
 #define flam3_name_len    64
 
-#include "vector.h"
-
-#include "random.h"
-
 extern char *flam3_variation_names[];
 
 #define flam3_nvariations 99
@@ -45,8 +39,6 @@ extern char *flam3_variation_names[];
 #define flam3_inttype_log    1
 #define flam3_inttype_compat 2 /* Linear and old behaviour */
 #define flam3_inttype_older  3 /* rotate padded xforms     */
-
-#define flam3_max_action_length 10000
 
 typedef enum {
 	PALETTE_MODE_STEP = 0,
@@ -153,33 +145,8 @@ typedef enum {
 #define VAR_FLUX 97
 #define VAR_MOBIUS 98
 
-typedef struct {
-
-   double badvals;
-   long int num_iters;
-   
-} stat_struct;
-
-typedef struct {
-
-   unsigned int width, height;
-   int version;
-   int id;
-
-   /* There are 256 levels of gray to work with */
-   double intensity_weight[256];
-   unsigned int bin_size[256];
-   unsigned int bin_offset[256];
-
-   /* Pointer to newly allocated memory; we will be allocating */
-   /* 2*w*h ushorts for this storage.  The bin offset will     */
-   /* provide the starting point for a random selection from   */
-   /* (bin size) ordered pairs                                 */
-   unsigned short *rowcols;
-
-} flam3_image_store;
-
 #include "vector.h"
+#include "random.h"
 
 typedef struct xform {
    double var[flam3_nvariations];   /* interp coefs between variations */
@@ -490,13 +457,9 @@ void flam3_interpolate(flam3_genome *genomes, int ngenomes, double time, double 
 
 /* print genome to given file with extra_attributes if not NULL */
 void flam3_print(FILE *f, flam3_genome *g, char *extra_attributes);
-void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row);
-char *flam3_print_to_string(flam3_genome *cp);
 
 void flam3_random(flam3_genome *cp, const unsigned int max_xform,
 		const palette_collection * const pc, randctx * const rc);
-
-void add_to_action(char *action, char *addtoaction);
 
 void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, const palette_collection * const pc, randctx *rc);
 void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc);
@@ -507,15 +470,8 @@ flam3_genome *flam3_parse_xml2(const int, int default_flag, int *ncps, randctx *
 void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc);
 
 void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution, const palette_collection * const pc, randctx * const rc);
-int flam3_colorhist(flam3_genome *cp, int num_batches, randctx *rc, double *hist);
 int flam3_estimate_bounding_box(flam3_genome *g, double eps, int nsamples,
              double *bmin, double *bmax, randctx *rc);
-void flam3_rotate(flam3_genome *g, double angle, int interp_type); /* angle in degrees */
-
-double flam3_dimension(flam3_genome *g, int ntries, int clip_to_camera);
-double flam3_lyapunov(flam3_genome *g, int ntries);
-
-void flam3_apply_template(flam3_genome *cp, flam3_genome *templ);
 
 typedef struct {
    double         pixel_aspect_ratio;    /* width over height of each pixel */
@@ -529,7 +485,6 @@ typedef struct {
    int           nthreads;
    int           sub_batch_size;
 } flam3_frame;
-
 
 /* Motion function indices */
 #define MOTION_SIN 1
@@ -552,4 +507,3 @@ typedef struct {
 #define CROSS_INTERPOLATE     1  
 #define CROSS_ALTERNATE       2
 
-#endif

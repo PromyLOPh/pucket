@@ -15,7 +15,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "private.h"
 #include "rect.h"
 #include "img.h"
 #include "build/config.h"
@@ -25,20 +24,14 @@
 #include "palettes.h"
 #include "random.h"
 #include "math.h"
-#include <limits.h>
+#include <string.h>
 #include <locale.h>
-#include <math.h>
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#include <errno.h>
 #include <assert.h>
 
 #define CHOOSE_XFORM_GRAIN 16384
 #define CHOOSE_XFORM_GRAIN_M1 16383
+
+static void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row);
 
 unsigned short *flam3_create_xform_distrib(flam3_genome *cp) {
 
@@ -216,54 +209,6 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *
    }
    
    return(badvals);
-}
-
-/* BY is angle in degrees */
-void flam3_rotate(flam3_genome *cp, double by, int interpolation_type) {
-   int i;
-   for (i = 0; i < cp->num_xforms; i++) {
-      double r[2][2];
-      double T[2][2];
-      double U[2][2];
-      double dtheta = by * 2.0 * M_PI / 360.0;
-
-      /* Don't rotate xforms with > 0 animate values */
-      if (cp->xform[i].animate == 0.0)
-         continue;
-
-      if (cp->xform[i].padding == 1) {
-         if (interpolation_type == flam3_inttype_compat) {
-            /* gen 202 era flam3 did not rotate padded xforms */
-            continue;
-         } else if (interpolation_type == flam3_inttype_older) {
-            /* not sure if 198 era flam3 rotated padded xforms */
-            continue;
-         } else if (interpolation_type == flam3_inttype_linear) {
-            /* don't rotate for prettier symsings */
-            continue;
-         } else if (interpolation_type == flam3_inttype_log) {
-            /* Current flam3: what do we prefer? */
-            //continue;
-         }
-      }
-
-      /* Do NOT rotate final xforms */
-      if (cp->final_xform_enable==1 && cp->final_xform_index==i)
-         continue;
-
-      r[1][1] = r[0][0] = cos(dtheta);
-      r[0][1] = sin(dtheta);
-      r[1][0] = -r[0][1];
-      T[0][0] = cp->xform[i].c[0][0];
-      T[1][0] = cp->xform[i].c[1][0];
-      T[0][1] = cp->xform[i].c[0][1];
-      T[1][1] = cp->xform[i].c[1][1];
-      mult_matrix(r, T, U);
-      cp->xform[i].c[0][0] = U[0][0];
-      cp->xform[i].c[1][0] = U[1][0];
-      cp->xform[i].c[0][1] = U[0][1];
-      cp->xform[i].c[1][1] = U[1][1];
-   }
 }
 
 /*
@@ -901,63 +846,6 @@ flam3_genome *flam3_parse_xml2(const int fd, int default_flag, int *ncps,
    return loc_all_cp;
 }
 
-void flam3_apply_template(flam3_genome *cp, flam3_genome *templ) {
-
-   /* Check for invalid values - only replace those with valid ones */
-   if (templ->zoom < 999999998)
-      cp->zoom = templ->zoom;
-   if (templ->width > 0) {
-      /* preserving scale should be an option */
-      cp->pixels_per_unit = cp->pixels_per_unit * templ->width / cp->width;
-      cp->width = templ->width;
-   }
-   if (templ->height > 0)
-      cp->height = templ->height;
-   if (templ->gam_lin_thresh >= 0)
-      cp->gam_lin_thresh = templ->gam_lin_thresh;
-   if (templ->interpolation >= 0)
-      cp->interpolation = templ->interpolation;
-   if (templ->interpolation_type >= 0)
-      cp->interpolation_type = templ->interpolation_type;
-   if (templ->highlight_power >=0)
-      cp->highlight_power = templ->highlight_power;
-   if (templ->palette_mode >= 0)
-      cp->palette_mode = templ->palette_mode;
-
-}
-
-char *flam3_print_to_string(flam3_genome *cp) {
-
-   FILE *tmpflame;
-   long stringbytes;
-   char *genome_string;
-   
-   int using_tmpdir = 0;
-   char tmpnam[256];
-   
-   tmpflame = tmpfile();
-   if (NULL==tmpflame) {
-       if (using_tmpdir == 0) {
-          perror("opening temporary file");
-          return (NULL);
-       }
-   }
-   flam3_print(tmpflame,cp,NULL);
-   stringbytes = ftell(tmpflame);
-   fseek(tmpflame,0L, SEEK_SET);
-   genome_string = (char *)calloc(stringbytes+1,1);
-   if (stringbytes != fread(genome_string, 1, stringbytes, tmpflame)) {
-       perror("reading string from temp file");
-   }
-   fclose(tmpflame);
-
-   if (using_tmpdir)
-      unlink(tmpnam);
-   
-   return(genome_string);
-}
-   
-
 void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes) {
    int i,numstd;
 
@@ -1065,7 +953,7 @@ void flam3_print(FILE *f, flam3_genome *cp, char *extra_attributes) {
 #define PRINTNON(p) do { if (x->p != 0.0) fprintf(f, #p "=\"%f\" ",x->p); } while(0)
    
 
-void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row) {
+static void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row) {
 
    int blob_var=0,pdj_var=0,fan2_var=0,rings2_var=0,perspective_var=0;
    int juliaN_var=0,juliaScope_var=0,radialBlur_var=0,pie_var=0,disc2_var=0;
@@ -1447,6 +1335,38 @@ static double round6(double x) {
   return 1e-6*(int)(x+0.5);
 }
 
+static int compare_xforms(const void *av, const void *bv) {
+   flam3_xform *a = (flam3_xform *) av;
+   flam3_xform *b = (flam3_xform *) bv;
+   double aa[2][2];
+   double bb[2][2];
+   double ad, bd;
+
+   aa[0][0] = a->c[0][0];
+   aa[0][1] = a->c[0][1];
+   aa[1][0] = a->c[1][0];
+   aa[1][1] = a->c[1][1];
+   bb[0][0] = b->c[0][0];
+   bb[0][1] = b->c[0][1];
+   bb[1][0] = b->c[1][0];
+   bb[1][1] = b->c[1][1];
+   ad = det_matrix(aa);
+   bd = det_matrix(bb);
+
+   if (a->color_speed > b->color_speed) return 1;
+   if (a->color_speed < b->color_speed) return -1;
+   if (a->color_speed) {
+      if (ad < 0) return -1;
+      if (bd < 0) return 1;
+      ad = atan2(a->c[0][0], a->c[0][1]);
+      bd = atan2(b->c[0][0], b->c[0][1]);
+   }
+
+   if (ad < bd) return -1;
+   if (ad > bd) return 1;
+   return 0;
+}
+
 /* sym=2 or more means rotational
    sym=1 means identity, ie no symmetry
    sym=0 means pick a random symmetry (maybe none)
@@ -1537,22 +1457,6 @@ void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc) {
       sizeof(flam3_xform), compare_xforms);
       
 }
-
-void add_to_action(char *action, char *addtoaction) {
-
-   /* action is a flam3_max_action_length array */
-   if (action != NULL) {
-
-      int alen = strlen(action);
-      int addlen = strlen(addtoaction);
-
-      if (alen+addlen < flam3_max_action_length)
-         strcat(action,addtoaction);
-      else
-         fprintf(stderr,"action string too long, truncating...\n");
-   }
-}
-
 
 void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc) {
 

@@ -17,9 +17,9 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <omp.h>
 
-#include "private.h"
 #include "variations.h"
 #include "palettes.h"
 #include "math.h"
@@ -145,6 +145,72 @@ static void iter_thread (flam3_genome * const input_genome,
 	} while (!(*stopped));
 
 	free (iter_storage);
+}
+
+static double flam3_calc_alpha(double density, double gamma, double linrange) {
+
+   double dnorm = density;
+   double funcval = pow(linrange, gamma);
+   double frac,alpha;
+   
+   if (dnorm>0) {
+      if (dnorm < linrange) {
+         frac = dnorm/linrange;
+         alpha = (1.0-frac) * dnorm * (funcval / linrange) + frac * pow(dnorm,gamma);
+      } else
+         alpha = pow(dnorm,gamma);
+   } else
+      alpha = 0;
+      
+   return(alpha);
+}
+
+static double4 flam3_calc_newrgb(double4 cbuf, double ls, double highpow) {
+   int rgbi;
+   double newls,lsratio;
+   double a, maxa=-1.0, maxc=0;
+   double adjhlp;
+   
+   if (ls==0.0 || (cbuf[0]==0.0 && cbuf[1]==0.0 && cbuf[2]==0.0)) {
+      return (double4) { 0, 0, 0, 0 };
+   }
+   
+   /* Identify the most saturated channel */
+   for (rgbi=0;rgbi<3;rgbi++) {
+      a = ls * (cbuf[rgbi]);
+      if (a>maxa) {
+         maxa = a;
+         maxc = cbuf[rgbi];
+      }
+   }
+      
+   /* If a channel is saturated and we have a non-negative highlight power */
+   /* modify the color to prevent hue shift                                */
+   if (maxa > 1.0 && highpow>=0.0) {
+      newls = 1.0/maxc;
+      lsratio = pow(newls/ls,highpow);
+
+      /* Calculate the max-value color (ranged 0 - 1) */
+	  double4 newrgb = newls*(cbuf);
+
+      /* Reduce saturation by the lsratio */
+      double4 newhsv = rgb2hsv(newrgb);
+      newhsv[1] *= lsratio;
+
+      return hsv2rgb(newhsv);
+   } else {
+      newls = 1.0/maxc;
+      adjhlp = -highpow;
+      if (adjhlp>1)
+         adjhlp=1;
+      if (maxa<=1.0)
+         adjhlp=1.0;
+
+	  /* Calculate the max-value color (ranged 0 - 1) interpolated with the old
+	   * behaviour */
+		
+      return ((1.0-adjhlp)*newls + adjhlp*ls)*(cbuf);
+   }
 }
 
 /*	Perform clipping

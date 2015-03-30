@@ -24,11 +24,10 @@
 #include "build/config.h"
 #include "img.h"
 #include "flam3.h"
-#include "private.h"
 
 #include <arpa/inet.h>
 
-void write_png(FILE *file, void *image, int width, int height, flam3_img_comments *fpc, int bpc) {
+void write_png(FILE *file, void *image, int width, int height, int bpc) {
   png_structp  png_ptr;
   png_infop    info_ptr;
   size_t i;

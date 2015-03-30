@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "flam3.h"
+#include "vector.h"
 
 /* One palette */
 typedef struct {
@@ -38,13 +38,11 @@ typedef struct {
 	palette *p;
 } palette_collection;
 
-#include "vector.h"
-
 double4 rgb2hsv(double4);
 double4 hsv2rgb(double4);
 
-double flam3_calc_alpha(double density, double gamma, double linrange);
-double4 flam3_calc_newrgb(double4 cbuf, double ls, double highpow);
+#include "flam3.h"
+
 void palette_add (palette * const p, const double4 c);
 const palette *palette_random (const palette_collection * const pc, randctx * const rc);
 void palette_copy (const palette * const src, palette * const dest);

@@ -15,23 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#pragma once
 
 #include <stdio.h>
 #include "flam3.h"
 
-#define FLAM3_PNG_COM 8
+void write_png(FILE *file, void *image, int width, int height, int bpc);
 
-typedef struct {
-
-   char *genome;
-   char *badvals;
-   char *numiters;
-   char *rtime;
-
-} flam3_img_comments;
-
-
-void write_png(FILE *file, void *image, int width, int height, flam3_img_comments *fpc, int bpc);
-
-/* returns RGBA pixel array or NULL on failure */
-unsigned char *read_png(FILE *file, int *width, int *height);

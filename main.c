@@ -19,10 +19,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <argp.h>
 
 #include "random.h"
-#include "private.h"
 #include "img.h"
 #include "rect.h"
 #include "math.h"
@@ -131,8 +131,7 @@ static void do_render (const render_arguments * const arguments) {
 			bucket.samples, bucket.badvals);
 	render_image (genome, &bucket, image, bytes_per_channel);
 
-	flam3_img_comments fpc;
-	write_png (stdout, image, genome->width, genome->height, &fpc,
+	write_png (stdout, image, genome->width, genome->height,
 			bytes_per_channel);
 }
 

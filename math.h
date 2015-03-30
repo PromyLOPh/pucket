@@ -22,6 +22,7 @@
 #include <assert.h>
 
 #include "build/config.h"
+#include "vector.h"
 
 #ifdef HAVE_AMDLIBM
 #define REPLACE_WITH_AMDLIBM
@@ -31,6 +32,7 @@
 #endif
 
 #define clamp(a,min,max) (a > max ? max : (a < min ? min : a))
+#define EPS (1e-10)
 
 /*	Apply affine coordinate transformation
  */

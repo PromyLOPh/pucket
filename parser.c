@@ -19,10 +19,17 @@
 #include "interpolation.h"
 #include <errno.h>
 #include <assert.h>
+#include <string.h>
+#include <ctype.h>
+
+static int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
+                        randctx * const rc);
+static int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_xaos, 
+                    flam3_chaos_entry **xaos, int numstd, int motionxf);
 
 static int flam3_conversion_failed;
 
-int flam3_atoi(char *nstr) {
+static int flam3_atoi(char *nstr) {
 
    /* Note that this is NOT thread-safe, but simplifies things significantly. */
    int res;
@@ -46,7 +53,7 @@ int flam3_atoi(char *nstr) {
    return(res);
 }
 
-double flam3_atof(char *nstr) {
+static double flam3_atof(char *nstr) {
 
    /* Note that this is NOT thread-safe, but simplifies things significantly. */
    double res;
@@ -70,7 +77,9 @@ double flam3_atof(char *nstr) {
    return(res);
 }
 
-int var2n(const char *s) {
+#define flam3_variation_none   (-1)
+
+static int var2n(const char *s) {
    int i;
    
    for (i = 0; i < flam3_nvariations; i++)
@@ -272,7 +281,7 @@ void scan_for_flame_nodes(xmlNode *cur_node, int default_flag, flam3_genome **al
 }
 
 
-int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
+static int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
                         randctx * const rc) {
    flam3_genome *cp = loc_current_cp;
    xmlNode *chld_node;
@@ -689,7 +698,7 @@ int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp,
 
 }
 
-int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_xaos, 
+static int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_xaos, 
                     flam3_chaos_entry **xaos, int numstd, int motionxf) {
 
    xmlAttrPtr att_ptr, cur_att;

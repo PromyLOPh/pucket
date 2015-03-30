@@ -1912,6 +1912,13 @@ void xform_precalc(flam3_genome *cp, int xi) {
    wedgeJulia_precalc(&(cp->xform[xi]));   
 }   
 
+static double adjust_percentage(double in) {
+   if (in==0.0)
+      return(0.0);
+   else
+      return(pow(10.0, -log(1.0/in)/log(2)));
+}
+
 int prepare_precalc_flags(flam3_genome *cp) {
 
    double d;
