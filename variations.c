@@ -1900,16 +1900,17 @@ static void supershape_precalc(flam3_xform *xf) {
    xf->super_shape_pneg1_n1 = -1.0 / xf->super_shape_n1;
 }
 
-void xform_precalc(flam3_genome *cp, int xi) {
-
-   perspective_precalc(&(cp->xform[xi]));
-   juliaN_precalc(&(cp->xform[xi]));
-   juliaScope_precalc(&(cp->xform[xi]));
-   radial_blur_precalc(&(cp->xform[xi]));
-   waves_precalc(&(cp->xform[xi]));
-   disc2_precalc(&(cp->xform[xi]));
-   supershape_precalc(&(cp->xform[xi]));
-   wedgeJulia_precalc(&(cp->xform[xi]));   
+/*	Precalculate constants (i.e. not depending on position) for variations
+ */
+void xform_precalc (flam3_xform * const xform) {
+   perspective_precalc(xform);
+   juliaN_precalc(xform);
+   juliaScope_precalc(xform);
+   radial_blur_precalc(xform);
+   waves_precalc(xform);
+   disc2_precalc(xform);
+   supershape_precalc(xform);
+   wedgeJulia_precalc(xform);
 }   
 
 static double adjust_percentage(double in) {

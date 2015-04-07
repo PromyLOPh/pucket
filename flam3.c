@@ -147,13 +147,10 @@ int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_d
    
    return(0);
 }
-/*
- * run the function system described by CP forward N generations.  store
- * the N resulting 4-vectors in SAMPLES.  the initial point is passed in
- * SAMPLES[0..3].  ignore the first FUSE iterations.
+
+/*	xform_precalc must be called once for each xform before running this
+ *	function
  */
-
-
 int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, const unsigned short *xform_distrib, randctx *rc) {
    int i;
    double4 p, q;
@@ -163,10 +160,6 @@ int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *
    int fn;
    
    p = in;
-
-   /* Perform precalculations */   
-   for (i=0;i<cp->num_xforms;i++)
-      xform_precalc(cp,i);
 
    for (i = -fuse; i < n; i++) {
    
@@ -1859,6 +1852,10 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
    xform_distrib = flam3_create_xform_distrib(cp);
    if (xform_distrib==NULL)
       return(-1);
+   for (unsigned int i = 0; i < cp->num_xforms; i++) {
+	   xform_precalc (&cp->xform[i]);
+   }
+
    bv=flam3_iterate(cp, nsamples, 20, start, points, xform_distrib, rc);
    free(xform_distrib);
       

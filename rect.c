@@ -76,6 +76,9 @@ static void iter_thread (flam3_genome * const input_genome,
 	flam3_genome genome;
 	memset (&genome, 0, sizeof (genome));
 	flam3_copy (&genome, input_genome);
+	for (unsigned int i = 0; i < genome.num_xforms; i++) {
+		xform_precalc (&genome.xform[i]);
+	}
 
 	double4 *iter_storage;
 	int ret = posix_memalign ((void **) &iter_storage, sizeof (*iter_storage),

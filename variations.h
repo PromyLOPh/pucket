@@ -19,7 +19,7 @@
 
 #include "flam3.h"
 
-void xform_precalc(flam3_genome *cp, int xi);
+void xform_precalc (flam3_xform * const xform);
 int prepare_precalc_flags(flam3_genome *);
 
 int apply_xform(flam3_genome *cp, int fn, const double4 p, double4 *, randctx *rc);
