@@ -2032,7 +2032,7 @@ int prepare_precalc_flags(flam3_genome *cp) {
    return(0);
 }
 
-int apply_xform(flam3_genome *cp, int fn, const double4 p, double4 *q_ret, randctx *rc)
+int apply_xform(const flam3_genome * const cp, int fn, const double4 p, double4 *q_ret, randctx *rc)
 {
    flam3_iter_helper f;
    int var_n;

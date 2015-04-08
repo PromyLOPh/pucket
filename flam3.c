@@ -148,60 +148,60 @@ int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_d
    return(0);
 }
 
+void iterator_init (iterator * const iter, const flam3_genome * const genome,
+		const unsigned short * const xform_distrib, randctx * const rc) {
+	iter->consec = 0;
+	iter->lastxf = 0;
+	iter->genome = genome;
+	iter->xform_distrib = xform_distrib;
+	iter->p = (double4) {
+			rand_d11(rc),
+			rand_d11(rc),
+			rand_d01(rc),
+			rand_d01(rc),
+			};
+}
+
 /*	xform_precalc must be called once for each xform before running this
  *	function
  */
-int flam3_iterate(flam3_genome *cp, int n, int fuse, const double4 in, double4 *samples, const unsigned short *xform_distrib, randctx *rc) {
-   int i;
-   double4 p, q;
-   int consec = 0;
-   int badvals = 0;
-   int lastxf=0;
-   int fn;
-   
-   p = in;
+bool iterator_step (iterator * const iter, double4 * const ret, randctx * const rc) {
+	const flam3_genome * const genome = iter->genome;
+	unsigned int fn;
+	double4 q;
 
-   for (i = -fuse; i < n; i++) {
-   
-//         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (((unsigned)irand(rc)) % CHOOSE_XFORM_GRAIN)];
-      if (cp->chaos_enable)
-         fn = xform_distrib[ lastxf*CHOOSE_XFORM_GRAIN + (rand_u64(rc) & CHOOSE_XFORM_GRAIN_M1)];
-      else
-         fn = xform_distrib[ rand_u64(rc) & CHOOSE_XFORM_GRAIN_M1 ];
-      
-      if (apply_xform(cp, fn, p, &q, rc)>0) {
-         consec ++;
-         badvals ++;
-         if (consec<5) {
-			p = q;
-            --i;
-            continue;
-         } else
-            consec = 0;
-      } else
-         consec = 0;
+	if (genome->chaos_enable)
+		fn = iter->xform_distrib[ iter->lastxf*CHOOSE_XFORM_GRAIN + (rand_u64(rc) & CHOOSE_XFORM_GRAIN_M1)];
+	else
+		fn = iter->xform_distrib[ rand_u64(rc) & CHOOSE_XFORM_GRAIN_M1 ];
 
-      /* Store the last used transform */
-      lastxf = fn+1;
+	if (apply_xform(genome, fn, iter->p, &q, rc)>0) {
+		++iter->consec;
+		if (iter->consec < 5) {
+			iter->p = q;
+			return false;
+		} else
+			iter->consec = 0;
+	} else
+		iter->consec = 0;
 
-	  p = q;
+	/* Store the last used transform */
+	iter->lastxf = fn+1;
 
-      if (cp->final_xform_enable == 1) {
-         if (cp->xform[cp->final_xform_index].opacity==1 || 
-                rand_d01(rc)<cp->xform[cp->final_xform_index].opacity) {
-             apply_xform(cp, cp->final_xform_index, p, &q, rc);
-             /* Keep the opacity from the original xform */
-			 q = (double4) { q[0], q[1], q[2], p[3] };
-         }
-      }
+	iter->p = q;
 
-      /* if fuse over, store it */
-      if (i >= 0) {
-         samples[i] = q;
-      }
-   }
-   
-   return(badvals);
+	if (genome->final_xform_enable == 1) {
+		if (genome->xform[genome->final_xform_index].opacity==1 || 
+				rand_d01(rc)<genome->xform[genome->final_xform_index].opacity) {
+			apply_xform(genome, genome->final_xform_index, iter->p, &q, rc);
+			/* Keep the opacity from the original xform */
+			q = (double4) { q[0], q[1], q[2], iter->p[3] };
+		}
+	}
+
+	*ret = q;
+
+	return true;
 }
 
 /*
@@ -1832,7 +1832,7 @@ static int sort_by_y(const void *av, const void *bv) {
  * find a 2d bounding box that does not enclose eps of the fractal density
  * in each compass direction.
  */
-int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
+int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int maxsamples,
              double *bmin, double *bmax, randctx *rc) {
    int i;
    int low_target, high_target;
@@ -1841,11 +1841,10 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
    int bv;
    unsigned short *xform_distrib;
 
-   if (nsamples <= 0) nsamples = 10000;
+   if (maxsamples <= 0) maxsamples = 10000;
 
-   int ret = posix_memalign ((void **) &points, sizeof (*points), sizeof(*points) * nsamples);
+   int ret = posix_memalign ((void **) &points, sizeof (*points), sizeof(*points) * maxsamples);
    assert (ret == 0 && points != NULL);
-   const double4 start = (double4) { rand_d11(rc), rand_d11(rc), 0.0, 0.0 };
 
    if (prepare_precalc_flags(cp))
       return(-1);
@@ -1856,23 +1855,39 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
 	   xform_precalc (&cp->xform[i]);
    }
 
-   bv=flam3_iterate(cp, nsamples, 20, start, points, xform_distrib, rc);
+   iterator iter;
+   iterator_init (&iter, cp, xform_distrib, rc);
+
+   /* throw away fuse steps */
+   for (unsigned int i = 0; i < 20; i++) {
+	   double4 p;
+	   iterator_step (&iter, &p, rc);
+   }
+
+   /* actual iterations */
+   unsigned int samples = 0;
+   for (unsigned int i = 0; i < maxsamples; i++) {
+	   if (iterator_step (&iter, &points[samples], rc)) {
+		   ++samples;
+	   }
+   }
+
    free(xform_distrib);
       
-   if ( bv/(double)nsamples > eps )
-      eps = 3*bv/(double)nsamples;
+   if ( bv/(double)samples > eps )
+      eps = 3*bv/(double)samples;
    
    if ( eps > 0.3 )
       eps = 0.3;
       
-   low_target = (int)(nsamples * eps);
-   high_target = nsamples - low_target;
+   low_target = (int)(samples * eps);
+   high_target = samples - low_target;
 
    
    min[0] = min[1] =  1e10;
    max[0] = max[1] = -1e10;
 
-   for (i = 0; i < nsamples; i++) {
+   for (i = 0; i < samples; i++) {
       const double4 p = points[i];
       if (p[0] < min[0]) min[0] = p[0];
       if (p[1] < min[1]) min[1] = p[1];
@@ -1889,11 +1904,11 @@ int flam3_estimate_bounding_box(flam3_genome *cp, double eps, int nsamples,
       return(bv);
    }
 
-   qsort(points, nsamples, sizeof(double4), sort_by_x);
+   qsort(points, samples, sizeof(double4), sort_by_x);
    bmin[0] = points[low_target][0];
    bmax[0] = points[high_target][0];
 
-   qsort(points, nsamples, sizeof(double4), sort_by_y);
+   qsort(points, samples, sizeof(double4), sort_by_y);
    bmin[1] = points[low_target][1];
    bmax[1] = points[high_target][1];
    free(points);

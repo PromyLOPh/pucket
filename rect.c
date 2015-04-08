@@ -89,27 +89,33 @@ static void iter_thread (flam3_genome * const input_genome,
 	const double starttime = omp_get_wtime ();
 
 	do {
-		/* Seed iterations */
-		const double4 start = (double4) {
-				rand_d11(&rc),
-				rand_d11(&rc),
-				rand_d01(&rc),
-				rand_d01(&rc),
-				};
+		iterator iter;
+		iterator_init (&iter, &genome, c->xform_distrib, &rc);
 
-		/* Execute iterations */
-		const unsigned long badcount = flam3_iterate(&genome,
-				c->sub_batch_size, c->fuse, start, iter_storage,
-				c->xform_distrib, &rc);
+		/* throw away fuse steps */
+		for (unsigned int i = 0; i < c->fuse; i++) {
+			double4 p;
+			iterator_step (&iter, &p, &rc);
+		}
+
+		/* actual iterations */
+		unsigned int samples = 0;
+		for (unsigned int i = 0; i < c->sub_batch_size; i++) {
+			if (iterator_step (&iter, &iter_storage[samples], &rc)) {
+				++samples;
+			}
+		}
+
+		const unsigned long badcount = c->sub_batch_size - samples;
 
 #pragma omp critical
 		{
 			/* Add the badcount to the counter */
 			bucket->badvals += badcount;
-			bucket->samples += c->sub_batch_size;
+			bucket->samples += samples;
 
 			/* Put them in the bucket accumulator */
-			for (unsigned int j = 0; j < c->sub_batch_size; j++) {
+			for (unsigned int j = 0; j < samples; j++) {
 				const double4 p = iter_storage[j];
 
 				const double2 origpos = (double2) { p[0], p[1] };

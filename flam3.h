@@ -507,3 +507,13 @@ typedef struct {
 #define CROSS_INTERPOLATE     1  
 #define CROSS_ALTERNATE       2
 
+typedef struct {
+	unsigned int consec, lastxf;
+	double4 p;
+	const unsigned short *xform_distrib;
+	const flam3_genome *genome;
+} iterator;
+
+void iterator_init (iterator * const iter, const flam3_genome * const genome,
+		const unsigned short * const xform_distrib, randctx * const rc);
+bool iterator_step (iterator * const iter, double4 * const ret, randctx * const rc);
