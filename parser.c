@@ -932,8 +932,6 @@ static int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_
          this_xform->rectangles_x = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"rectangles_y")) {
          this_xform->rectangles_y = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"amw_amp")) {
-         this_xform->amw_amp = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"disc2_rot")) {
          this_xform->disc2_rot = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"disc2_twist")) {

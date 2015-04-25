@@ -395,7 +395,6 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
       INTERP(xform[i].curl_c2);
       INTERP(xform[i].rectangles_x);
       INTERP(xform[i].rectangles_y);
-      INTERP(xform[i].amw_amp);
       INTERP(xform[i].disc2_rot);
       INTERP(xform[i].disc2_twist);
       INTERP(xform[i].super_shape_rnd);

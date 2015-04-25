@@ -2446,7 +2446,6 @@ void initialize_xforms(flam3_genome *thiscp, int start_here) {
       thiscp->xform[i].curl_c2 = 0.0;
       thiscp->xform[i].rectangles_x = 1.0;
       thiscp->xform[i].rectangles_y = 1.0;
-      thiscp->xform[i].amw_amp = 1.0;
       thiscp->xform[i].super_shape_rnd = 0.0;
       thiscp->xform[i].super_shape_m = 0.0;
       thiscp->xform[i].super_shape_n1 = 1.0;

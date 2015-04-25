@@ -221,9 +221,6 @@ typedef struct xform {
    double rectangles_x;
    double rectangles_y;
 
-   /* AMW */
-   double amw_amp;
-
    /* Disc 2 */
    double disc2_rot;
    double disc2_twist;
