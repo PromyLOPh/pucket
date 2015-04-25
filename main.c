@@ -181,6 +181,16 @@ static error_t parse_random_opt (int key, char *arg,
 			break;
 		}
 
+		case 'v': {
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "Max variations must be > 0");
+			} else {
+				arguments->max_var = i;
+			}
+			break;
+		}
+
 		case ARGP_KEY_ARG:
 			if (state->arg_num > 0) {
 				return ARGP_ERR_UNKNOWN;
@@ -567,6 +577,7 @@ int main (int argc, char **argv) {
 				{"height", 'h', "pixels", 0, "Output flame height (1000)" },
 				{"width", 'w', "pixels", 0, "Output flame width (1000)" },
 				{"max-xforms", 'x', "number", 0, "Max number of xforms (6)" },
+				{"max-var", 'v', "number", 0, "Max number of variations per xform (unlimited)" },
 				{ 0 },
 				};
 		const char doc[] = PACKAGE "-random -- a fractal flame generator";
