@@ -45,7 +45,7 @@ double4 hsv2rgb(double4);
 
 void palette_add (palette * const p, const double4 c);
 const palette *palette_random (const palette_collection * const pc, randctx * const rc);
-void palette_copy (const palette * const src, palette * const dest);
+void palette_copy (const palette * restrict const src, palette * restrict const dest);
 void palette_rotate_hue (palette * const p, double rot);
 bool palette_read_collection (const char * const filename,
 		palette_collection * const pc);

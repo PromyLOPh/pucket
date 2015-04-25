@@ -1927,7 +1927,9 @@ int prepare_precalc_flags(flam3_genome *cp) {
 
    /* Loop over valid xforms */
    for (i = 0; i < cp->num_xforms; i++) {
-      d = cp->xform[i].density;
+	  flam3_xform * const xf = &cp->xform[i];
+
+      d = xf->density;
       if (d < 0.0) {
          fprintf(stderr, "xform %d weight must be non-negative, not %g.\n",i,d);
          return(1);
@@ -1938,94 +1940,94 @@ int prepare_precalc_flags(flam3_genome *cp) {
 
       totnum = 0;
 
-      cp->xform[i].vis_adjusted = adjust_percentage(cp->xform[i].opacity);
+      xf->vis_adjusted = adjust_percentage(xf->opacity);
 
-      cp->xform[i].precalc_angles_flag=0;
-      cp->xform[i].precalc_atan_xy_flag=0;
-      cp->xform[i].precalc_atan_yx_flag=0;
-      cp->xform[i].has_preblur=0;
-      cp->xform[i].has_post = !(id_matrix(cp->xform[i].post));
+      xf->precalc_angles_flag=0;
+      xf->precalc_atan_xy_flag=0;
+      xf->precalc_atan_yx_flag=0;
+      xf->has_preblur=0;
+      xf->has_post = !(id_matrix(xf->post));
 
 
       for (j = 0; j < flam3_nvariations; j++) {
 
-         if (cp->xform[i].var[j]!=0) {
+         if (xf->var[j]!=0) {
 
-            cp->xform[i].varFunc[totnum] = j;
-            cp->xform[i].active_var_weights[totnum] = cp->xform[i].var[j];
+            xf->varFunc[totnum] = j;
+            xf->active_var_weights[totnum] = xf->var[j];
 
             if (j==VAR_POLAR) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_HANDKERCHIEF) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_HEART) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_DISC) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_SPIRAL) {
-               cp->xform[i].precalc_angles_flag=1;
+               xf->precalc_angles_flag=1;
             } else if (j==VAR_HYPERBOLIC) {
-               cp->xform[i].precalc_angles_flag=1;
+               xf->precalc_angles_flag=1;
             } else if (j==VAR_DIAMOND) {
-               cp->xform[i].precalc_angles_flag=1;
+               xf->precalc_angles_flag=1;
             } else if (j==VAR_EX) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_JULIA) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_POWER) {
-               cp->xform[i].precalc_angles_flag=1;
+               xf->precalc_angles_flag=1;
             } else if (j==VAR_RINGS) {
-               cp->xform[i].precalc_angles_flag=1;
+               xf->precalc_angles_flag=1;
             } else if (j==VAR_FAN) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_BLOB) {
-               cp->xform[i].precalc_atan_xy_flag=1;
-               cp->xform[i].precalc_angles_flag=1;
+               xf->precalc_atan_xy_flag=1;
+               xf->precalc_angles_flag=1;
             } else if (j==VAR_FAN2) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_RINGS2) {
-               cp->xform[i].precalc_angles_flag=1;
+               xf->precalc_angles_flag=1;
             } else if (j==VAR_JULIAN) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_JULIASCOPE) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_RADIAL_BLUR) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_NGON) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_DISC2) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_SUPER_SHAPE) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_FLOWER) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_CONIC) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_CPOW) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_ESCHER) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_PRE_BLUR) {
-               cp->xform[i].has_preblur=cp->xform[i].var[j];
+               xf->has_preblur=xf->var[j];
             } else if (j==VAR_POLAR2) {
-               cp->xform[i].precalc_atan_xy_flag=1;
+               xf->precalc_atan_xy_flag=1;
             } else if (j==VAR_WEDGE) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_WEDGE_JULIA) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_WEDGE_SPH) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_WHORL) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_LOG) {
-               cp->xform[i].precalc_atan_yx_flag=1;
+               xf->precalc_atan_yx_flag=1;
             }
             
             totnum++;
          }
       }
 
-      cp->xform[i].num_active_vars = totnum;
+      xf->num_active_vars = totnum;
 
    }
    

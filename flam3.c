@@ -293,7 +293,7 @@ void flam3_interpolate(flam3_genome cps[], int ncps,
 
 }
 
-void flam3_copy_params(flam3_xform *dest, flam3_xform *src, int varn) {
+void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, int varn) {
 
    /* We only want to copy param var coefs for this one */
    if (varn==VAR_BLOB) {
@@ -653,7 +653,8 @@ void flam3_copy(flam3_genome *dest, const flam3_genome * const src) {
    palette_copy (&src->palette, &dest->palette);
 }
 
-void flam3_copyx(flam3_genome *dest, flam3_genome *src, int dest_std_xforms, int dest_final_xform) {
+void flam3_copyx(flam3_genome * restrict dest, flam3_genome * restrict src,
+		int dest_std_xforms, int dest_final_xform) {
 
    int i,numsrcstd;
    
@@ -691,16 +692,18 @@ void flam3_copyx(flam3_genome *dest, flam3_genome *src, int dest_std_xforms, int
    if (dest_final_xform > 0) {
       flam3_add_xforms(dest, dest_final_xform, 1, 1);
 
+	  flam3_xform * const xf = &dest->xform[dest->num_xforms-1];
+
       if (src->final_xform_enable > 0) {
       
          i = src->final_xform_index;
          
-         flam3_copy_xform(&dest->xform[dest->num_xforms-1],&src->xform[i]);
+         flam3_copy_xform(xf, &src->xform[i]);
          
       } else {
          /* Interpolated-against final xforms need animate & color_speed set to 0.0 */
-         dest->xform[dest->num_xforms-1].animate=0.0;
-         dest->xform[dest->num_xforms-1].color_speed=0.0;
+         xf->animate=0.0;
+         xf->color_speed=0.0;
       }
 
    } else {
@@ -1401,19 +1404,21 @@ void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc) {
 
       flam3_add_xforms(cp,1,0,0);
 
-      cp->xform[i].density = 1.0;
-      cp->xform[i].color_speed = 0.0;
-      cp->xform[i].animate = 0.0;
-      cp->xform[i].var[0] = 1.0;
+	  flam3_xform * const xf = &cp->xform[i];
+
+      xf->density = 1.0;
+      xf->color_speed = 0.0;
+      xf->animate = 0.0;
+      xf->var[0] = 1.0;
       for (j = 1; j < flam3_nvariations; j++)
-         cp->xform[i].var[j] = 0;
-      cp->xform[i].color = 1.0;
-      cp->xform[i].c[0][0] = -1.0;
-      cp->xform[i].c[0][1] = 0.0;
-      cp->xform[i].c[1][0] = 0.0;
-      cp->xform[i].c[1][1] = 1.0;
-      cp->xform[i].c[2][0] = 0.0;
-      cp->xform[i].c[2][1] = 0.0;
+         xf->var[j] = 0;
+      xf->color = 1.0;
+      xf->c[0][0] = -1.0;
+      xf->c[0][1] = 0.0;
+      xf->c[1][0] = 0.0;
+      xf->c[1][1] = 1.0;
+      xf->c[2][0] = 0.0;
+      xf->c[2][1] = 0.0;
 
       result++;
       sym = -sym;
@@ -1429,19 +1434,21 @@ void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc) {
 
       flam3_add_xforms(cp, 1, 0,0);
 
-      cp->xform[i].density = 1.0;
-      cp->xform[i].color_speed = 0.0;
-      cp->xform[i].animate = 0.0;
-      cp->xform[i].var[0] = 1.0;
+	  flam3_xform * const xf = &cp->xform[i];
+
+      xf->density = 1.0;
+      xf->color_speed = 0.0;
+      xf->animate = 0.0;
+      xf->var[0] = 1.0;
       for (j = 1; j < flam3_nvariations; j++)
-         cp->xform[i].var[j] = 0;
-      cp->xform[i].color = (sym<3) ? 0.0 : ((k-1.0)/(sym-2.0));
-      cp->xform[i].c[0][0] = round6(cos(k*a));
-      cp->xform[i].c[0][1] = round6(sin(k*a));
-      cp->xform[i].c[1][0] = round6(-cp->xform[i].c[0][1]);
-      cp->xform[i].c[1][1] = cp->xform[i].c[0][0];
-      cp->xform[i].c[2][0] = 0.0;
-      cp->xform[i].c[2][1] = 0.0;
+         xf->var[j] = 0;
+      xf->color = (sym<3) ? 0.0 : ((k-1.0)/(sym-2.0));
+      xf->c[0][0] = round6(cos(k*a));
+      xf->c[0][1] = round6(sin(k*a));
+      xf->c[1][0] = round6(-cp->xform[i].c[0][1]);
+      xf->c[1][1] = cp->xform[i].c[0][0];
+      xf->c[2][0] = 0.0;
+      xf->c[2][1] = 0.0;
 
       result++;
    }   

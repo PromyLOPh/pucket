@@ -436,8 +436,9 @@ void flam3_add_xforms(flam3_genome *cp, int num_to_add, int interp_padding, int 
 void flam3_delete_xform(flam3_genome *thiscp, int idx_to_delete);
 void flam3_copy_xform(flam3_xform *dest, flam3_xform *src);
 void flam3_copy(flam3_genome *dest, const flam3_genome * const src);
-void flam3_copyx(flam3_genome *dest, flam3_genome *src, int num_std, int num_final);
-void flam3_copy_params(flam3_xform *dest, flam3_xform *src, int varn);
+void flam3_copyx(flam3_genome * restrict dest, flam3_genome * restrict src,
+		int dest_std_xforms, int dest_final_xform);
+void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, int varn);
 
 unsigned short* flam3_create_xform_distrib(flam3_genome *cp);
 int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_distrib);

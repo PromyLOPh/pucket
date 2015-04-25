@@ -120,7 +120,7 @@ const palette *palette_random (const palette_collection * const pc,
 	return &pc->p[i];
 }
 
-void palette_copy (const palette * const src, palette * const dest) {
+void palette_copy (const palette * restrict const src, palette * restrict const dest) {
 	dest->count = src->count;
 	int ret = posix_memalign ((void **) &dest->color, sizeof (*dest->color),
 			sizeof (*dest->color) * dest->count);
