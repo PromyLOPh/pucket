@@ -795,7 +795,6 @@ void clear_cp(flam3_genome *cp, int default_flag) {
        cp->width = -1;
        cp->height = -1;
        cp->gam_lin_thresh = -1;
-//       cp->motion_exp = -999;
        cp->interpolation_type = -1;
        cp->palette_mode = -1;
     }

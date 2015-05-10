@@ -371,9 +371,6 @@ typedef struct xform {
    int num_active_vars;
    double active_var_weights[flam3_nvariations];
    int varFunc[flam3_nvariations];
-   
-   int motion_freq;
-   int motion_func;
 } flam3_xform;
 
 #include "palettes.h"
@@ -480,11 +477,6 @@ typedef struct {
    int           nthreads;
    int           sub_batch_size;
 } flam3_frame;
-
-/* Motion function indices */
-#define MOTION_SIN 1
-#define MOTION_TRIANGLE 2
-#define MOTION_HILL 3
 
 /* Mutation modes */
 #define MUTATE_NOT_SPECIFIED   -1

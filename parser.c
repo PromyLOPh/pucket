@@ -647,13 +647,6 @@ static int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp
             fprintf(stderr,"Error: Final xforms should not have weight specified.\n");
             return(1);
          }
-         
-         /* Check for non-zero motion_* params */
-         if (cp->xform[xf].motion_freq != 0 || cp->xform[xf].motion_func != 0) {
-            fprintf(stderr,"Error: Motion parameters should not be specified in xforms.\n");
-            return(1);
-         }
-         
       }
    } /* Done parsing flame element. */
    
@@ -729,21 +722,6 @@ static int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_
          this_xform->color_speed = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"animate")) {
          this_xform->animate = flam3_atof(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"motion_frequency")) {
-         this_xform->motion_freq = flam3_atoi(att_str);
-      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"motion_function")) {
-         if (!strcmp("sin", att_str)) {
-            this_xform->motion_func = MOTION_SIN;
-         } else if (!strcmp("triangle",att_str)) {
-            this_xform->motion_func = MOTION_TRIANGLE;
-         } else if (!strcmp("hill",att_str)) {
-            this_xform->motion_func = MOTION_HILL;
-         } else {
-            fprintf(stderr,"Error: unknown motion function '%s'\n",att_str);
-            xmlFree(att_str);
-            return(1);
-         }
-
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"color")) {
          double tmpc1;
          this_xform->color = 0.0;
