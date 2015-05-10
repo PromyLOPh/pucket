@@ -121,11 +121,19 @@ const palette *palette_random (const palette_collection * const pc,
 }
 
 void palette_copy (const palette * restrict const src, palette * restrict const dest) {
-	dest->count = src->count;
-	int ret = posix_memalign ((void **) &dest->color, sizeof (*dest->color),
-			sizeof (*dest->color) * dest->count);
-	assert (ret == 0 && dest->color != NULL);
-	memcpy (dest->color, src->color, dest->count * sizeof (*dest->color));
+	assert (src != NULL);
+	assert (dest != NULL);
+
+	*dest = *src;
+	if (src->name != NULL) {
+		dest->name = strdup (src->name);
+	}
+	if (src->color != NULL) {
+		int ret = posix_memalign ((void **) &dest->color, sizeof (*dest->color),
+				sizeof (*dest->color) * dest->count);
+		assert (ret == 0 && dest->color != NULL);
+		memcpy (dest->color, src->color, dest->count * sizeof (*dest->color));
+	}
 }
 
 void palette_rotate_hue (palette * const p, double rot) {

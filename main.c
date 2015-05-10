@@ -27,6 +27,7 @@
 #include "rect.h"
 #include "math.h"
 #include "genome.h"
+#include "palettes_builtin.h"
 
 #define streq(a,b) (strcmp (a, b) == 0)
 
@@ -243,15 +244,11 @@ static void do_random (const random_arguments * const arguments) {
 	randctx rc;
 	rand_seed(&rc);
 
-	palette_collection pc;
-	bool bret = palette_read_collection ("flam3-palettes.xml", &pc);
-	assert (bret);
-
 	flam3_genome genome;
 	clear_cp (&genome,flam3_defaults_on);
 
 	genome.hue_rotation = rand_mod(&rc, 8) ? 0.0 : rand_d01(&rc);
-	const palette * const p = palette_random (&pc, &rc);
+	const palette * const p = palette_random (&builtin_palettes, &rc);
 	assert (p != NULL);
 	palette_copy (p, &genome.palette);
 	palette_rotate_hue (&genome.palette, genome.hue_rotation);
@@ -354,16 +351,12 @@ static void do_mutate (const mutate_arguments * const arguments) {
 	}
 	assert (ncps == 1);
 
-	palette_collection pc;
-	bool bret = palette_read_collection ("flam3-palettes.xml", &pc);
-	assert (bret);
-
 	flam3_genome * const genome = &cps[0];
 
 	int ivars = 0;
 	const double speed = 1.0;
 	flam3_mutate (genome, arguments->method, &ivars, 1, arguments->symmetry,
-			speed, &pc, &rc);
+			speed, &builtin_palettes, &rc);
 
 	print_genome (genome);
 }

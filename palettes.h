@@ -25,6 +25,7 @@
 
 /* One palette */
 typedef struct {
+	const char *name;
 	/* number of items allocated */
 	size_t allocated;
 	/* number of items in palette */
