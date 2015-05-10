@@ -490,6 +490,62 @@ void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, 
    }
 }
 
+static void initialize_xform(flam3_xform * const xf) {
+	memset (xf, 0, sizeof (*xf));
+
+	xf->color_speed = 0.5;
+	xf->animate = 1.0;
+	xf->opacity = 1.0;
+	xf->var[0] = 1.0;
+	xf->c[0][0] = 1.0;
+	xf->c[1][1] = 1.0;
+	xf->post[0][0] = 1.0;
+	xf->post[1][1] = 1.0;
+	xf->blob_high = 1.0;
+	xf->blob_waves = 1.0;
+	xf->bent2_x = 1.0;
+	xf->bent2_y = 1.0;
+	xf->cell_size = 1.0;
+	xf->cpow_r = 1.0;
+	xf->cpow_power = 1.0;
+	xf->curve_xlength = 1.0;
+	xf->curve_ylength = 1.0;
+	xf->oscope_separation = 1.0;
+	xf->oscope_frequency = M_PI;
+	xf->oscope_amplitude = 1.0;
+	xf->wedge_count = 1.0;
+	xf->wedge_sph_count = 1.0;
+	xf->wedge_julia_power = 1.0;
+	xf->wedge_julia_count = 1.0;
+	xf->wedgeJulia_cn = 0.5;
+	xf->wedgeJulia_rN = 1.0;
+	xf->auger_freq = 1.0;
+	xf->auger_weight = 0.5;
+	xf->auger_scale = 1.0;
+	xf->julian_power = 1.0;
+	xf->julian_dist = 1.0;
+	xf->julian_rN = 1.0;
+	xf->julian_cn = 0.5;
+	xf->juliascope_power = 1.0;
+	xf->juliascope_dist = 1.0;
+	xf->juliascope_rN = 1.0;
+	xf->juliascope_cn = 0.5;
+	xf->radialBlur_zoomvar = 1.0;
+	xf->pie_slices = 6.0;
+	xf->pie_thickness = 0.5;
+	xf->ngon_sides = 5;
+	xf->ngon_power = 3;
+	xf->ngon_circle = 1;
+	xf->ngon_corners = 2;
+	xf->curl_c1 = 1.0;
+	xf->rectangles_x = 1.0;
+	xf->rectangles_y = 1.0;
+	xf->super_shape_n1 = 1.0;
+	xf->super_shape_n2 = 1.0;
+	xf->super_shape_n3 = 1.0;
+	xf->conic_eccentricity = 1.0;
+}
+
 /* Xform support functions */
 void flam3_add_xforms(flam3_genome *thiscp, int num_to_add, int interp_padding, int final_flag) {
 
@@ -510,7 +566,11 @@ void flam3_add_xforms(flam3_genome *thiscp, int num_to_add, int interp_padding, 
    thiscp->num_xforms += num_to_add;
 
    /* Initialize all the new xforms */
-   initialize_xforms(thiscp, old_num);
+   for (i = old_num; i < thiscp->num_xforms; i++) {
+	   flam3_xform * const xf = &thiscp->xform[i];
+	   initialize_xform (xf);
+	   xf->color = i&1;
+   }
 
    /* Set the padding flag for the new xforms */
    if (interp_padding) {
