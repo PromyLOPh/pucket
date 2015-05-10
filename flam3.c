@@ -1242,23 +1242,17 @@ static double round6(double x) {
   return 1e-6*(int)(x+0.5);
 }
 
+static double det_matrix(double2 m[3]) {
+   return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+}
+
 static int compare_xforms(const void *av, const void *bv) {
    flam3_xform *a = (flam3_xform *) av;
    flam3_xform *b = (flam3_xform *) bv;
-   double aa[2][2];
-   double bb[2][2];
    double ad, bd;
 
-   aa[0][0] = a->c[0][0];
-   aa[0][1] = a->c[0][1];
-   aa[1][0] = a->c[1][0];
-   aa[1][1] = a->c[1][1];
-   bb[0][0] = b->c[0][0];
-   bb[0][1] = b->c[0][1];
-   bb[1][0] = b->c[1][0];
-   bb[1][1] = b->c[1][1];
-   ad = det_matrix(aa);
-   bd = det_matrix(bb);
+   ad = det_matrix(a->c);
+   bd = det_matrix(b->c);
 
    if (a->color_speed > b->color_speed) return 1;
    if (a->color_speed < b->color_speed) return -1;

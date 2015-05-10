@@ -27,10 +27,6 @@
    for (k = 0; k < ncp; k++) tt += c[k] * cpi[k].x; \
    result->x = (int)rint(tt); } while(0)
 
-double det_matrix(double s[2][2]) {
-   return s[0][0] * s[1][1] - s[0][1] * s[1][0];
-}
-
 int id_matrix(double2 s[3]) {
    return
       (s[0][0] == 1.0) &&

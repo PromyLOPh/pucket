@@ -21,7 +21,6 @@
 #include "flam3.h"
 
 int id_matrix(double2 s[3]);
-double det_matrix(double s[2][2]);
 
 #if 0
 void interpolate_cmap(flam3_palette cmap, double blend,
