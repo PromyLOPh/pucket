@@ -431,15 +431,12 @@ typedef struct {
 
 void flam3_add_xforms(flam3_genome *cp, int num_to_add, int interp_padding, int final_flag);
 void flam3_delete_xform(flam3_genome *thiscp, int idx_to_delete);
-void flam3_copy_xform(flam3_xform *dest, flam3_xform *src);
 void flam3_copy(flam3_genome *dest, const flam3_genome * const src);
 void flam3_copyx(flam3_genome * restrict dest, flam3_genome * restrict src,
 		int dest_std_xforms, int dest_final_xform);
 void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, int varn);
 
 unsigned short* flam3_create_xform_distrib(flam3_genome *cp);
-int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_distrib);
-int flam3_check_unity_chaos(flam3_genome *cp);
 void clear_cp(flam3_genome *cp, int def_flag);
 
 /* samples is array nsamples*4 long of x,y,color triples.

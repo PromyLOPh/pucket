@@ -33,62 +33,8 @@
 
 static void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag, int numstd, double *chaos_row);
 
-unsigned short *flam3_create_xform_distrib(flam3_genome *cp) {
-
-   /* Xform distrib is created in this function             */   
-   int numrows;
-   int dist_row,i;
-   unsigned short *xform_distrib;
-   
-   numrows = cp->num_xforms - (cp->final_xform_index>=0) + 1;
-   xform_distrib = calloc(numrows*CHOOSE_XFORM_GRAIN,sizeof(unsigned short));
-   
-   /* First, set up the first row of the xform_distrib (raw weights) */
-   flam3_create_chaos_distrib(cp, -1, xform_distrib);
-   
-   /* Check for non-unity chaos */
-   cp->chaos_enable = 1 - flam3_check_unity_chaos(cp);
-   
-   if (cp->chaos_enable) {
-   
-      /* Now set up a row for each of the xforms */
-      dist_row = 0;
-      for (i=0;i<cp->num_xforms;i++) {
-      
-         if (cp->final_xform_index == i)
-            continue;
-         else
-            dist_row++;
-         
-         if (flam3_create_chaos_distrib(cp, i, &(xform_distrib[CHOOSE_XFORM_GRAIN*(dist_row)]))) {
-            free(xform_distrib);
-            return(NULL);
-         }
-      }
-   }
-   
-   return(xform_distrib);
-}
-
-int flam3_check_unity_chaos(flam3_genome *cp) {
-
-   int i,j;
-   int num_std;
-   int unity=1;
-   num_std = cp->num_xforms - (cp->final_xform_index >= 0);
-   
-   for (i=0;i<num_std;i++) {
-      for (j=0;j<num_std;j++) {
-         if ( fabs(cp->chaos[i][j]-1.0) > EPS)
-            unity=0;
-      }
-   }
-   
-   return(unity);
-}
-
-int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_distrib) {
-
+static int flam3_create_chaos_distrib(const flam3_genome * const cp, int xi,
+		unsigned short * const xform_distrib) {
    /* Xform distrib is a preallocated array of CHOOSE_XFORM_GRAIN chars */
    /* address of array is passed in, contents are modified              */
    double t,r,dr;
@@ -146,6 +92,54 @@ int flam3_create_chaos_distrib(flam3_genome *cp, int xi, unsigned short *xform_d
    //fprintf(stdout,"\n---\n");
    
    return(0);
+}
+
+static unsigned int flam3_check_unity_chaos(flam3_genome *cp) {
+	const unsigned int num_std = cp->num_xforms - (cp->final_xform_index >= 0);
+
+	for (unsigned int i=0;i<num_std;i++) {
+		for (unsigned int j=0;j<num_std;j++) {
+			if ( fabs(cp->chaos[i][j]-1.0) > EPS)
+				return 0;
+		}
+	}
+
+	return 1;
+}
+
+unsigned short *flam3_create_xform_distrib(flam3_genome *cp) {
+	int numrows;
+	int dist_row,i;
+	unsigned short *xform_distrib;
+
+	numrows = cp->num_xforms - (cp->final_xform_index>=0) + 1;
+	xform_distrib = calloc(numrows*CHOOSE_XFORM_GRAIN,sizeof(unsigned short));
+
+	/* First, set up the first row of the xform_distrib (raw weights) */
+	flam3_create_chaos_distrib(cp, -1, xform_distrib);
+
+	/* Check for non-unity chaos */
+	cp->chaos_enable = 1 - flam3_check_unity_chaos(cp);
+
+	if (cp->chaos_enable) {
+		/* Now set up a row for each of the xforms */
+		dist_row = 0;
+		for (i=0;i<cp->num_xforms;i++) {
+
+			if (cp->final_xform_index == i)
+				continue;
+			else
+				dist_row++;
+
+			if (flam3_create_chaos_distrib(cp, i,
+					&(xform_distrib[CHOOSE_XFORM_GRAIN*(dist_row)]))) {
+				free(xform_distrib);
+				return(NULL);
+			}
+		}
+	}
+
+	return(xform_distrib);
 }
 
 void iterator_init (iterator * const iter, const flam3_genome * const genome,
@@ -608,8 +602,9 @@ void flam3_delete_xform(flam3_genome *thiscp, int idx_to_delete) {
    
 }
 
-void flam3_copy_xform(flam3_xform *dest, flam3_xform *src) {
-   memcpy (dest, src, sizeof (*dest));
+static void flam3_copy_xform(flam3_xform * const dest,
+		const flam3_xform * const src) {
+   *dest = *src;
 }
 
 /* Copy one control point to another */
