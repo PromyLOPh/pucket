@@ -169,7 +169,7 @@ bool iterator_step (iterator * const iter, double4 * const ret, randctx * const 
 	else
 		fn = iter->xform_distrib[ rand_u64(rc) & CHOOSE_XFORM_GRAIN_M1 ];
 
-	if (apply_xform(&genome->xform[fn], fn, iter->p, &q, rc)>0) {
+	if (apply_xform(&genome->xform[fn], iter->p, &q, rc)>0) {
 		++iter->consec;
 		if (iter->consec < 5) {
 			iter->p = q;
@@ -187,7 +187,7 @@ bool iterator_step (iterator * const iter, double4 * const ret, randctx * const 
 	if (genome->final_xform_enable == 1) {
 		if (genome->xform[genome->final_xform_index].opacity==1 || 
 				rand_d01(rc)<genome->xform[genome->final_xform_index].opacity) {
-			apply_xform(&genome->xform[fn], genome->final_xform_index, iter->p,
+			apply_xform(&genome->xform[genome->final_xform_index], iter->p,
 					&q, rc);
 			/* Keep the opacity from the original xform */
 			q = (double4) { q[0], q[1], q[2], iter->p[3] };

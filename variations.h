@@ -22,6 +22,6 @@
 void xform_precalc (flam3_xform * const xform);
 int prepare_precalc_flags(flam3_genome *);
 
-int apply_xform(const flam3_xform * const xf, const unsigned int fn,
-		const double4 p, double4 *q_ret, randctx * const rc);
+int apply_xform(const flam3_xform * const xf, const double4 p, double4 *q_ret,
+		randctx * const rc);
 

@@ -2030,8 +2030,8 @@ int prepare_precalc_flags(flam3_genome *cp) {
    return(0);
 }
 
-int apply_xform(const flam3_xform * const xf, const unsigned int fn,
-		const double4 p, double4 *q_ret, randctx * const rc) {
+int apply_xform(const flam3_xform * const xf, const double4 p, double4 *q_ret,
+		randctx * const rc) {
 	flam3_iter_helper f = { .rc = rc, .xform = xf };
 
 	const double s1 = xf->color_speed;
