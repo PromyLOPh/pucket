@@ -72,6 +72,7 @@ static void iter_thread (flam3_genome * const input_genome,
 		volatile bool * const stopped) {
 	randctx rc;
 	rand_seed (&rc);
+	const unsigned int w = bucket->dim[0], h = bucket->dim[1];
 
 	flam3_genome genome;
 	memset (&genome, 0, sizeof (genome));
@@ -118,16 +119,13 @@ static void iter_thread (flam3_genome * const input_genome,
 			for (unsigned int j = 0; j < samples; j++) {
 				const double4 p = iter_storage[j];
 
-				const double2 origpos = (double2) { p[0], p[1] };
-				const double2 transpos = apply_affine (origpos, c->camera);
-				const unsigned int x = floor (transpos[0]);
-				const unsigned int y = floor (transpos[1]);
+				const double2 origpos = (double2) { p[0], p[1] },
+						transpos = apply_affine (origpos, c->camera);
+				const signed int x = floor (transpos[0]), y = floor (transpos[1]);
 
 				/* Skip if out of bounding box or invisible */
-				if (x >= 0 && x < bucket->dim[0] &&
-						y >= 0 && y < bucket->dim[1] &&
-						p[3] > 0) {
-					const size_t ix = x + bucket->dim[0] * y;
+				if (x >= 0 && x < w && y >= 0 && y < h && p[3] > 0) {
+					const size_t ix = x + w * y;
 #if HAVE_BUILTIN_PREFETCH
 					/* prefetch for reading (0) with no locality (0). This (partially)
 					 * hides the load latency for the += operation at the end of this
