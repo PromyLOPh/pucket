@@ -136,8 +136,7 @@ static void iter_thread (flam3_genome * const input_genome,
 					double4 interpcolor = color_palette_lookup (p[2],
 							genome.palette_mode, &input_genome->palette);
 
-					const double logvis = p[3];
-					interpcolor *= logvis;
+					interpcolor *= p[3];
 
 					bucket->data[ix] += interpcolor;
 				}

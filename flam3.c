@@ -185,10 +185,9 @@ bool iterator_step (iterator * const iter, double4 * const ret, randctx * const 
 	iter->p = q;
 
 	if (genome->final_xform_enable == 1) {
-		if (genome->xform[genome->final_xform_index].opacity==1 || 
-				rand_d01(rc)<genome->xform[genome->final_xform_index].opacity) {
-			apply_xform(&genome->xform[genome->final_xform_index], iter->p,
-					&q, rc);
+		const flam3_xform * const final = &genome->xform[genome->final_xform_index];
+		if (final->opacity == 1 || rand_d01(rc) < final->opacity) {
+			apply_xform (final, iter->p, &q, rc);
 			/* Keep the opacity from the original xform */
 			q = (double4) { q[0], q[1], q[2], iter->p[3] };
 		}
