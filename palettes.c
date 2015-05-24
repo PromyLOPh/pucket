@@ -226,88 +226,66 @@ static int random_xform(flam3_genome *g, int excluded, randctx * const rc) {
    return -1;
 }
 
-static double try_colors(flam3_genome *g, int color_resolution) {
-    int *hist;
-    int i, hits, res = color_resolution;
-    int res3 = res * res * res;
-    flam3_frame f;
-    unsigned char *image, *p;
-    flam3_genome saved;
-    double scalar;
-    int pixtotal;
+static double try_colors(flam3_genome *g, unsigned int color_resolution,
+		double timelimit) {
+	assert (g != NULL);
+	assert (color_resolution > 0);
 
-    memset(&saved, 0, sizeof(flam3_genome));
+	int *hist;
+	unsigned int res = color_resolution, res3 = res * res * res;
+	unsigned char *image, *p;
+	flam3_genome saved;
+	int pixtotal;
 
-    flam3_copy(&saved, g);
+	memset(&saved, 0, sizeof(flam3_genome));
 
-    /* Scale the image so that the total number of pixels is ~10000 */
-    pixtotal = g->width * g->height;    
-    scalar = sqrt( 10000.0 / (double)pixtotal);
-    g->width *= scalar;
-    g->height *= scalar;
-    g->pixels_per_unit *= scalar;      
-    
-//    g->width = 100; // XXX keep aspect ratio
-//    g->height = 100;
-//    g->pixels_per_unit = 50;
+	flam3_copy(&saved, g);
 
-    f.bytes_per_channel=1;
-    f.genomes = g;
-    f.ngenomes = 1;
-    f.earlyclip = 1;
-    f.pixel_aspect_ratio = 1.0;
-    f.progress = 0;
-    f.nthreads = 1;
-    f.sub_batch_size = 10000;
-        
-    image = (unsigned char *) calloc(g->width * g->height, 3);
+	/* Scale the image so that the total number of pixels is ~10000 */
+	pixtotal = g->width * g->height;
+	const double scalar = sqrt( 10000.0 / (double)pixtotal);
+	g->width *= scalar;
+	g->height *= scalar;
+	g->pixels_per_unit *= scalar;
+
+	const unsigned int bytes_per_channel=1;
+	const unsigned int channels = 4;
+
+	image = (unsigned char *) calloc(g->width * g->height, bytes_per_channel * channels);
 
 	bucket bucket;
 	bucket_init (&bucket, (uint2) { g->width, g->height });
-	render_bucket (g, &bucket, 0.2);
-	render_image (g, &bucket, image, f.bytes_per_channel);
+	render_bucket (g, &bucket, timelimit);
+	render_image (g, &bucket, image, bytes_per_channel);
 
-    hist = calloc(sizeof(int), res3);
-    p = image;
-    for (i = 0; i < g->height * g->width; i++) {
-       hist[(p[0] * res / 256) +
-            (p[1] * res / 256) * res +
-            (p[2] * res / 256) * res * res]++;
-       p += 3;
-    }
+	hist = calloc(sizeof(int), res3);
+	p = image;
+	for (unsigned int i = 0; i < g->height * g->width; i++) {
+		hist[(p[0] * res / 256) +
+			(p[1] * res / 256) * res +
+			(p[2] * res / 256) * res * res]++;
+		p += channels;
+	}
 
-    if (0) {
-       int j, k;
-       for (i = 0; i < res; i++) {
-          fprintf(stderr, "\ni=%d: \n", i);
-          for (j = 0; j < res; j++) {
-             for (k = 0; k < res; k++) {
-                fprintf(stderr, " %5d", hist[i * res * res + j * res + k]);
-             }
-             fprintf(stderr, "\n");
-          }
-       }
-    }
+	unsigned int hits = 0;
+	for (unsigned int i = 0; i < res3; i++) {
+		if (hist[i]) hits++;
+	}
 
-    hits = 0;
-    for (i = 0; i < res3; i++) {
-       if (hist[i]) hits++;
-    }
+	free(hist);
+	free(image);
 
-    free(hist);
-    free(image);
+	g->width = saved.width;
+	g->height = saved.height;
+	g->pixels_per_unit = saved.pixels_per_unit;
 
-    g->width = saved.width;
-    g->height = saved.height;
-    g->pixels_per_unit = saved.pixels_per_unit;
+	/* Free xform storage */
+	clear_cp(&saved,flam3_defaults_on);
 
-    /* Free xform storage */
-    clear_cp(&saved,flam3_defaults_on);
-
-    return (double) (hits / res3);
+	return (double) hits / (double) res3;
 }
 
-static void change_colors(flam3_genome *g, int change_palette,
+static void change_colors(flam3_genome *g, bool change_palette,
 		const palette_collection * const pc, randctx * const rc) {
    int i;
    int x0, x1;
@@ -326,34 +304,35 @@ static void change_colors(flam3_genome *g, int change_palette,
    if (x1 >= 0 && rand_bool(rc)) g->xform[x1].color = 1.0;
 }
 
-void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution, const palette_collection * const pc, randctx * const rc) {
-   int i;
-   double best, b;
-   flam3_genome best_genome;
+void flam3_improve_colors(flam3_genome *g, unsigned int ntries,
+		bool change_palette,
+		unsigned int color_resolution, double timelimit,
+		const palette_collection * const pc,
+		randctx * const rc) {
+	const double trytime = timelimit/(double) ntries;
+	flam3_genome best_genome;
 
-   memset(&best_genome, 0, sizeof(flam3_genome));
+	memset(&best_genome, 0, sizeof(flam3_genome));
 
-   best = try_colors(g, color_resolution);
-   if (best<0) {
-      fprintf(stderr,"error in try_colors, skipping flam3_improve_colors\n");
-      return;
-   }
+	double best = try_colors(g, color_resolution, trytime);
+	assert (best >= 0.0);
 
-   flam3_copy(&best_genome,g);
-   for (i = 0; i < ntries; i++) {
-      change_colors(g, change_palette, pc, rc);
-      b = try_colors(g, color_resolution);
-      if (b < 0) {
-         fprintf(stderr,"error in try_colors, aborting tries\n");
-         break;
-      }      
-      if (b > best) {
-         best = b;
-         flam3_copy(&best_genome,g);
-      }
-   }
+	flam3_copy(&best_genome,g);
+	for (unsigned int i = 0; i < ntries; i++) {
+		change_colors(g, change_palette, pc, rc);
+		const double b = try_colors(g, color_resolution, trytime);
+		assert (b >= 0.0);
+		if (b < 0) {
+			fprintf(stderr,"error in try_colors, aborting tries\n");
+			break;
+		}
+		if (b > best) {
+			best = b;
+			flam3_copy(&best_genome,g);
+		}
+	}
 
-   flam3_copy(g,&best_genome);
-   clear_cp(&best_genome,flam3_defaults_on);
+	flam3_copy(g,&best_genome);
+	clear_cp(&best_genome,flam3_defaults_on);
 }
 

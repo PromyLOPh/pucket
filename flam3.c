@@ -1736,11 +1736,11 @@ void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, in
 
       if (s < 0.4) { /* randomize xform color coords */
       
-         flam3_improve_colors(cp, 100, 0, 10, pc, rc);
+         flam3_improve_colors(cp, 100, 0, 10, 1.0, pc, rc);
          
       } else if (s < 0.8) { /* randomize xform color coords and palette */
       
-         flam3_improve_colors(cp, 25, 1, 10, pc, rc);
+         flam3_improve_colors(cp, 25, 1, 10, 1.0, pc, rc);
          
       } else { /* randomize palette only */
 		 const palette * const p = palette_random (pc, rc);

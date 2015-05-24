@@ -461,7 +461,11 @@ flam3_genome *flam3_parse_xml2(const int, int default_flag, int *ncps, randctx *
 
 void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc);
 
-void flam3_improve_colors(flam3_genome *g, int ntries, int change_palette, int color_resolution, const palette_collection * const pc, randctx * const rc);
+void flam3_improve_colors(flam3_genome *g, unsigned int ntries,
+		bool change_palette,
+		unsigned int color_resolution, double timelimit,
+		const palette_collection * const pc,
+		randctx * const rc);
 int flam3_estimate_bounding_box(flam3_genome *g, double eps, int nsamples,
              double *bmin, double *bmax, randctx *rc);
 

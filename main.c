@@ -422,11 +422,38 @@ static void do_cross (const cross_arguments * const arguments) {
 	print_genome (&genome_out);
 }
 
-#if 0
-static void do_improvecolors () {
-	flam3_improve_colors(&cp_orig, 100, 0, 10, &rc);
+typedef struct {
+	unsigned int tries, resolution;
+	bool change_palette;
+	double time;
+} improvecolors_arguments;
+
+static error_t parse_improvecolors_opt (int key, char *arg,
+		struct argp_state * const state) {
+	improvecolors_arguments * const arguments = state->input;
+
+	return 0;
 }
-#endif
+
+static void do_improvecolors (const improvecolors_arguments * const arguments) {
+	randctx rc;
+
+	rand_seed(&rc);
+
+	int ncps;
+	flam3_genome * const cps = flam3_parse_xml2 (STDIN_FILENO,
+			flam3_defaults_on, &ncps, &rc);
+	if (cps == NULL) {
+		fprintf(stderr,"error reading genomes from file\n");
+		exit(1);
+	}
+	assert (ncps == 1);
+
+	flam3_improve_colors (&cps[0], arguments->tries, arguments->change_palette,
+			arguments->resolution, arguments->time, &builtin_palettes, &rc);
+
+	print_genome (&cps[0]);
+}
 
 typedef struct {
 	float time;
@@ -495,6 +522,7 @@ static void show_help (const char * const argv0) {
 	}
 	fprintf (stderr,
 			"Usage: %s cross [OPTION...]\n"
+			"   Or: %s improvecolors [OPTION...]\n"
 			"   Or: %s interpolate [OPTION...]\n"
 			"   Or: %s mutate [OPTION...]\n"
 			"   Or: %s random [OPTION...]\n"
@@ -527,6 +555,25 @@ int main (int argc, char **argv) {
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
 		do_cross (&arguments);
+	} else if (streq (command, "improvecolors")) {
+		const struct argp_option options[] = {
+				{ 0 },
+				};
+		const char doc[] = PACKAGE "-improvecolors -- improve flame colors";
+		const struct argp argp = {
+				.options = options, .parser = parse_improvecolors_opt,
+				.args_doc = NULL, .doc = doc, .children = NULL
+				};
+
+		improvecolors_arguments arguments = {
+				.tries = 100,
+				.resolution = 10,
+				.change_palette = true,
+				.time = 1.0,
+				};
+
+		argp_parse (&argp, argc, argv, 0, NULL, &arguments);
+		do_improvecolors (&arguments);
 	} else if (streq (command, "interpolate")) {
 		const struct argp_option options[] = {
 				{"time", 't', "float", OPTION_ARG_OPTIONAL, "Time step (0.5)" },
