@@ -175,10 +175,8 @@ typedef struct xform {
    double blob_waves;
 
    /* PDJ */
-   double pdj_a;
-   double pdj_b;
-   double pdj_c;
-   double pdj_d;
+   double2 pdj_ac;
+   double2 pdj_bd;
 
    /* Fan2 */
    double fan2_x;

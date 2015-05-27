@@ -366,10 +366,10 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
       INTERP(xform[i].blob_low);
       INTERP(xform[i].blob_high);
       INTERP(xform[i].blob_waves);
-      INTERP(xform[i].pdj_a);
-      INTERP(xform[i].pdj_b);
-      INTERP(xform[i].pdj_c);
-      INTERP(xform[i].pdj_d);
+      INTERP(xform[i].pdj_ac[0]);
+      INTERP(xform[i].pdj_bd[0]);
+      INTERP(xform[i].pdj_ac[1]);
+      INTERP(xform[i].pdj_bd[1]);
       INTERP(xform[i].fan2_x);
       INTERP(xform[i].fan2_y);
       INTERP(xform[i].rings2_val);

@@ -558,12 +558,8 @@ static double2 var24_pdj (const double2 in, const flam3_iter_helper * const f, d
       p[0] += v * (ny1 - nx1);
       p[1] += v * (nx2 - ny2); */
 
-   const double2 a = (double2) {
-                     sin(f->xform->pdj_a * in[1]),
-					 sin(f->xform->pdj_c * in[0]) };
-   const double2 b = (double2) {
-                     cos(f->xform->pdj_b * in[0]),
-					 cos(f->xform->pdj_d * in[1]) };
+   const double2 a = sin_d2 (f->xform->pdj_ac * swap_d2 (in));
+   const double2 b = cos_d2 (f->xform->pdj_bd * in);
 
    return weight * (a - b);
 }

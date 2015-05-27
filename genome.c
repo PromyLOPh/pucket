@@ -35,10 +35,10 @@ static void random_xform_param (flam3_xform * const xform, const unsigned int i,
 			break;
 
 		case VAR_PDJ:
-			xform->pdj_a = 3.0 * rand_d11(rc);
-			xform->pdj_b = 3.0 * rand_d11(rc);
-			xform->pdj_c = 3.0 * rand_d11(rc);
-			xform->pdj_d = 3.0 * rand_d11(rc);
+			xform->pdj_ac[0] = 3.0 * rand_d11(rc);
+			xform->pdj_bd[0] = 3.0 * rand_d11(rc);
+			xform->pdj_ac[1] = 3.0 * rand_d11(rc);
+			xform->pdj_bd[1] = 3.0 * rand_d11(rc);
 			break;
 
 		case VAR_FAN2:

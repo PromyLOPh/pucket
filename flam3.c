@@ -297,10 +297,8 @@ void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, 
       dest->blob_waves = src->blob_waves;
    } else if (varn==VAR_PDJ) {
       /* PDJ */
-      dest->pdj_a = src->pdj_a;
-      dest->pdj_b = src->pdj_b;
-      dest->pdj_c = src->pdj_c;
-      dest->pdj_d = src->pdj_d;
+      dest->pdj_ac = src->pdj_ac;
+      dest->pdj_bd = src->pdj_bd;
    } else if (varn==VAR_FAN2) {
       /* Fan2 */
       dest->fan2_x = src->fan2_x;
@@ -1028,10 +1026,10 @@ static void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag,
 					break;
 
 				case VAR_PDJ:
-					fprintf(f, "pdj_a=\"%g\" ", x->pdj_a);
-					fprintf(f, "pdj_b=\"%g\" ", x->pdj_b);
-					fprintf(f, "pdj_c=\"%g\" ", x->pdj_c);
-					fprintf(f, "pdj_d=\"%g\" ", x->pdj_d);
+					fprintf(f, "pdj_a=\"%g\" ", x->pdj_ac[0]);
+					fprintf(f, "pdj_b=\"%g\" ", x->pdj_bd[0]);
+					fprintf(f, "pdj_c=\"%g\" ", x->pdj_ac[1]);
+					fprintf(f, "pdj_d=\"%g\" ", x->pdj_bd[1]);
 					break;
 
 				case VAR_FAN2:

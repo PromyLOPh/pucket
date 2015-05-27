@@ -151,3 +151,16 @@ inline double4 nearbyint_d4 (const double4 in) {
 			nearbyint (in[3]),
 			};
 }
+
+inline double2 sin_d2 (const double2 in) {
+	return (double2) { sin (in[0]), sin (in[1]) };
+}
+
+inline double2 cos_d2 (const double2 in) {
+	return (double2) { cos (in[0]), cos (in[1]) };
+}
+
+inline double2 swap_d2 (const double2 in) {
+	return (double2) { in[1], in[0] };
+}
+

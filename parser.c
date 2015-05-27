@@ -861,13 +861,13 @@ static int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"blob_waves")) {
          this_xform->blob_waves = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"pdj_a")) {
-         this_xform->pdj_a = flam3_atof(att_str);
+         this_xform->pdj_ac[0] = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"pdj_b")) {
-         this_xform->pdj_b = flam3_atof(att_str);
+         this_xform->pdj_bd[0] = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"pdj_c")) {
-         this_xform->pdj_c = flam3_atof(att_str);
+         this_xform->pdj_ac[1] = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"pdj_d")) {
-         this_xform->pdj_d = flam3_atof(att_str);
+         this_xform->pdj_bd[1] = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"fan2_x")) {
          this_xform->fan2_x = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"fan2_y")) {
