@@ -277,8 +277,9 @@ void xform_rand (flam3_xform * const xform, const bool add_post,
 		}
 	}
 
+	const unsigned int var = rand_mod (rc, max_var)+1;
 	memset (xform->var, 0, sizeof (*xform->var));
-	for (unsigned int i = 0; i < max_var; i++) {
+	for (unsigned int i = 0; i < var; i++) {
 		const unsigned int v = rand_mod (rc, flam3_nvariations);
 		double w;
 		do {
@@ -286,11 +287,6 @@ void xform_rand (flam3_xform * const xform, const bool add_post,
 		} while (w == 0.0);
 		xform->var[v] += w;
 		random_xform_param (xform, v, rc);
-
-		/* small number of variations is more likely */
-		if (rand_bool (rc)) {
-			break;
-		}
 	}
 
 	/* Normalize weights to 1.0 total. */
