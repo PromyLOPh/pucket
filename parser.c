@@ -603,7 +603,7 @@ static int parse_flame_element(xmlNode *flame_node, flam3_genome *loc_current_cp
          }
 
          bef = cp->num_xforms;
-         flam3_add_symmetry(cp,kind, rc);
+         flam3_add_symmetry(cp, kind);
          aft = cp->num_xforms;
          num_std_xforms += (aft-bef);
          

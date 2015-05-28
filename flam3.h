@@ -457,7 +457,7 @@ void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cr
 /* return NULL in case of error */
 flam3_genome *flam3_parse_xml2(const int, int default_flag, int *ncps, randctx * const);
 
-void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc);
+void flam3_add_symmetry(flam3_genome *cp, int sym);
 
 void flam3_improve_colors(flam3_genome *g, unsigned int ntries,
 		bool change_palette,

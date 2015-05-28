@@ -145,6 +145,7 @@ static void print_genome (flam3_genome * const genome) {
 typedef struct {
 	const char *palette;
 	unsigned int width, height, max_xforms, max_var;
+	signed int max_symmetry, min_symmetry;
 	double post_likelihood, final_likelihood, symmetry_likelihood;
 } random_arguments;
 
@@ -277,7 +278,9 @@ static void do_random (const random_arguments * const arguments) {
 
 	/* Randomly add symmetry (but not if we've already added a final xform) */
 	if (rand_d01(&rc) < arguments->symmetry_likelihood && !add_final) {
-		flam3_add_symmetry(&genome, 0, &rc);
+		assert (arguments->max_symmetry >= arguments->min_symmetry);
+		unsigned int symrange = arguments->max_symmetry - arguments->min_symmetry + 1;
+		flam3_add_symmetry(&genome, rand_mod (&rc, symrange) + arguments->min_symmetry);
 	}
 
 	/* random resets genome, adjust before finding appropriate bbox */
@@ -635,6 +638,8 @@ int main (int argc, char **argv) {
 				.post_likelihood = 0.4,
 				.final_likelihood = 0.15,
 				.symmetry_likelihood = 0.25,
+				.min_symmetry = -6,
+				.max_symmetry = 6,
 				};
 
 		argp_parse (&argp, argc, argv, 0, NULL, &arguments);

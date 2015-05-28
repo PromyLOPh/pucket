@@ -1320,33 +1320,14 @@ static int compare_xforms(const void *av, const void *bv) {
 }
 
 /* sym=2 or more means rotational
-   sym=1 means identity, ie no symmetry
-   sym=0 means pick a random symmetry (maybe none)
+   sym=1 and sym=0 means identity, ie no symmetry
    sym=-1 means bilateral (reflection)
    sym=-2 or less means rotational and reflective
 */
-void flam3_add_symmetry(flam3_genome *cp, int sym, randctx * const rc) {
+void flam3_add_symmetry(flam3_genome *cp, int sym) {
    int i, j, k;
    double a;
    int result = 0;
-
-   if (0 == sym) {
-      static int sym_distrib[] = {
-         -4, -3,
-         -2, -2, -2,
-         -1, -1, -1,
-         2, 2, 2,
-         3, 3,
-         4, 4,
-      };
-      if (rand_bool(rc)) {
-         sym = rand_distrib(rc, sym_distrib);
-      } else if (rand_mod(rc, 32)) {
-         sym = rand_mod(rc, 13)-6;
-      } else {
-         sym = rand_mod(rc, 51)-25;
-      }
-   }
 
    if (1 == sym || 0 == sym) return;
 
