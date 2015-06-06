@@ -448,9 +448,6 @@ void flam3_interpolate(flam3_genome *genomes, int ngenomes, double time, double 
 /* print genome to given file with extra_attributes if not NULL */
 void flam3_print(FILE *f, flam3_genome *g, char *extra_attributes);
 
-void flam3_random(flam3_genome *cp, const unsigned int max_xform,
-		const palette_collection * const pc, randctx * const rc);
-
 void flam3_mutate(flam3_genome *cp, int mutate_mode, int *ivars, int ivars_n, int sym, double speed, const palette_collection * const pc, randctx *rc);
 void flam3_cross(flam3_genome *cp0, flam3_genome *cp1, flam3_genome *out, int cross_mode, randctx *rc);
 
@@ -466,19 +463,6 @@ void flam3_improve_colors(flam3_genome *g, unsigned int ntries,
 		randctx * const rc);
 int flam3_estimate_bounding_box(flam3_genome *g, double eps, int nsamples,
              double *bmin, double *bmax, randctx *rc);
-
-typedef struct {
-   double         pixel_aspect_ratio;    /* width over height of each pixel */
-   flam3_genome  *genomes;
-   int            ngenomes;
-   int            bytes_per_channel;
-   int            earlyclip;
-   double         time;
-   int            (*progress)(void *, double, int, double);
-   void          *progress_parameter;
-   int           nthreads;
-   int           sub_batch_size;
-} flam3_frame;
 
 /* Mutation modes */
 #define MUTATE_NOT_SPECIFIED   -1
