@@ -264,7 +264,9 @@ void xform_rand (flam3_xform * const xform, const bool add_post,
 	assert (rc != NULL);
 
 	/* XXX: the original code alternates between 0/1 for every xform */
-	xform->color = rand_bool (rc) ? 1.0 : 0.0;
+	xform->color = rand_d01 (rc);
+	/* … and uses a constant color_speed of 0.5 */
+	xform->color_speed = rand_d01 (rc);
 
 	for (unsigned int j = 0; j < 3; j++) {
 		for (unsigned int k = 0; k < 2; k++) {

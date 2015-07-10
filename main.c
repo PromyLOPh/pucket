@@ -238,7 +238,8 @@ static void adjust_bounding_box (flam3_genome * const genome, randctx * const rc
 		genome->center[0] = mix0 * bmin[0] + (1-mix0)*bmax[0];
 		genome->center[1] = mix1 * bmin[1] + (1-mix1)*bmax[1];
 	}
-	genome->pixels_per_unit = genome->width / (bmax[0] - bmin[0]);
+	const double zoomin = rand_d01 (rc) * 5;
+	genome->pixels_per_unit = genome->width / (bmax[0] - bmin[0]) * zoomin;
 }
 
 static void do_random (const random_arguments * const arguments) {
@@ -272,7 +273,6 @@ static void do_random (const random_arguments * const arguments) {
 		const bool add_post = rand_d01 (&rc) < arguments->post_likelihood;
 		xform_rand (xform, add_post, arguments->max_var, &rc);
 		xform->density = 1.0 / nxforms;
-		xform->color_speed = 0.5;
 		xform->animate = 1.0;
 	}
 
