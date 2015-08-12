@@ -20,6 +20,7 @@
 
 #include <math.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "build/config.h"
 #include "vector.h"
