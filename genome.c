@@ -253,6 +253,10 @@ static void random_xform_param (flam3_xform * const xform, const unsigned int i,
 			xform->mobius_re_d = rand_d11(rc);
 			xform->mobius_im_d = rand_d11(rc);
 			break;
+
+		case VAR_ASTERIA:
+			xform->asteria_alpha = rand_d01(rc);
+			break;
 	}
 }
 

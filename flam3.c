@@ -484,6 +484,8 @@ void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, 
       dest->mobius_im_b = src->mobius_im_b;
       dest->mobius_im_c = src->mobius_im_c;
       dest->mobius_im_d = src->mobius_im_d;
+   } else if (varn==VAR_ASTERIA) {
+      dest->asteria_alpha = src->asteria_alpha;
    }
 }
 
@@ -1236,6 +1238,10 @@ static void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag,
 					fprintf(f, "mobius_im_c=\"%g\" ", x->mobius_im_c);
 					fprintf(f, "mobius_re_d=\"%g\" ", x->mobius_re_d);
 					fprintf(f, "mobius_im_d=\"%g\" ", x->mobius_im_d);
+					break;
+
+				case VAR_ASTERIA:
+					fprintf(f, "asteria_alpha=\"%g\" ", x->asteria_alpha);
 					break;
 
 				case VAR_SEPARATION:

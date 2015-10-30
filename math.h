@@ -109,6 +109,18 @@ inline double sum(const double2 in) {
 	return in[0] + in[1];
 }
 
+inline double square (const double in) {
+	return in * in;
+}
+
+inline double2 square_d2 (const double2 in) {
+	return in * in;
+}
+
+inline double squaresum (const double2 in) {
+	return sum (square_d2 (in));
+}
+
 inline void normalize (double * const a, const size_t n) {
 	double sum = 0.0;
 	for (unsigned int j = 0; j < n; j++) {

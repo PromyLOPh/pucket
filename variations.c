@@ -129,6 +129,7 @@ char *flam3_variation_names[1+flam3_nvariations] = {
   "auger",
   "flux",
   "mobius",
+  "asteria",
   0
 };
 
@@ -1829,6 +1830,35 @@ static double2 var98_mobius (const double2 in, const flam3_iter_helper * const f
 	return rad_v * (double2) { (re_u*re_v + im_u*im_v), (im_u*re_v - re_u*im_v) };
 }
 
+static double2 var99_asteria (const double2 in, const flam3_iter_helper * const f, double weight) {
+	/* from jwildfire: asteria by dark-beam,
+	 * http://jwildfire.org/forum/viewtopic.php?f=23&t=1464 */
+	const double2 w = weight * in;
+	double r = squaresum (in);
+	double xx = square (fabs(in[0]) - 1.);
+	double yy = square (fabs(in[1]) - 1.);
+	const double r2 = sqrt(yy + xx);
+	bool in1 = r < 1.;
+	const bool out2 = r2 < 1.;
+	if (in1 && out2) {
+		in1 = rand_d01 (f->rc) > 0.35;
+	} else {
+		in1 = !in1;
+	}
+
+	if (in1) {
+		return var0_linear (in, f, weight);
+	} else {
+		const double sina = f->xform->asteria_sina;
+		const double cosa = f->xform->asteria_cosa;
+		xx = w[0] * cosa - w[1] * sina;
+		yy = w[0] * sina + w[1] * cosa;
+		const double nx = xx / sqrt(1. - yy * yy) * (1. - sqrt(1. - square(-fabs(yy) + 1.)));
+		xx = nx * cosa + yy * sina;
+		yy = -nx * sina + yy * cosa;
+		return (double2) { xx, yy };
+	}
+}
 
 /* Precalc functions */
 
@@ -1892,6 +1922,11 @@ static void supershape_precalc(flam3_xform *xf) {
    xf->super_shape_pneg1_n1 = -1.0 / xf->super_shape_n1;
 }
 
+static void asteria_precalc (flam3_xform * const xf) {
+	xf->asteria_sina = sin (M_PI * xf->asteria_alpha);
+	xf->asteria_cosa = cos (M_PI * xf->asteria_alpha);
+}
+
 /*	Precalculate constants (i.e. not depending on position) for variations
  */
 void xform_precalc (flam3_xform * const xform) {
@@ -1903,6 +1938,7 @@ void xform_precalc (flam3_xform * const xform) {
    disc2_precalc(xform);
    supershape_precalc(xform);
    wedgeJulia_precalc(xform);
+   asteria_precalc (xform);
 }
 
 static double adjust_percentage(double in) {
@@ -2013,7 +2049,7 @@ int prepare_precalc_flags(flam3_genome *cp) {
                xf->precalc_atan_yx_flag=1;
             } else if (j==VAR_LOG) {
                xf->precalc_atan_yx_flag=1;
-            }
+			}
 
             totnum++;
          }
@@ -2264,6 +2300,8 @@ int apply_xform(const flam3_xform * const xf, const double4 p, double4 *q_ret,
 				accum += var97_flux(t, &f, weight); break;
 			case (VAR_MOBIUS):
 				accum += var98_mobius(t, &f, weight); break;
+			case VAR_ASTERIA:
+				accum += var99_asteria (t, &f, weight); break;
 		}
 
 	}
