@@ -34,7 +34,7 @@
 const char *argp_program_version = PACKAGE "-" VERSION;
 
 typedef struct {
-	unsigned int bpc;
+	unsigned int bpc, width, height;
 	float scale, time;
 	char *cache;
 } render_arguments;
@@ -64,11 +64,41 @@ static error_t parse_render_opt (int key, char *arg,
 		}
 
 		case 's':
+			if (arguments->width != 0 || arguments->height != 0) {
+				argp_error (state, "scale, width and height are mutually "
+						"exclusive");
+			}
 			arguments->scale = atof (arg);
 			if (arguments->scale <= 0.0) {
 				argp_error (state, "Scale must be > 0");
 			}
 			break;
+
+		case 'w': {
+			if (arguments->scale != 1.0 || arguments->height != 0) {
+				argp_error (state, "scale, width and height are mutually "
+						"exclusive");
+			}
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "width must be > 0");
+			}
+			arguments->width = i;
+			break;
+		}
+
+		case 'h': {
+			if (arguments->scale != 1.0 || arguments->width != 0) {
+				argp_error (state, "scale, width and height are mutually "
+						"exclusive");
+			}
+			int i = atoi (arg);
+			if (i <= 0) {
+				argp_error (state, "height must be > 0");
+			}
+			arguments->height = i;
+			break;
+		}
 
 		case 'c':
 			arguments->cache = strdup (arg);
@@ -106,9 +136,21 @@ static void do_render (const render_arguments * const arguments) {
 
 	flam3_genome * const genome = &cps[0];
 
-	genome->height *= arguments->scale;
-	genome->width *= arguments->scale;
-	genome->pixels_per_unit *= arguments->scale;
+	float scale = arguments->scale;
+	if (arguments->width != 0) {
+		assert (scale == 1);
+		assert (arguments->height == 0);
+		scale = (float) arguments->width / (float) genome->width;
+	}
+	if (arguments->height != 0) {
+		assert (scale == 1);
+		assert (arguments->width == 0);
+		scale = (float) arguments->height / (float) genome->height;
+	}
+
+	genome->height *= scale;
+	genome->width *= scale;
+	genome->pixels_per_unit *= scale;
 
 	const unsigned int bytes_per_channel = arguments->bpc/8;
 	const unsigned int channels = 4;
@@ -648,6 +690,8 @@ int main (int argc, char **argv) {
 		/* render flame to image file */
 		const struct argp_option options[] = {
 				{"scale", 's', "factor", 0, "Scale image dimensions by factor (1.0)" },
+				{"width", 'w', "pixels", 0, "Scale image to width" },
+				{"height", 'h', "pixels", 0, "Scale image to height" },
 				{"bpc", 'b', "8|16", 0, "Bits per channel of output image (8)" },
 				{"time", 't', "seconds", 0, "Rendering time" },
 				{"cache", 'c', "path", 0, "Cache file" },
@@ -662,6 +706,8 @@ int main (int argc, char **argv) {
 		render_arguments arguments = {
 				.bpc = 8,
 				.scale = 1.0,
+				.width = 0,
+				.height = 0,
 				.time = 1.0,
 				.cache = NULL,
 				};
