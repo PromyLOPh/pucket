@@ -131,6 +131,7 @@ char *flam3_variation_names[1+flam3_nvariations] = {
   "mobius",
   "asteria",
   "bcollide",
+  "bmod",
   0
 };
 
@@ -1861,13 +1862,40 @@ static double2 var99_asteria (const double2 in, const flam3_iter_helper * const 
 	}
 }
 
+/* convert x/y to bipolar coordinate system tau/sigma
+ */
+static double2 toBipolar (const double2 in) {
+	const double sigmasquare = square (in[1]);
+	return (double2) {
+		0.5 * (log(square (in[0] + 1.0) + sigmasquare) - log(square (in[0] - 1.0) + sigmasquare)),
+		M_PI - atan2(in[1], in[0] + 1.0) - atan2(in[1], 1.0 - in[0])
+		};
+}
+
+/*	Convert tau/sigma to x/y
+ */
+static double2 fromBipolar (const double2 in) {
+	const double tau = in[0], sigma = in[1];
+	const double sinht = sinh(tau);
+	const double cosht = cosh(tau);
+	double sins, coss;
+	sincos (sigma, &sins, &coss);
+	const double temp = cosht - coss;
+	if (temp == 0) {
+		return (double2) { HUGE_VAL, HUGE_VAL };
+	} else {
+		return (double2) { sinht / temp, sins / temp };
+	}
+}
+
 static double2 var100_bcollide (const double2 in, const flam3_iter_helper * const f, double weight) {
 	/* from jwildfire: bCollide by Michael Faber,
 	 * http://michaelfaber.deviantart.com/art/bSeries-320574477 */
 	const flam3_xform *xf = f->xform;
 
-	const double tau = 0.5 * (log(square (in[0] + 1.0) + square (in[1])) - log(square (in[0] - 1.0) + square (in[1])));
-	double sigma = M_PI - atan2(in[1], in[0] + 1.0) - atan2(in[1], 1.0 - in[0]);
+	const double2 bipolar = toBipolar (in);
+	const double tau = bipolar[0];
+	double sigma = bipolar[1];
 
 	const int alt = (int) (sigma * xf->bcollide_bCn_pi);
 	if (alt % 2 == 0) {
@@ -1875,12 +1903,26 @@ static double2 var100_bcollide (const double2 in, const flam3_iter_helper * cons
 	} else {
 		sigma = alt * xf->bcollide_pi_bCn + fmod(sigma - xf->bcollide_bCa_bCn, xf->bcollide_pi_bCn);
 	}
-	const double sinht = sinh(tau);
-	const double cosht = cosh(tau);
-	double sins, coss;
-	sincos (sigma, &sins, &coss);
-	const double temp = cosht - coss;
-	return (double2) { weight * sinht / temp, weight * sins / temp };
+	const double2 out = fromBipolar ((double2) { tau, sigma });
+	return weight * out;
+}
+
+static double2 var101_bmod (const double2 in, const flam3_iter_helper * const f, double weight) {
+	/* from jwildfire: bMod by Michael Faber,
+	 * http://michaelfaber.deviantart.com/art/bSeries-320574477 */
+	const flam3_xform *xf = f->xform;
+
+	const double2 bipolar = toBipolar (in);
+	double tau = bipolar[0];
+	double sigma = bipolar[1];
+	const double radius = xf->bmod_radius;
+
+	if (tau < radius && -tau < radius) {
+		tau = fmod(tau + radius + xf->bmod_distance * radius, 2.0 * radius) - radius;
+	}
+
+	const double2 out = fromBipolar ((double2) { tau, sigma });
+	return weight * out;
 }
 
 /* Precalc functions */
@@ -2335,6 +2377,8 @@ int apply_xform(const flam3_xform * const xf, const double4 p, double4 *q_ret,
 				accum += var99_asteria (t, &f, weight); break;
 			case VAR_BCOLLIDE:
 				accum += var100_bcollide (t, &f, weight); break;
+			case VAR_BMOD:
+				accum += var101_bmod (t, &f, weight); break;
 		}
 
 	}

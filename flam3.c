@@ -529,6 +529,10 @@ void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, 
 			dest->bcollide_num = src->bcollide_num;
 			dest->bcollide_a = src->bcollide_a;
 			break;
+		case VAR_BMOD:
+			dest->bmod_radius = src->bmod_radius;
+			dest->bmod_distance = src->bmod_distance;
+			break;
 	}
 }
 
@@ -1297,6 +1301,11 @@ static void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag,
 				case VAR_BCOLLIDE:
 					fprintf(f, "bcollide_num=\"%g\" ", x->bcollide_num);
 					fprintf(f, "bcollide_a=\"%g\" ", x->bcollide_a);
+					break;
+
+				case VAR_BMOD:
+					fprintf(f, "bmod_radius=\"%g\" ", x->bmod_radius);
+					fprintf(f, "bmod_distance=\"%g\" ", x->bmod_distance);
 					break;
 
 				default:

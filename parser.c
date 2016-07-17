@@ -1091,6 +1091,10 @@ static int parse_xform_xml(xmlNode *chld_node,flam3_xform *this_xform, int *num_
          this_xform->bcollide_num = flam3_atof(att_str);
       } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"bcollide_a")) {
          this_xform->bcollide_a = flam3_atof(att_str);
+      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"bmod_radius")) {
+         this_xform->bmod_radius = flam3_atof(att_str);
+      } else if (!xmlStrcmp(cur_att->name, (const xmlChar *)"bmod_distance")) {
+         this_xform->bmod_distance = flam3_atof(att_str);
       } else {
          int v = var2n((char *) cur_att->name);
          if (v != flam3_variation_none)

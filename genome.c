@@ -262,6 +262,11 @@ static void random_xform_param (flam3_xform * const xform, const unsigned int i,
 			xform->bcollide_num = rand_d01(rc)*(1<<16);
 			xform->bcollide_a = rand_d01(rc);
 			break;
+
+		case VAR_BMOD:
+			xform->bmod_radius = rand_d01(rc)*(1<<16);
+			xform->bmod_distance = rand_d01(rc)*2;
+			break;
 	}
 }
 

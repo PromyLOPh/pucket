@@ -144,7 +144,8 @@ typedef enum {
 #define VAR_MOBIUS 98
 #define VAR_ASTERIA 99
 #define VAR_BCOLLIDE 100
-#define flam3_nvariations 101
+#define VAR_BMOD 101
+#define flam3_nvariations 102
 
 #include "vector.h"
 #include "random.h"
@@ -376,6 +377,9 @@ typedef struct xform {
    double bcollide_num, bcollide_a;
    /* precalc */
    double bcollide_bCa, bcollide_bCn_pi, bcollide_bCa_bCn, bcollide_pi_bCn;
+
+   /* bmod */
+   double bmod_radius, bmod_distance;
 
    int num_active_vars;
    double active_var_weights[flam3_nvariations];
