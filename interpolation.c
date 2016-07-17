@@ -473,6 +473,8 @@ void flam3_interpolate_n(flam3_genome *result, int ncp,
       INTERP(xform[i].mobius_re_d);
       INTERP(xform[i].mobius_im_d);
       INTERP(xform[i].asteria_alpha);
+      INTERP(xform[i].bcollide_num);
+      INTERP(xform[i].bcollide_a);
 
       for (j = 0; j < flam3_nvariations; j++)
          INTERP(xform[i].var[j]);

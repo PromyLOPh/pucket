@@ -130,6 +130,7 @@ char *flam3_variation_names[1+flam3_nvariations] = {
   "flux",
   "mobius",
   "asteria",
+  "bcollide",
   0
 };
 
@@ -1860,6 +1861,28 @@ static double2 var99_asteria (const double2 in, const flam3_iter_helper * const 
 	}
 }
 
+static double2 var100_bcollide (const double2 in, const flam3_iter_helper * const f, double weight) {
+	/* from jwildfire: bCollide by Michael Faber,
+	 * http://michaelfaber.deviantart.com/art/bSeries-320574477 */
+	const flam3_xform *xf = f->xform;
+
+	const double tau = 0.5 * (log(square (in[0] + 1.0) + square (in[1])) - log(square (in[0] - 1.0) + square (in[1])));
+	double sigma = M_PI - atan2(in[1], in[0] + 1.0) - atan2(in[1], 1.0 - in[0]);
+
+	const int alt = (int) (sigma * xf->bcollide_bCn_pi);
+	if (alt % 2 == 0) {
+		sigma = alt * xf->bcollide_pi_bCn + fmod(sigma + xf->bcollide_bCa_bCn, xf->bcollide_pi_bCn);
+	} else {
+		sigma = alt * xf->bcollide_pi_bCn + fmod(sigma - xf->bcollide_bCa_bCn, xf->bcollide_pi_bCn);
+	}
+	const double sinht = sinh(tau);
+	const double cosht = cosh(tau);
+	double sins, coss;
+	sincos (sigma, &sins, &coss);
+	const double temp = cosht - coss;
+	return (double2) { weight * sinht / temp, weight * sins / temp };
+}
+
 /* Precalc functions */
 
 static void perspective_precalc(flam3_xform *xf) {
@@ -1927,6 +1950,13 @@ static void asteria_precalc (flam3_xform * const xf) {
 	xf->asteria_cosa = cos (M_PI * xf->asteria_alpha);
 }
 
+static void bcollide_precalc (flam3_xform * const xf) {
+    xf->bcollide_bCn_pi = xf->bcollide_num * M_1_PI;
+    xf->bcollide_pi_bCn = M_PI / xf->bcollide_num;
+    xf->bcollide_bCa = M_PI * xf->bcollide_a;
+    xf->bcollide_bCa_bCn = xf->bcollide_bCa / xf->bcollide_num;
+}
+
 /*	Precalculate constants (i.e. not depending on position) for variations
  */
 void xform_precalc (flam3_xform * const xform) {
@@ -1939,6 +1969,7 @@ void xform_precalc (flam3_xform * const xform) {
    supershape_precalc(xform);
    wedgeJulia_precalc(xform);
    asteria_precalc (xform);
+   bcollide_precalc (xform);
 }
 
 static double adjust_percentage(double in) {
@@ -2302,6 +2333,8 @@ int apply_xform(const flam3_xform * const xf, const double4 p, double4 *q_ret,
 				accum += var98_mobius(t, &f, weight); break;
 			case VAR_ASTERIA:
 				accum += var99_asteria (t, &f, weight); break;
+			case VAR_BCOLLIDE:
+				accum += var100_bcollide (t, &f, weight); break;
 		}
 
 	}

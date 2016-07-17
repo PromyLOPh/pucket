@@ -486,6 +486,9 @@ void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, 
       dest->mobius_im_d = src->mobius_im_d;
    } else if (varn==VAR_ASTERIA) {
       dest->asteria_alpha = src->asteria_alpha;
+   } else if (varn==VAR_BCOLLIDE) {
+   	  dest->bcollide_num = src->bcollide_num;
+   	  dest->bcollide_a = src->bcollide_a;
    }
 }
 
@@ -1249,6 +1252,11 @@ static void flam3_print_xform(FILE *f, flam3_xform *x, int final_flag,
 					fprintf(f, "separation_y=\"%g\" ", x->separation_y);
 					fprintf(f, "separation_xinside=\"%g\" ", x->separation_xinside);
 					fprintf(f, "separation_yinside=\"%g\" ", x->separation_yinside);
+					break;
+
+				case VAR_BCOLLIDE:
+					fprintf(f, "bcollide_num=\"%g\" ", x->bcollide_num);
+					fprintf(f, "bcollide_a=\"%g\" ", x->bcollide_a);
 					break;
 
 				default:

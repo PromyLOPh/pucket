@@ -30,8 +30,6 @@
 
 extern char *flam3_variation_names[];
 
-#define flam3_nvariations 100
-
 #define flam3_interpolation_linear 0
 #define flam3_interpolation_smooth 1
 
@@ -145,6 +143,8 @@ typedef enum {
 #define VAR_FLUX 97
 #define VAR_MOBIUS 98
 #define VAR_ASTERIA 99
+#define VAR_BCOLLIDE 100
+#define flam3_nvariations 101
 
 #include "vector.h"
 #include "random.h"
@@ -371,6 +371,11 @@ typedef struct xform {
    double asteria_alpha;
    /* precalc */
    double asteria_sina, asteria_cosa;
+
+   /* bcollide */
+   double bcollide_num, bcollide_a;
+   /* precalc */
+   double bcollide_bCa, bcollide_bCn_pi, bcollide_bCa_bCn, bcollide_pi_bCn;
 
    int num_active_vars;
    double active_var_weights[flam3_nvariations];

@@ -257,6 +257,11 @@ static void random_xform_param (flam3_xform * const xform, const unsigned int i,
 		case VAR_ASTERIA:
 			xform->asteria_alpha = rand_d01(rc);
 			break;
+
+		case VAR_BCOLLIDE:
+			xform->bcollide_num = rand_d01(rc)*(1<<16);
+			xform->bcollide_a = rand_d01(rc);
+			break;
 	}
 }
 
