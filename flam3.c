@@ -288,208 +288,248 @@ void flam3_interpolate(flam3_genome cps[], int ncps,
 }
 
 void flam3_copy_params(flam3_xform * restrict dest, flam3_xform * restrict src, int varn) {
-
-   /* We only want to copy param var coefs for this one */
-   if (varn==VAR_BLOB) {
-      /* Blob */
-      dest->blob_low = src->blob_low;
-      dest->blob_high = src->blob_high;
-      dest->blob_waves = src->blob_waves;
-   } else if (varn==VAR_PDJ) {
-      /* PDJ */
-      dest->pdj_ac = src->pdj_ac;
-      dest->pdj_bd = src->pdj_bd;
-   } else if (varn==VAR_FAN2) {
-      /* Fan2 */
-      dest->fan2_x = src->fan2_x;
-      dest->fan2_y = src->fan2_y;
-   } else if (varn==VAR_RINGS2) {
-      /* Rings2 */
-      dest->rings2_val = src->rings2_val;
-   } else if (varn==VAR_PERSPECTIVE) {
-      /* Perspective */
-      dest->perspective_angle = src->perspective_angle;
-      dest->perspective_dist = src->perspective_dist;
-      dest->persp_vsin = src->persp_vsin;
-      dest->persp_vfcos = src->persp_vfcos;
-   } else if (varn==VAR_JULIAN) {
-      /* Julia_N */
-      dest->julian_power = src->julian_power;
-      dest->julian_dist = src->julian_dist;
-      dest->julian_rN = src->julian_rN;
-      dest->julian_cn = src->julian_cn;
-   } else if (varn==VAR_JULIASCOPE) {
-      /* Julia_Scope */
-      dest->juliascope_power = src->juliascope_power;
-      dest->juliascope_dist = src->juliascope_dist;
-      dest->juliascope_rN = src->juliascope_rN;
-      dest->juliascope_cn = src->juliascope_cn;
-   } else if (varn==VAR_RADIAL_BLUR) {
-      /* Radial Blur */
-      dest->radial_blur_angle = src->radial_blur_angle;
-   } else if (varn==VAR_PIE) {
-      /* Pie */
-      dest->pie_slices = src->pie_slices;
-      dest->pie_rotation = src->pie_rotation;
-      dest->pie_thickness = src->pie_thickness;
-   } else if (varn==VAR_NGON) {
-      /* Ngon */
-      dest->ngon_sides = src->ngon_sides;
-      dest->ngon_power = src->ngon_power;
-      dest->ngon_corners = src->ngon_corners;
-      dest->ngon_circle = src->ngon_circle;
-   } else if (varn==VAR_CURL) {
-      /* Curl */
-      dest->curl_c1 = src->curl_c1;
-      dest->curl_c2 = src->curl_c2;
-   } else if (varn==VAR_RECTANGLES) {
-      /* Rect */
-      dest->rectangles_x = src->rectangles_x;
-      dest->rectangles_y = src->rectangles_y;
-   } else if (varn==VAR_DISC2) {
-      /* Disc2 */
-      dest->disc2_rot = src->disc2_rot;
-      dest->disc2_twist = src->disc2_twist;
-   } else if (varn==VAR_SUPER_SHAPE) {
-      /* Supershape */
-      dest->super_shape_rnd = src->super_shape_rnd;
-      dest->super_shape_m = src->super_shape_m;
-      dest->super_shape_n1 = src->super_shape_n1;
-      dest->super_shape_n2 = src->super_shape_n2;
-      dest->super_shape_n3 = src->super_shape_n3;
-      dest->super_shape_holes = src->super_shape_holes;
-   } else if (varn==VAR_FLOWER) {
-      /* Flower */
-      dest->flower_petals = src->flower_petals;
-      dest->flower_petals = src->flower_petals;
-   } else if (varn==VAR_CONIC) {
-      /* Conic */
-      dest->conic_eccentricity = src->conic_eccentricity;
-      dest->conic_holes = src->conic_holes;
-   } else if (varn==VAR_PARABOLA) {
-      /* Parabola */
-      dest->parabola_height = src->parabola_height;
-      dest->parabola_width = src->parabola_width;
-   } else if (varn==VAR_BENT2) {
-      /* Bent2 */
-      dest->bent2_x = src->bent2_x;
-      dest->bent2_y = src->bent2_y;
-   } else if (varn==VAR_BIPOLAR) {
-      /* Bipolar */
-      dest->bipolar_shift = src->bipolar_shift;
-   } else if (varn==VAR_CELL) {
-      /* Cell */
-      dest->cell_size = src->cell_size;
-   } else if (varn==VAR_CPOW) {
-      /* Cpow */
-      dest->cpow_i = src->cpow_i;
-      dest->cpow_r = src->cpow_r;
-      dest->cpow_power = src->cpow_power;
-   } else if (varn==VAR_CURVE) {
-      /* Curve */
-      dest->curve_xamp = src->curve_xamp;
-      dest->curve_yamp = src->curve_yamp;
-      dest->curve_xlength = src->curve_xlength;
-      dest->curve_ylength = src->curve_ylength;
-   } else if (varn==VAR_ESCHER) {
-      /* Escher */
-      dest->escher_beta = src->escher_beta;
-   } else if (varn==VAR_LAZYSUSAN) {
-      /* Lazysusan */
-      dest->lazysusan_x = src->lazysusan_x;
-      dest->lazysusan_y = src->lazysusan_y;
-      dest->lazysusan_spin = src->lazysusan_spin;
-      dest->lazysusan_space = src->lazysusan_space;
-      dest->lazysusan_twist = src->lazysusan_twist;
-   } else if (varn==VAR_MODULUS) {
-      /* Modulus */
-      dest->modulus_x = src->modulus_x;
-      dest->modulus_y = src->modulus_y;
-   } else if (varn==VAR_OSCILLOSCOPE) {
-      /* Oscope */
-      dest->oscope_separation = src->oscope_separation;
-      dest->oscope_frequency = src->oscope_frequency;
-      dest->oscope_amplitude = src->oscope_amplitude;
-      dest->oscope_damping = src->oscope_damping;
-   } else if (varn==VAR_POPCORN2) {
-      /* Popcorn2 */
-      dest->popcorn2_x = src->popcorn2_x;
-      dest->popcorn2_y = src->popcorn2_y;
-      dest->popcorn2_c = src->popcorn2_c;
-   } else if (varn==VAR_SEPARATION) {
-      /* Separation */
-      dest->separation_x = src->separation_x;
-      dest->separation_y = src->separation_y;
-      dest->separation_xinside = src->separation_xinside;
-      dest->separation_yinside = src->separation_yinside;
-   } else if (varn==VAR_SPLIT) {
-      /* Split */
-      dest->split_xsize = src->split_xsize;
-      dest->split_ysize = src->split_ysize;
-   } else if (varn==VAR_SPLITS) {
-      /* Splits */
-      dest->splits_x = src->splits_x;
-      dest->splits_y = src->splits_y;
-   } else if (varn==VAR_STRIPES) {
-      /* Stripes */
-      dest->stripes_space = src->stripes_space;
-      dest->stripes_warp = src->stripes_warp;
-   } else if (varn==VAR_WEDGE) {
-      /* Wedge */
-      dest->wedge_angle = src->wedge_angle;
-      dest->wedge_hole = src->wedge_hole;
-      dest->wedge_count = src->wedge_count;
-      dest->wedge_swirl = src->wedge_swirl;
-   } else if (varn==VAR_WEDGE_JULIA) {
-      /* Wedge_Julia */
-      dest->wedge_julia_angle = src->wedge_julia_angle;
-      dest->wedge_julia_count = src->wedge_julia_count;
-      dest->wedge_julia_power = src->wedge_julia_power;
-      dest->wedge_julia_dist = src->wedge_julia_dist;
-      dest->wedgeJulia_cf = src->wedgeJulia_cf;
-      dest->wedgeJulia_cn = src->wedgeJulia_cn;
-      dest->wedgeJulia_rN = src->wedgeJulia_rN;
-   } else if (varn==VAR_WEDGE_SPH) {
-      /* Wedge_sph */
-      dest->wedge_sph_angle = src->wedge_sph_angle;
-      dest->wedge_sph_hole = src->wedge_sph_hole;
-      dest->wedge_sph_count = src->wedge_sph_count;
-      dest->wedge_sph_swirl = src->wedge_sph_swirl;      
-   } else if (varn==VAR_WHORL) {
-      /* whorl */
-      dest->whorl_inside = src->whorl_inside;
-      dest->whorl_outside = src->whorl_outside;
-   } else if (varn==VAR_WAVES2) {
-      /* waves2 */
-      dest->waves2_scalex = src->waves2_scalex;
-      dest->waves2_scaley = src->waves2_scaley;
-      dest->waves2_freqx = src->waves2_freqx;
-      dest->waves2_freqy = src->waves2_freqy;
-   } else if (varn==VAR_AUGER) {
-      /* auger */
-      dest->auger_sym = src->auger_sym;
-      dest->auger_weight = src->auger_weight;
-      dest->auger_freq = src->auger_freq;
-      dest->auger_scale = src->auger_scale;
-   } else if (varn==VAR_FLUX) {
-      /* flux */
-      dest->flux_spread = src->flux_spread;
-   } else if (varn==VAR_MOBIUS) {
-      /* mobius */
-      dest->mobius_re_a = src->mobius_re_a;
-      dest->mobius_re_b = src->mobius_re_b;
-      dest->mobius_re_c = src->mobius_re_c;
-      dest->mobius_re_d = src->mobius_re_d;
-      dest->mobius_im_a = src->mobius_im_a;
-      dest->mobius_im_b = src->mobius_im_b;
-      dest->mobius_im_c = src->mobius_im_c;
-      dest->mobius_im_d = src->mobius_im_d;
-   } else if (varn==VAR_ASTERIA) {
-      dest->asteria_alpha = src->asteria_alpha;
-   } else if (varn==VAR_BCOLLIDE) {
-   	  dest->bcollide_num = src->bcollide_num;
-   	  dest->bcollide_a = src->bcollide_a;
-   }
+	switch (varn) {
+		case VAR_BLOB:
+			/* Blob */
+			dest->blob_low = src->blob_low;
+			dest->blob_high = src->blob_high;
+			dest->blob_waves = src->blob_waves;
+			break;
+		case VAR_PDJ:
+			/* PDJ */
+			dest->pdj_ac = src->pdj_ac;
+			dest->pdj_bd = src->pdj_bd;
+			break;
+		case VAR_FAN2:
+			/* Fan2 */
+			dest->fan2_x = src->fan2_x;
+			dest->fan2_y = src->fan2_y;
+			break;
+		case VAR_RINGS2:
+			/* Rings2 */
+			dest->rings2_val = src->rings2_val;
+			break;
+		case VAR_PERSPECTIVE:
+			/* Perspective */
+			dest->perspective_angle = src->perspective_angle;
+			dest->perspective_dist = src->perspective_dist;
+			dest->persp_vsin = src->persp_vsin;
+			dest->persp_vfcos = src->persp_vfcos;
+			break;
+		case VAR_JULIAN:
+			/* Julia_N */
+			dest->julian_power = src->julian_power;
+			dest->julian_dist = src->julian_dist;
+			dest->julian_rN = src->julian_rN;
+			dest->julian_cn = src->julian_cn;
+			break;
+		case VAR_JULIASCOPE:
+			/* Julia_Scope */
+			dest->juliascope_power = src->juliascope_power;
+			dest->juliascope_dist = src->juliascope_dist;
+			dest->juliascope_rN = src->juliascope_rN;
+			dest->juliascope_cn = src->juliascope_cn;
+			break;
+		case VAR_RADIAL_BLUR:
+			/* Radial Blur */
+			dest->radial_blur_angle = src->radial_blur_angle;
+			break;
+		case VAR_PIE:
+			/* Pie */
+			dest->pie_slices = src->pie_slices;
+			dest->pie_rotation = src->pie_rotation;
+			dest->pie_thickness = src->pie_thickness;
+			break;
+		case VAR_NGON:
+			/* Ngon */
+			dest->ngon_sides = src->ngon_sides;
+			dest->ngon_power = src->ngon_power;
+			dest->ngon_corners = src->ngon_corners;
+			dest->ngon_circle = src->ngon_circle;
+			break;
+		case VAR_CURL:
+			/* Curl */
+			dest->curl_c1 = src->curl_c1;
+			dest->curl_c2 = src->curl_c2;
+			break;
+		case VAR_RECTANGLES:
+			/* Rect */
+			dest->rectangles_x = src->rectangles_x;
+			dest->rectangles_y = src->rectangles_y;
+			break;
+		case VAR_DISC2:
+			/* Disc2 */
+			dest->disc2_rot = src->disc2_rot;
+			dest->disc2_twist = src->disc2_twist;
+			break;
+		case VAR_SUPER_SHAPE:
+			/* Supershape */
+			dest->super_shape_rnd = src->super_shape_rnd;
+			dest->super_shape_m = src->super_shape_m;
+			dest->super_shape_n1 = src->super_shape_n1;
+			dest->super_shape_n2 = src->super_shape_n2;
+			dest->super_shape_n3 = src->super_shape_n3;
+			dest->super_shape_holes = src->super_shape_holes;
+			break;
+		case VAR_FLOWER:
+			/* Flower */
+			dest->flower_petals = src->flower_petals;
+			dest->flower_petals = src->flower_petals;
+			break;
+		case VAR_CONIC:
+			/* Conic */
+			dest->conic_eccentricity = src->conic_eccentricity;
+			dest->conic_holes = src->conic_holes;
+			break;
+		case VAR_PARABOLA:
+			/* Parabola */
+			dest->parabola_height = src->parabola_height;
+			dest->parabola_width = src->parabola_width;
+			break;
+		case VAR_BENT2:
+			/* Bent2 */
+			dest->bent2_x = src->bent2_x;
+			dest->bent2_y = src->bent2_y;
+			break;
+		case VAR_BIPOLAR:
+			/* Bipolar */
+			dest->bipolar_shift = src->bipolar_shift;
+			break;
+		case VAR_CELL:
+			/* Cell */
+			dest->cell_size = src->cell_size;
+			break;
+		case VAR_CPOW:
+			/* Cpow */
+			dest->cpow_i = src->cpow_i;
+			dest->cpow_r = src->cpow_r;
+			dest->cpow_power = src->cpow_power;
+			break;
+		case VAR_CURVE:
+			/* Curve */
+			dest->curve_xamp = src->curve_xamp;
+			dest->curve_yamp = src->curve_yamp;
+			dest->curve_xlength = src->curve_xlength;
+			dest->curve_ylength = src->curve_ylength;
+			break;
+		case VAR_ESCHER:
+			/* Escher */
+			dest->escher_beta = src->escher_beta;
+			break;
+		case VAR_LAZYSUSAN:
+			/* Lazysusan */
+			dest->lazysusan_x = src->lazysusan_x;
+			dest->lazysusan_y = src->lazysusan_y;
+			dest->lazysusan_spin = src->lazysusan_spin;
+			dest->lazysusan_space = src->lazysusan_space;
+			dest->lazysusan_twist = src->lazysusan_twist;
+			break;
+		case VAR_MODULUS:
+			/* Modulus */
+			dest->modulus_x = src->modulus_x;
+			dest->modulus_y = src->modulus_y;
+			break;
+		case VAR_OSCILLOSCOPE:
+			/* Oscope */
+			dest->oscope_separation = src->oscope_separation;
+			dest->oscope_frequency = src->oscope_frequency;
+			dest->oscope_amplitude = src->oscope_amplitude;
+			dest->oscope_damping = src->oscope_damping;
+			break;
+		case VAR_POPCORN2:
+			/* Popcorn2 */
+			dest->popcorn2_x = src->popcorn2_x;
+			dest->popcorn2_y = src->popcorn2_y;
+			dest->popcorn2_c = src->popcorn2_c;
+			break;
+		case VAR_SEPARATION:
+			/* Separation */
+			dest->separation_x = src->separation_x;
+			dest->separation_y = src->separation_y;
+			dest->separation_xinside = src->separation_xinside;
+			dest->separation_yinside = src->separation_yinside;
+			break;
+		case VAR_SPLIT:
+			/* Split */
+			dest->split_xsize = src->split_xsize;
+			dest->split_ysize = src->split_ysize;
+			break;
+		case VAR_SPLITS:
+			/* Splits */
+			dest->splits_x = src->splits_x;
+			dest->splits_y = src->splits_y;
+			break;
+		case VAR_STRIPES:
+			/* Stripes */
+			dest->stripes_space = src->stripes_space;
+			dest->stripes_warp = src->stripes_warp;
+			break;
+		case VAR_WEDGE:
+			/* Wedge */
+			dest->wedge_angle = src->wedge_angle;
+			dest->wedge_hole = src->wedge_hole;
+			dest->wedge_count = src->wedge_count;
+			dest->wedge_swirl = src->wedge_swirl;
+			break;
+		case VAR_WEDGE_JULIA:
+			/* Wedge_Julia */
+			dest->wedge_julia_angle = src->wedge_julia_angle;
+			dest->wedge_julia_count = src->wedge_julia_count;
+			dest->wedge_julia_power = src->wedge_julia_power;
+			dest->wedge_julia_dist = src->wedge_julia_dist;
+			dest->wedgeJulia_cf = src->wedgeJulia_cf;
+			dest->wedgeJulia_cn = src->wedgeJulia_cn;
+			dest->wedgeJulia_rN = src->wedgeJulia_rN;
+			break;
+		case VAR_WEDGE_SPH:
+			/* Wedge_sph */
+			dest->wedge_sph_angle = src->wedge_sph_angle;
+			dest->wedge_sph_hole = src->wedge_sph_hole;
+			dest->wedge_sph_count = src->wedge_sph_count;
+			dest->wedge_sph_swirl = src->wedge_sph_swirl;
+			break;
+		case VAR_WHORL:
+			/* whorl */
+			dest->whorl_inside = src->whorl_inside;
+			dest->whorl_outside = src->whorl_outside;
+			break;
+		case VAR_WAVES2:
+			/* waves2 */
+			dest->waves2_scalex = src->waves2_scalex;
+			dest->waves2_scaley = src->waves2_scaley;
+			dest->waves2_freqx = src->waves2_freqx;
+			dest->waves2_freqy = src->waves2_freqy;
+			break;
+		case VAR_AUGER:
+			/* auger */
+			dest->auger_sym = src->auger_sym;
+			dest->auger_weight = src->auger_weight;
+			dest->auger_freq = src->auger_freq;
+			dest->auger_scale = src->auger_scale;
+			break;
+		case VAR_FLUX:
+			/* flux */
+			dest->flux_spread = src->flux_spread;
+			break;
+		case VAR_MOBIUS:
+			/* mobius */
+			dest->mobius_re_a = src->mobius_re_a;
+			dest->mobius_re_b = src->mobius_re_b;
+			dest->mobius_re_c = src->mobius_re_c;
+			dest->mobius_re_d = src->mobius_re_d;
+			dest->mobius_im_a = src->mobius_im_a;
+			dest->mobius_im_b = src->mobius_im_b;
+			dest->mobius_im_c = src->mobius_im_c;
+			dest->mobius_im_d = src->mobius_im_d;
+			break;
+		case VAR_ASTERIA:
+			dest->asteria_alpha = src->asteria_alpha;
+			break;
+		case VAR_BCOLLIDE:
+			dest->bcollide_num = src->bcollide_num;
+			dest->bcollide_a = src->bcollide_a;
+			break;
+	}
 }
 
 static void initialize_xform(flam3_xform * const xf) {
